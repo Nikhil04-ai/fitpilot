@@ -1849,13 +1849,14 @@ Accepts or declines an invite.
   ```json
   { "accept": true, "userId": "ignored" }
   ```
-  - `accept` is a boolean. **If it is omitted, it defaults to `false`, which declines the invite.**
+  - `accept` is a required boolean. If it is omitted or `null`, the request is refused with `400` and the invite is left unanswered. It used to default to `false`, which declined the invite.
   - `userId` is ignored. The person responding is always the caller.
 - **Response:** `200`, the challenge object. What changes:
   - The first acceptance on a `PENDING` challenge makes it `ACTIVE`. It sets `startDate` to today and `endDate` to today plus the original duration.
   - Accepting a challenge that is already `ACTIVE` joins the window that is already running.
   - When the last invitee still deciding declines and nobody besides the creator has accepted, the challenge becomes `DECLINED`.
 - **Errors:**
+  - `400` `"Say whether to accept: send \"accept\" as true or false."` The answer is checked before anything about the challenge, so it applies even to an id that doesn't exist.
   - `400` `"Challenge not found: <id>"`
   - `403` `"You weren't invited to this challenge."`
   - `400` `"You created this challenge — you're already in it."`

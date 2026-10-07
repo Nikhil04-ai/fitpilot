@@ -313,6 +313,34 @@ class GroupChallengeIntegrationTest {
                 .isEqualTo(400);
     }
 
+    @Test
+    @Order(14)
+    @DisplayName("Answering an invite without saying yes or no is refused, not read as a decline (P4-13)")
+    void respondNeedsAnExplicitAnswer() throws Exception {
+        String heidi = register("grouphidei@test.com", "Heidi", "Hall");
+        String ivan = register("groupivan@test.com", "Ivan", "Ives");
+        String heidiJwt = login("grouphidei@test.com");
+        String ivanJwt = login("groupivan@test.com");
+        befriend(heidiJwt, heidi, "groupivan@test.com", ivanJwt);
+
+        String id = json(send(postAuth(heidiJwt, "/api/challenges", Map.of(
+                "opponentIds", List.of(ivan), "type", "WORKOUT_COUNT", "durationDays", 7)))).get("id").asText();
+
+        // The primitive boolean made each of these a decline.
+        for (Object body : new Object[] {Map.of(), Map.of("userId", ivan), new java.util.HashMap<String, Object>() {{ put("accept", null); }}}) {
+            HttpResponse<String> response = send(postAuth(ivanJwt, "/api/challenges/" + id + "/respond", body));
+            assertThat(response.statusCode()).as(body.toString()).isEqualTo(400);
+            assertThat(json(response).get("error").asText()).contains("accept");
+        }
+
+        // None of them spent the invite: it is still waiting for an answer.
+        assertThat(json(send(getAuth(ivanJwt, "/api/challenges/invites/" + ivan)))).hasSize(1);
+
+        // An explicit answer, either way, still works.
+        assertThat(send(postAuth(ivanJwt, "/api/challenges/" + id + "/respond",
+                Map.of("accept", true))).statusCode()).isEqualTo(200);
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     /** Sends a friend request and has the addressee accept it. */

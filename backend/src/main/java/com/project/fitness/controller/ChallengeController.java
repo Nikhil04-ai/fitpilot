@@ -62,8 +62,14 @@ public class ChallengeController {
     public ResponseEntity<Map<String, Object>> respond(
             @PathVariable String challengeId,
             @RequestBody RespondRequest req) {
+        // Boolean, not boolean (PLAN P4-13): the primitive turned an omitted field into
+        // false, so a body with no answer in it declined the invite, and the invite is
+        // spent once declined.
+        if (req.getAccept() == null) {
+            throw new RuntimeException("Say whether to accept: send \"accept\" as true or false.");
+        }
         return ResponseEntity.ok(
-                challengeService.respondToChallenge(challengeId, CurrentUser.id(), req.isAccept()));
+                challengeService.respondToChallenge(challengeId, CurrentUser.id(), req.getAccept()));
     }
 
     /** Creator cancels a pending challenge */
@@ -151,6 +157,6 @@ public class ChallengeController {
     @Data
     static class RespondRequest {
         private String userId;    // ignored — the responder is the authenticated user
-        private boolean accept;
+        private Boolean accept;   // required; null means the client didn't answer
     }
 }
