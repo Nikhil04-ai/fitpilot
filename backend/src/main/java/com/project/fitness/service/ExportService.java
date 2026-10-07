@@ -203,9 +203,13 @@ public class ExportService {
         String text = String.valueOf(value);
         if (text.isEmpty()) return "";
 
+        // A number can't carry a formula, and prefixing a negative one ('-0.6) turned
+        // it into text in every spreadsheet (PLAN P4-9). Free text stays guarded even
+        // when it looks numeric: a note reading "-1+1" would still evaluate.
         char first = text.charAt(0);
-        if (first == '=' || first == '+' || first == '-' || first == '@'
-                || first == '\t' || first == '\r') {
+        if (!(value instanceof Number)
+                && (first == '=' || first == '+' || first == '-' || first == '@'
+                    || first == '\t' || first == '\r')) {
             text = "'" + text;
         }
 

@@ -105,6 +105,28 @@ class ExportServiceTest {
             assertThat(ExportService.csvCell("\tcmd")).isEqualTo("\"'\tcmd\"");
         }
 
+        /**
+         * The guard looked only at the first character, so a negative number went out as
+         * {@code '-0.6}: text, not a number, in every spreadsheet (PLAN P4-9). A value
+         * that is a Java number can't hold a formula, so it is never prefixed.
+         */
+        @Test
+        @DisplayName("leave negative numbers numeric")
+        void negativeNumbersStayNumbers() {
+            assertThat(ExportService.csvCell(-0.6)).isEqualTo("\"-0.6\"");
+            assertThat(ExportService.csvCell(-5)).isEqualTo("\"-5\"");
+            assertThat(ExportService.csvCell(-12L)).isEqualTo("\"-12\"");
+            assertThat(ExportService.csvCell(new java.math.BigDecimal("-3.25"))).isEqualTo("\"-3.25\"");
+        }
+
+        @Test
+        @DisplayName("still guard free text that merely looks like a number")
+        void textThatLooksNumericIsStillGuarded() {
+            // A note is user-typed text whatever it looks like: "-1+1" would evaluate.
+            assertThat(ExportService.csvCell("-0.6")).isEqualTo("\"'-0.6\"");
+            assertThat(ExportService.csvCell("-1+1")).isEqualTo("\"'-1+1\"");
+        }
+
         @Test
         @DisplayName("leave ordinary text alone apart from quoting it")
         void ordinaryTextIsJustQuoted() {

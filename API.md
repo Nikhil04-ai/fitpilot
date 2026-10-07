@@ -2190,7 +2190,7 @@ Downloads one dataset as a CSV file. The file is streamed.
   - The file starts with a UTF-8 BOM, so Excel reads it as UTF-8. Lines end with CRLF.
   - The header row is always present, even when the dataset is empty.
   - Every non-null cell is double-quoted, with any `"` inside doubled. A null value is an empty cell.
-  - **Formula-injection neutralising:** a cell that starts with `=`, `+`, `-`, `@`, a tab or a carriage return gets a `'` in front, so spreadsheet apps treat it as text.
+  - **Formula-injection neutralising:** a text cell that starts with `=`, `+`, `-`, `@`, a tab or a carriage return gets a `'` in front, so spreadsheet apps treat it as text. Numeric columns are never prefixed, so a negative number such as `-0.6` stays a number.
   - Date and time values use Java's `toString()` form, for example `2026-09-20T07:30`.
   ```csv
   id,loggedAt,bodyPart,severity,description
