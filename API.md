@@ -96,6 +96,12 @@ database is reset. Any call made with such a token returns:
 Clients should treat this exact 409 as "clear the session and show login". The frontend
 matches on the phrase `account that no longer exists`.
 
+Every `GET` route that depends on who is asking returns it, and an automated test finds
+those routes from the running app and checks each one. Only routes whose answer is the
+same for everyone are exempt: `GET /api/plans`, `GET /api/plans/{planId}` and
+`GET /api/export/datasets`. Write routes (`POST`, `PUT`, `DELETE`) are not covered by that
+test; they return it where they look the user up, which most do.
+
 ### Error bodies
 
 Every error goes through `GlobalExceptionHandler` and has one of two shapes:

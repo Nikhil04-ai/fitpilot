@@ -1,6 +1,7 @@
 package com.project.fitness.controller;
 
 import com.project.fitness.model.SleepLog;
+import com.project.fitness.security.AccountGuard;
 import com.project.fitness.security.CurrentUser;
 import com.project.fitness.service.BodyMetricsService;
 import com.project.fitness.service.SleepService;
@@ -30,6 +31,7 @@ import java.util.Map;
 public class HealthController {
 
     private final BodyMetricsService bodyMetricsService;
+    private final AccountGuard accountGuard;
     private final WaterIntakeService waterIntakeService;
     private final SleepService sleepService;
 
@@ -53,7 +55,7 @@ public class HealthController {
             @PathVariable String userId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(bodyMetricsService.getHistory(CurrentUser.requireSelf(userId),
+        return ResponseEntity.ok(bodyMetricsService.getHistory(accountGuard.requireSelf(userId),
                 PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100),
                         Sort.by(Sort.Direction.DESC, "loggedAt"))));
     }
@@ -90,7 +92,7 @@ public class HealthController {
 
     @GetMapping("/sleep/{userId}/analysis")
     public ResponseEntity<Map<String, Object>> getSleepAnalysis(@PathVariable String userId) {
-        return ResponseEntity.ok(sleepService.getWeeklySleepAnalysis(CurrentUser.requireSelf(userId)));
+        return ResponseEntity.ok(sleepService.getWeeklySleepAnalysis(accountGuard.requireSelf(userId)));
     }
 
     /** Each logged night paired with the next day's training — the scatter chart's data. */
@@ -107,7 +109,7 @@ public class HealthController {
             @PathVariable String userId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(sleepService.getHistory(CurrentUser.requireSelf(userId),
+        return ResponseEntity.ok(sleepService.getHistory(accountGuard.requireSelf(userId),
                 PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100),
                         Sort.by(Sort.Direction.DESC, "sleepDate"))));
     }

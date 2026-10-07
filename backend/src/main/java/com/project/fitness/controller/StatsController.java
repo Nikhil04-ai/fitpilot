@@ -1,5 +1,6 @@
 package com.project.fitness.controller;
 
+import com.project.fitness.security.AccountGuard;
 import com.project.fitness.security.CurrentUser;
 import com.project.fitness.service.PlateauDetectorService;
 import com.project.fitness.service.StatsService;
@@ -18,6 +19,7 @@ import java.util.Map;
 public class StatsController {
 
     private final StatsService statsService;
+    private final AccountGuard accountGuard;
     private final TimingAnalysisService timingAnalysisService;
     private final PlateauDetectorService plateauDetectorService;
 
@@ -50,13 +52,13 @@ public class StatsController {
 
     @GetMapping("/timing/{userId}")
     public ResponseEntity<Map<String, Object>> getTimingAnalysis(@PathVariable String userId) {
-        return ResponseEntity.ok(timingAnalysisService.analyseTimingForUser(CurrentUser.requireSelf(userId)));
+        return ResponseEntity.ok(timingAnalysisService.analyseTimingForUser(accountGuard.requireSelf(userId)));
     }
 
     @GetMapping("/plateau/{userId}")
     public ResponseEntity<Map<String, Object>> checkPlateau(
             @PathVariable String userId,
             @RequestParam ActivityType activityType) {
-        return ResponseEntity.ok(plateauDetectorService.checkPlateau(CurrentUser.requireSelf(userId), activityType));
+        return ResponseEntity.ok(plateauDetectorService.checkPlateau(accountGuard.requireSelf(userId), activityType));
     }
 }

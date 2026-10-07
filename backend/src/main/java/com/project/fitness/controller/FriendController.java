@@ -1,5 +1,6 @@
 package com.project.fitness.controller;
 
+import com.project.fitness.security.AccountGuard;
 import com.project.fitness.security.CurrentUser;
 import com.project.fitness.service.FriendshipService;
 import lombok.Data;
@@ -22,22 +23,23 @@ import java.util.Map;
 public class FriendController {
 
     private final FriendshipService friendshipService;
+    private final AccountGuard accountGuard;
 
     @GetMapping
     public ResponseEntity<List<Map<String, Object>>> friends() {
-        return ResponseEntity.ok(friendshipService.getFriends(CurrentUser.id()));
+        return ResponseEntity.ok(friendshipService.getFriends(accountGuard.requireCurrent()));
     }
 
     /** Requests waiting on the caller to answer. */
     @GetMapping("/invites")
     public ResponseEntity<List<Map<String, Object>>> invites() {
-        return ResponseEntity.ok(friendshipService.getPendingInvites(CurrentUser.id()));
+        return ResponseEntity.ok(friendshipService.getPendingInvites(accountGuard.requireCurrent()));
     }
 
     /** Requests the caller has sent and that are still unanswered. */
     @GetMapping("/sent")
     public ResponseEntity<List<Map<String, Object>>> sent() {
-        return ResponseEntity.ok(friendshipService.getSentRequests(CurrentUser.id()));
+        return ResponseEntity.ok(friendshipService.getSentRequests(accountGuard.requireCurrent()));
     }
 
     /**

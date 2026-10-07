@@ -2,6 +2,7 @@ package com.project.fitness.controller;
 
 import com.project.fitness.model.ExercisePersonalBest;
 import com.project.fitness.repository.ExercisePersonalBestRepository;
+import com.project.fitness.security.AccountGuard;
 import com.project.fitness.security.CurrentUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -22,11 +23,12 @@ import java.util.List;
 public class ExerciseController {
 
     private final ExercisePersonalBestRepository exercisePersonalBestRepository;
+    private final AccountGuard accountGuard;
 
     /** Heaviest set, best estimated 1RM and best session volume, per movement. */
     @GetMapping("/personal-bests/{userId}")
     public ResponseEntity<List<ExercisePersonalBest>> getExercisePersonalBests(@PathVariable String userId) {
         return ResponseEntity.ok(exercisePersonalBestRepository
-                .findByUserIdOrderByBestEstimatedOneRepMaxDesc(CurrentUser.requireSelf(userId)));
+                .findByUserIdOrderByBestEstimatedOneRepMaxDesc(accountGuard.requireSelf(userId)));
     }
 }

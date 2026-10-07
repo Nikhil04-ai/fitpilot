@@ -2,6 +2,7 @@ package com.project.fitness.controller;
 
 import com.project.fitness.model.Goal;
 import com.project.fitness.model.GoalType;
+import com.project.fitness.security.AccountGuard;
 import com.project.fitness.security.CurrentUser;
 import com.project.fitness.service.GoalService;
 import lombok.Data;
@@ -19,6 +20,7 @@ import java.util.Map;
 public class GoalController {
 
     private final GoalService goalService;
+    private final AccountGuard accountGuard;
 
     /** POST /api/goals — create a new goal */
     @PostMapping
@@ -36,7 +38,7 @@ public class GoalController {
     /** GET /api/goals/{userId} — all goals with progress percentages */
     @GetMapping("/{userId}")
     public ResponseEntity<List<Map<String, Object>>> getGoals(@PathVariable String userId) {
-        return ResponseEntity.ok(goalService.getGoalsWithProgress(CurrentUser.requireSelf(userId)));
+        return ResponseEntity.ok(goalService.getGoalsWithProgress(accountGuard.requireSelf(userId)));
     }
 
     /** PUT /api/goals/{goalId} — update target or deadline */

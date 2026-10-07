@@ -30,10 +30,10 @@ priority order, so priorities aren't re-derived from scratch every session.
 > **Status, 2026-09-25: P3 is done** (`API.md` for all 83 operations, and paged history).
 > Writing `API.md` turned up the 20 problems listed under **P4**.
 >
-> **Status, 2026-10-07: P4 is 12 of 20 done.** All seven bugs and security problems (P4-1
-> to P4-7), P4-11 (closed with P4-4) and all four wrong numbers (P4-8, P4-9, P4-10, P4-12)
-> are fixed. The other 8 are open and are all behaviour that surprises, none a crash or a
-> security hole. Suite: **521 passing**. See `PROGRESS.md` Phases 12 and 14. The project has been in git
+> **Status, 2026-10-08: P4 is 13 of 20 done.** All seven bugs and security problems (P4-1
+> to P4-7), P4-11 (closed with P4-4), all four wrong numbers (P4-8, P4-9, P4-10, P4-12) and
+> P4-18 are fixed. The other 7 are open and are all behaviour that surprises, none a crash
+> or a security hole. Suite: **522 passing**. See `PROGRESS.md` Phases 12 and 14. The project has been in git
 > since 2026-10-07 (`main`, on GitHub).
 
 ## Priority key
@@ -464,7 +464,7 @@ struck-through row is fixed; its note says how.
 | **P4-15** | The one-open-challenge-per-pair rule still blocks a pair after one of them declined or left a challenge that is still running. |
 | **P4-16** | A meal `PUT` never derives calories from macros, unlike `POST`, so a meal whose calories are cleared with `clear` shows no kcal. |
 | **P4-17** | These inputs aren't validated: pain `severity`, water `amountMl` (negatives are accepted), `hoursSlept`, activity `difficultyRating` on create, and profile weight, height and age. |
-| **P4-18** | Several reads skip the user lookup, so a dead session gets an empty result instead of the `409` self-heal: metrics history, sleep analysis and history, pain history and patterns, active plan, recommendations, timing, plateau, and both personal-best endpoints. |
+| ~~**P4-18**~~ | ~~Several reads skip the user lookup, so a dead session gets an empty result instead of the `409` self-heal: metrics history, sleep analysis and history, pain history and patterns, active plan, recommendations, timing, plateau, and both personal-best endpoints.~~ **Fixed 2026-10-08.** The list was incomplete: a test that discovers every `GET` route from Spring and calls each with a deleted account's token found **21** offenders, not about 10. It also caught goals, friends (3), challenges (2), recovery, the notification unread count and the digest (2). New `AccountGuard` (`requireSelf` / `requireCurrent`) sits beside the identity check in each controller and throws the `409` when the account is gone. It is in the controllers rather than the services so those services' unit tests are untouched. `DeadSessionReadsIntegrationTest` first proves no route rejects a live account, then deletes the account and expects the `409` from every route, so a new endpoint is covered the moment it exists. **Not covered:** write routes; most already look the user up. |
 | **P4-19** | Unbounded or unordered lists: `recommendation/user` (not paged, no order), `challenges/user` (no `ORDER BY`), and a plan's `days` (no `@OrderBy`). |
 | **P4-20** | Leftovers: the `PERSONAL_BEST` notification type is never emitted. `JacksonConfig` builds a Jackson 2 mapper while Boot 4.1 serializes with Jackson 3, so it may be inert (unverified). `enroll` requires a JSON body it ignores. |
 
@@ -475,8 +475,8 @@ struck-through row is fixed; its note says how.
 **P0 to P3 are done, and so is the security half of P4.** What remains, in order:
 
 1. ~~**The wrong numbers: P4-8, P4-9, P4-10, P4-12.**~~ All done 2026-10-07.
-2. **P4-18 and P4-17.** A dead session should always self-heal, and bad input should be
-   refused rather than stored.
+2. ~~**P4-18**~~ Done 2026-10-08. **P4-17** next: bad input should be refused rather than
+   stored.
 3. **The remaining surprises: P4-13 to P4-16, P4-19, P4-20.**
 4. **Not in the table, but open:**
    - Access tokens are never checked server-side, so one already issued keeps working for

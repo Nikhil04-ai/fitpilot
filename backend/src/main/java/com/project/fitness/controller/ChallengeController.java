@@ -1,6 +1,7 @@
 package com.project.fitness.controller;
 
 import com.project.fitness.model.ChallengeType;
+import com.project.fitness.security.AccountGuard;
 import com.project.fitness.security.CurrentUser;
 import com.project.fitness.service.ChallengeService;
 import lombok.Data;
@@ -29,6 +30,7 @@ import java.util.Map;
 public class ChallengeController {
 
     private final ChallengeService challengeService;
+    private final AccountGuard accountGuard;
 
     /**
      * Sends a challenge invite to one or more people.
@@ -76,7 +78,7 @@ public class ChallengeController {
     /** All challenges (any status) for a user */
     @GetMapping("/user/{userId}")
     public ResponseEntity<List<Map<String, Object>>> getUserChallenges(@PathVariable String userId) {
-        return ResponseEntity.ok(challengeService.getUserChallenges(CurrentUser.requireSelf(userId)));
+        return ResponseEntity.ok(challengeService.getUserChallenges(accountGuard.requireSelf(userId)));
     }
 
     /** Full detail of one challenge */
@@ -94,7 +96,7 @@ public class ChallengeController {
     /** Pending invites waiting for this user's response */
     @GetMapping("/invites/{userId}")
     public ResponseEntity<List<Map<String, Object>>> getPendingInvites(@PathVariable String userId) {
-        return ResponseEntity.ok(challengeService.getPendingInvites(CurrentUser.requireSelf(userId)));
+        return ResponseEntity.ok(challengeService.getPendingInvites(accountGuard.requireSelf(userId)));
     }
 
     /** Daily score snapshots — use this as graph data on the frontend */

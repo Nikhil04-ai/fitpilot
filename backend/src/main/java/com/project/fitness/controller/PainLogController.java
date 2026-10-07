@@ -2,6 +2,7 @@ package com.project.fitness.controller;
 
 import com.project.fitness.model.BodyPart;
 import com.project.fitness.model.PainLog;
+import com.project.fitness.security.AccountGuard;
 import com.project.fitness.security.CurrentUser;
 import com.project.fitness.service.PainAnalysisService;
 import lombok.Data;
@@ -20,6 +21,7 @@ import java.util.List;
 public class PainLogController {
 
     private final PainAnalysisService painAnalysisService;
+    private final AccountGuard accountGuard;
 
     /** POST /api/pain-log — log pain after a workout */
     @PostMapping
@@ -40,7 +42,7 @@ public class PainLogController {
             @PathVariable String userId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(painAnalysisService.getPainHistory(CurrentUser.requireSelf(userId),
+        return ResponseEntity.ok(painAnalysisService.getPainHistory(accountGuard.requireSelf(userId),
                 PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100),
                         Sort.by(Sort.Direction.DESC, "loggedAt"))));
     }
@@ -48,7 +50,7 @@ public class PainLogController {
     /** GET /api/pain-log/patterns/{userId} — detected patterns and warnings */
     @GetMapping("/patterns/{userId}")
     public ResponseEntity<List<String>> getPatterns(@PathVariable String userId) {
-        return ResponseEntity.ok(painAnalysisService.detectPatterns(CurrentUser.requireSelf(userId)));
+        return ResponseEntity.ok(painAnalysisService.detectPatterns(accountGuard.requireSelf(userId)));
     }
 
     @Data

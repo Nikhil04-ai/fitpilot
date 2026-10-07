@@ -6,6 +6,7 @@ import com.project.fitness.model.Recommendation;
 import com.project.fitness.model.User;
 import com.project.fitness.repository.ActivityRepository;
 import com.project.fitness.repository.UserRepository;
+import com.project.fitness.security.AccountGuard;
 import com.project.fitness.security.CurrentUser;
 import com.project.fitness.service.RecommendationService;
 import lombok.Data;
@@ -22,6 +23,7 @@ import java.util.List;
 public class RecommendationController {
 
     private final RecommendationService recommendationService;
+    private final AccountGuard accountGuard;
     private final UserRepository userRepository;
     private final ActivityRepository activityRepository;
 
@@ -58,7 +60,7 @@ public class RecommendationController {
 
     @GetMapping("/user/{userId}")
     public ResponseEntity<List<Recommendation>> getUserRecommendation(@PathVariable String userId) {
-        return ResponseEntity.ok(recommendationService.getUserRecommendation(CurrentUser.requireSelf(userId)));
+        return ResponseEntity.ok(recommendationService.getUserRecommendation(accountGuard.requireSelf(userId)));
     }
 
     @GetMapping("/activity/{activityId}")

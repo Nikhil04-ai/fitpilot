@@ -1,5 +1,6 @@
 package com.project.fitness.controller;
 
+import com.project.fitness.security.AccountGuard;
 import com.project.fitness.security.CurrentUser;
 import com.project.fitness.service.NotificationService;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ import java.util.Map;
 public class NotificationController {
 
     private final NotificationService notificationService;
+    private final AccountGuard accountGuard;
 
     @GetMapping
     public ResponseEntity<Page<Map<String, Object>>> feed(
@@ -39,7 +41,7 @@ public class NotificationController {
      */
     @GetMapping("/unread-count")
     public ResponseEntity<Map<String, Object>> unreadCount() {
-        return ResponseEntity.ok(Map.of("unread", notificationService.unreadCount(CurrentUser.id())));
+        return ResponseEntity.ok(Map.of("unread", notificationService.unreadCount(accountGuard.requireCurrent())));
     }
 
     @PostMapping("/{notificationId}/read")

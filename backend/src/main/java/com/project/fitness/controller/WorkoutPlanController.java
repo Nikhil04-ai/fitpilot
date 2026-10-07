@@ -1,6 +1,7 @@
 package com.project.fitness.controller;
 
 import com.project.fitness.model.WorkoutPlan;
+import com.project.fitness.security.AccountGuard;
 import com.project.fitness.security.CurrentUser;
 import com.project.fitness.service.WorkoutPlanService;
 import lombok.Data;
@@ -17,6 +18,7 @@ import java.util.Map;
 public class WorkoutPlanController {
 
     private final WorkoutPlanService workoutPlanService;
+    private final AccountGuard accountGuard;
 
     /** Browse all system plans */
     @GetMapping
@@ -41,7 +43,7 @@ public class WorkoutPlanController {
     /** Get active plan + today's workout */
     @GetMapping("/active/{userId}")
     public ResponseEntity<Map<String, Object>> getActivePlan(@PathVariable String userId) {
-        return ResponseEntity.ok(workoutPlanService.getActivePlan(CurrentUser.requireSelf(userId)));
+        return ResponseEntity.ok(workoutPlanService.getActivePlan(accountGuard.requireSelf(userId)));
     }
 
     /** Mark today's workout as done — advances to next day */

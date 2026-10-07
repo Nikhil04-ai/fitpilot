@@ -1,6 +1,7 @@
 package com.project.fitness.controller;
 
 import com.project.fitness.model.MuscleRecovery;
+import com.project.fitness.security.AccountGuard;
 import com.project.fitness.security.CurrentUser;
 import com.project.fitness.service.MuscleRecoveryService;
 import lombok.RequiredArgsConstructor;
@@ -15,10 +16,11 @@ import java.util.List;
 public class RecoveryController {
 
     private final MuscleRecoveryService muscleRecoveryService;
+    private final AccountGuard accountGuard;
 
     /** GET /api/recovery/status/{userId} — all muscle groups with recovery status */
     @GetMapping("/status/{userId}")
     public ResponseEntity<List<MuscleRecovery>> getRecoveryStatus(@PathVariable String userId) {
-        return ResponseEntity.ok(muscleRecoveryService.getRecoveryStatus(CurrentUser.requireSelf(userId)));
+        return ResponseEntity.ok(muscleRecoveryService.getRecoveryStatus(accountGuard.requireSelf(userId)));
     }
 }

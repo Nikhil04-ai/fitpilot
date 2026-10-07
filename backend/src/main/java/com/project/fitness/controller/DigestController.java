@@ -1,6 +1,7 @@
 package com.project.fitness.controller;
 
 import com.project.fitness.dto.WeeklyDigestResponse;
+import com.project.fitness.security.AccountGuard;
 import com.project.fitness.security.CurrentUser;
 import com.project.fitness.service.WeeklyDigestService;
 import lombok.RequiredArgsConstructor;
@@ -22,17 +23,18 @@ import java.util.List;
 public class DigestController {
 
     private final WeeklyDigestService weeklyDigestService;
+    private final AccountGuard accountGuard;
 
     /** The most recent digest, or 204 when none has been generated yet. */
     @GetMapping
     public ResponseEntity<WeeklyDigestResponse> latest() {
-        WeeklyDigestResponse latest = weeklyDigestService.getLatest(CurrentUser.id());
+        WeeklyDigestResponse latest = weeklyDigestService.getLatest(accountGuard.requireCurrent());
         return latest == null ? ResponseEntity.noContent().build() : ResponseEntity.ok(latest);
     }
 
     @GetMapping("/history")
     public ResponseEntity<List<WeeklyDigestResponse>> history() {
-        return ResponseEntity.ok(weeklyDigestService.getHistory(CurrentUser.id()));
+        return ResponseEntity.ok(weeklyDigestService.getHistory(accountGuard.requireCurrent()));
     }
 
     /**
