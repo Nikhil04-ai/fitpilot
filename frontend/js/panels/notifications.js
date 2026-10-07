@@ -10,7 +10,7 @@ import { nav, panelLoaders } from '../nav.js';
 
 const NOTIF_ICON = {
   WEEKLY_DIGEST: '📋', PLATEAU: '📉', CHALLENGE_RESULT: '⚔️',
-  GOAL_DEADLINE: '🎯', PERSONAL_BEST: '⭐', GENERAL: '🔔'
+  GOAL_DEADLINE: '🎯', GENERAL: '🔔'
 };
 
 let notifPage = 0;

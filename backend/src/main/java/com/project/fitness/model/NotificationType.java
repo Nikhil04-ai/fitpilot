@@ -21,9 +21,6 @@ public enum NotificationType {
     /** A goal's deadline is close and the goal is not met. */
     GOAL_DEADLINE,
 
-    /** A personal best was broken. */
-    PERSONAL_BEST,
-
     /** Anything else. */
     GENERAL
 }

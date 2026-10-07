@@ -4,7 +4,6 @@ import com.project.fitness.model.WorkoutPlan;
 import com.project.fitness.security.AccountGuard;
 import com.project.fitness.security.CurrentUser;
 import com.project.fitness.service.WorkoutPlanService;
-import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -32,11 +31,13 @@ public class WorkoutPlanController {
         return ResponseEntity.ok(workoutPlanService.getPlanDetail(planId));
     }
 
-    /** Enroll in a plan */
+    /**
+     * Enroll in a plan. The caller is the JWT's user, so there is no body to read; it
+     * used to be required anyway and ignored (PLAN P4-20). A client that still sends
+     * {@code {"userId": ...}} is fine: unread fields are ignored.
+     */
     @PostMapping("/{planId}/enroll")
-    public ResponseEntity<Map<String, Object>> enroll(
-            @PathVariable String planId,
-            @RequestBody EnrollRequest req) {
+    public ResponseEntity<Map<String, Object>> enroll(@PathVariable String planId) {
         return ResponseEntity.ok(workoutPlanService.enrollUser(CurrentUser.id(), planId));
     }
 
@@ -51,7 +52,4 @@ public class WorkoutPlanController {
     public ResponseEntity<Map<String, Object>> completeDay(@PathVariable String userId) {
         return ResponseEntity.ok(workoutPlanService.completeTodaysDay(CurrentUser.requireSelf(userId)));
     }
-
-    @Data
-    static class EnrollRequest { private String userId; }  // ignored — the caller enrolls themselves
 }

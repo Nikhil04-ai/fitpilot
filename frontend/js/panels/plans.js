@@ -71,7 +71,7 @@ export async function loadWorkoutPlans() {
 
 export async function enrollInPlan(planId) {
   try {
-    await api(`/api/plans/${planId}/enroll`, { method: 'POST', body: JSON.stringify({ userId: session.currentUser.id }) });
+    await api(`/api/plans/${planId}/enroll`, { method: 'POST' });
     toast('📋 Enrolled! Check your active plan above.');
     loadWorkoutPlans();
   } catch (err) {

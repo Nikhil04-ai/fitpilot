@@ -564,3 +564,35 @@ rewritten. Backend only: no frontend change was needed.
 
 The repo was put under git the same day (`main`, pushed to GitHub), so from here on each
 change has its own history.
+
+---
+
+## Phase 15 — P4 finished (2026-10-07 to 2026-10-08)
+
+`PLAN.md` P4-8 to P4-20, which closes P4. Each fix started with a test that failed on the old
+code, and each is its own commit.
+
+| | Fix |
+|---|---|
+| **Wrong numbers** | **P4-8** monthly week-over-week compares the last 7 days with the 7 before (a steady month read +300%, a drop read positive); `null` when there is no earlier week. **P4-9** CSV export no longer turns negative numbers into text. **P4-10** the digest's net calories use the burn on the logged days only. **P4-12** an empty body-metrics save is a `400`, and an unknown value is stored as `null`, not `0`. |
+| **Dead sessions** | **P4-18** 21 reads (the plan listed about 10) answered a deleted account with an empty page instead of the `409`. `AccountGuard` fixes them, and a test that discovers every `GET` route from Spring covers any future one. |
+| **Bad input** | **P4-17** pain severity, water, sleep, difficulty rating and weight/height/age are range-checked from one `InputChecks` class. Sleep quality was silently clamped, so a missing one was saved as 1. |
+| **Challenges** | **P4-13** `accept` is required (a missing one declined the invite). **P4-14** a challenge cancelled with no contest carries its message and is announced as cancelled, not as a draw. **P4-15** someone who declined or left no longer blocks a new challenge. |
+| **Meals and lists** | **P4-16** editing a meal derives calories from its macros, as logging does. **P4-19** recommendations are paged and newest first (a response-shape change, with the frontend updated), challenges are newest first, plan days are in day order. |
+| **Leftovers** | **P4-20** the unused `PERSONAL_BEST` notification type is removed; `JacksonConfig` is verified and its wrong comment corrected; `enroll` needs no body. |
+
+### Found along the way
+
+* `GET /api/plans/{planId}` read a lazy collection after its transaction ended, which only
+  worked because production runs `open-in-view=true` (the test profile doesn't). It loads the
+  days in the transaction now.
+* The test profile and production differ on that setting. It is a known trap, not changed here.
+
+### Verification
+
+Backend suite: **554 passing** (509 after Phase 14). Frontend unit tests: 87. New test
+classes include `DeadSessionReadsIntegrationTest`, `InputValidationIntegrationTest`,
+`ListOrderingIntegrationTest`, `BodyMetricsServiceInputTest`, `InputChecksTest`,
+`StatsServiceMonthlyTest` and `LeftoversIntegrationTest`. The frontend halves of P4-14 and
+P4-19 pass their syntax and unit checks but have **not been driven in a browser**.
+

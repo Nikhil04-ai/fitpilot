@@ -1528,10 +1528,7 @@ Returns one plan with all of its days.
 Enrolls the caller in a plan starting today, at day 1. Any active enrollment is deactivated first, and enrolling in the same plan again restarts it.
 - **Auth:** `Bearer`
 - **Params:** `planId` (path)
-- **Body:** A JSON body is **required**, even though nothing in it is used. Send `{}`; a request with no body gets the generic unreadable-request `400`.
-  ```json
-  { "userId": "ignored" }
-  ```
+- **Body:** none. The caller is the JWT's user. A body is ignored if sent, so older clients that send `{"userId": "…"}` keep working. It used to be required: a request with no body got the generic unreadable-request `400`.
 - **Response:** `200`, an enrollment map:
   ```json
   {
@@ -2012,8 +2009,9 @@ The caller's in-app feed of things the app worked out on its own schedule: diges
 | `PLATEAU` | The plateau scan finds an activity type that has stopped improving | `insights` |
 | `CHALLENGE_RESULT` | A challenge is settled. Sent to every `ACCEPTED` competitor. A challenge settled with no contest is titled "Your challenge was cancelled", not "ended in a draw" | `challenges` |
 | `GOAL_DEADLINE` | A goal that isn't met yet is due within 7 days. Sent once per goal and deadline | `goals` |
-| `PERSONAL_BEST` | Defined, but no code sends it yet | — |
 | `GENERAL` | A friend request is received or accepted, or a challenge invite arrives | `challenges` |
+
+There is no notification for a personal best. The workout that sets one announces it in its own response (`isPersonalBest`, `personalBestMessage`), and a "new best" also fires on the first session of each activity type, which would make for a noisy feed.
 
 ### `GET /api/notifications`
 Returns the caller's feed, newest `createdAt` first. Read and unread notifications are mixed together.
