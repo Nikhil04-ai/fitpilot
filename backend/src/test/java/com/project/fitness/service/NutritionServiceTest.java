@@ -311,6 +311,79 @@ class NutritionServiceTest {
             assertThat(response.getAiEstimated()).isFalse();
         }
 
+        // ── Calories derived from macros on edit (PLAN P4-16) ────────────────────
+
+        /** 30 g protein, 50 g carbs, 10 g fat: 30*4 + 50*4 + 10*9 = 410 kcal. */
+        private MealLog withMacros(Integer calories) {
+            MealLog meal = existing();
+            meal.setCalories(calories);
+            meal.setProteinGrams(30.0);
+            meal.setCarbsGrams(50.0);
+            meal.setFatGrams(10.0);
+            return meal;
+        }
+
+        private MealResponse edit(MealLog meal, MealRequest edit) {
+            when(mealLogRepository.findById("meal-1")).thenReturn(Optional.of(meal));
+            when(mealLogRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+            return nutritionService.updateMeal("user-1", "meal-1", edit);
+        }
+
+        @Test
+        @DisplayName("clearing the calories of a meal with all three macros derives them, as logging does")
+        void clearingCaloriesDerivesFromMacros() {
+            MealRequest request = new MealRequest();
+            request.setClear(java.util.Set.of("calories"));
+
+            MealResponse response = edit(withMacros(500), request);
+
+            // It used to be saved with macros and no kcal, which showed as a blank.
+            assertThat(response.getCalories()).isEqualTo(410);
+            assertThat(response.getAiEstimated()).isFalse();
+        }
+
+        @Test
+        @DisplayName("clearing calories while sending new macros derives from the new ones")
+        void clearAndNewMacrosTogether() {
+            MealRequest request = new MealRequest();
+            request.setClear(java.util.Set.of("calories"));
+            request.setProteinGrams(40.0);        // 40*4 + 50*4 + 10*9 = 450
+
+            assertThat(edit(withMacros(500), request).getCalories()).isEqualTo(450);
+        }
+
+        @Test
+        @DisplayName("a calorie figure that is there is never overwritten by the macros")
+        void existingCaloriesAreKept() {
+            MealRequest request = new MealRequest();
+            request.setProteinGrams(40.0);        // macros now say 450, the typed figure says 500
+
+            assertThat(edit(withMacros(500), request).getCalories()).isEqualTo(500);
+        }
+
+        @Test
+        @DisplayName("with only some macros there is nothing to derive from, the same as logging")
+        void partialMacrosLeaveCaloriesEmpty() {
+            MealLog meal = existing();
+            meal.setProteinGrams(20.0);
+            MealRequest request = new MealRequest();
+            request.setClear(java.util.Set.of("calories"));
+
+            MealResponse response = edit(meal, request);
+
+            assertThat(response.getCalories()).isNull();
+            assertThat(response.getProteinGrams()).isEqualTo(20.0);
+        }
+
+        @Test
+        @DisplayName("a meal an earlier edit left with macros and no calories is repaired by the next save")
+        void legacyRowIsRepaired() {
+            MealRequest request = new MealRequest();
+            request.setDescription("Chicken and rice");
+
+            assertThat(edit(withMacros(null), request).getCalories()).isEqualTo(410);
+        }
+
         @Test
         @DisplayName("clear rejects a field that can't be emptied")
         void clearRejectsUnknownField() {

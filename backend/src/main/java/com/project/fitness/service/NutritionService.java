@@ -190,6 +190,13 @@ public class NutritionService {
         // would keep flagging a number the user typed themselves as a guess.
         if (changedNumbers) meal.setAiEstimated(false);
 
+        // Logging works the calories out from the macros when none are given; an edit
+        // didn't, so clearing a meal's calories left it with macros and no kcal (PLAN
+        // P4-16). Only fills a gap: a figure that is there is never replaced, because
+        // it may be one the person typed. It also repairs a meal an earlier edit left
+        // that way, the next time it is saved.
+        fillCaloriesFromMacros(meal);
+
         requireSomethingToRecord(meal);
         mealLogRepository.save(meal);
 

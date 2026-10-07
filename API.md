@@ -991,7 +991,7 @@ Partially updates one of the caller's meals.
   - All fields are optional. A `null` or omitted field keeps its current value.
   - `clear` lists fields to set to empty. Allowed names: `description`, `calories`, `proteinGrams`, `carbsGrams`, `fatGrams`. When a field is in `clear`, that wins over any value sent for it. `mealType` and `loggedAt` cannot be cleared.
   - `aiEstimated` is reset to `false` only when a number (`calories` or a macro) actually changes value. Resending the same numbers, or editing only the description, type or time, keeps the flag.
-  - Unlike `POST`, an update never derives calories from the macros.
+  - Like `POST`, an update derives the calories from the macros when there are none: protein × 4 + carbs × 4 + fat × 9, and only when all three macros are present. So sending `"clear": ["calories"]` on a meal with all three macros recalculates its calories. A calorie figure that is already there is never replaced, so changing a macro alone leaves it as it was. A meal saved earlier with macros and no calories is filled in by its next edit.
   - `userId` is ignored.
 - **Response:** `200`, the `MealResponse` shape, with `goalAchievements` recomputed.
 - **Errors:**
