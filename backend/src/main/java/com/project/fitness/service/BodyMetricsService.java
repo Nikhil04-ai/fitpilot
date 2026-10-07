@@ -32,16 +32,24 @@ public class BodyMetricsService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AccountNotFoundException(userId));
 
+        // After the account check, so a dead session still gets its 409. An empty body
+        // used to write a weigh-in anyway (PLAN P4-12): a row that measured nothing.
+        if (weight == null && height == null) {
+            throw new RuntimeException("Send a weight or a height to record.");
+        }
+
         if (weight != null) user.setWeight(weight);
         if (height != null) user.setHeight(height);
         userRepository.save(user);
 
-        double w = user.getWeight() != null ? user.getWeight() : 0;
-        double h = user.getHeight() != null ? user.getHeight() : 0;
+        // Unknown stays null. It was stored as 0, and zero kg is not a measurement: it
+        // looked like one in the history, the chart and the export.
+        Double w = user.getWeight();
+        Double h = user.getHeight();
 
         Double bmi = null;
         String category = null;
-        if (w > 0 && h > 0) {
+        if (w != null && h != null && w > 0 && h > 0) {
             double hm = h / 100.0;
             bmi = Math.round((w / (hm * hm)) * 10.0) / 10.0;
             category = bmiCategory(bmi);

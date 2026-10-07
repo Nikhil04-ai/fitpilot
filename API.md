@@ -1229,8 +1229,8 @@ Updates the profile's weight and/or height, writes a weigh-in row, and refreshes
   ```json
   { "weight": 76.4, "height": 178.0 }
   ```
-  - Both fields are optional. A missing field keeps the profile's current value. Units are kg and cm.
-  - A history row is written on **every** call, even with an empty body. A value the profile doesn't have yet is stored as `0` in that row.
+  - At least one of the two is required. A missing field keeps the profile's current value. Units are kg and cm.
+  - One history row is written per successful call. A value the profile doesn't have yet is stored as `null` in that row, not `0`.
 - **Response:** `200`
   ```json
   {
@@ -1249,6 +1249,7 @@ Updates the profile's weight and/or height, writes a weigh-in row, and refreshes
   - `bmi` and `bmiCategory` are `null`, and `healthyWeightRange` and `bmiNote` are absent, unless both weight and height are known.
   - `goalAchievements` appears only when a weight goal was just reached.
   - This response has no `history`.
+- **Errors:** `400` "Send a weight or a height to record." Neither field was sent, and nothing is written. A dead session still gets the `409`, which is checked first.
 
 ### `GET /api/health/metrics/{userId}`
 Returns current body metrics plus the most recent weigh-ins for the trend chart.
