@@ -770,12 +770,13 @@ Returns totals for the last 30 days, plus `weekOverWeekCalorieChange`.
     "longestStreak": 11,
     "fromDate": "2026-08-26T09:12:40.118",
     "toDate": "2026-09-25T09:12:40.118",
-    "weekOverWeekCalorieChange": "+312.4%"
+    "weekOverWeekCalorieChange": "+12.4%"
   }
   ```
   - `mostFrequentActivityType` is the name of the most common `ActivityType`, or `"N/A"` if there are no activities.
   - `fromDate` and `toDate` are ISO local date-time strings.
-  - `weekOverWeekCalorieChange` is a signed percentage string. Despite its name, it compares the **30-day** `totalCalories` against the 7-day window from 14 to 7 days ago, so it runs high. It is `"+0.0%"` when that earlier week had no calories.
+  - `weekOverWeekCalorieChange` is a signed percentage string with one decimal and a `.` separator. It compares the calories of the last 7 days with the 7 days before them.
+  - It is `null` when that earlier week had no calories, since no percentage can be given. The Insights panel shows `—`.
 - **Errors:** none specific.
 
 ### `GET /api/stats/weekly/{userId}`

@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -41,22 +42,23 @@ public class StatsService {
     }
 
     public Map<String, Object> getMonthlyStats(String userId) {
-        LocalDateTime from = LocalDateTime.now().minusDays(30);
         LocalDateTime to = LocalDateTime.now();
-        LocalDateTime prevFrom = from.minusDays(30);
+        LocalDateTime from = to.minusDays(30);
 
         Map<String, Object> current = buildStats(userId, from, to);
 
-        // Week-over-week comparison (last 7 days vs prior 7 days)
-        Map<String, Object> prevWeek = buildStats(userId, to.minusDays(14), to.minusDays(7));
+        // The last 7 days against the 7 before them (PLAN P4-8). This used to put the
+        // 30-day total over one prior week, so a steady month read as about +300% and
+        // even a drop came out positive.
+        int lastWeek = activityRepository.sumCaloriesByUserIdAndDateRange(userId, to.minusDays(7), to);
+        int weekBefore = activityRepository.sumCaloriesByUserIdAndDateRange(
+                userId, to.minusDays(14), to.minusDays(7).minusNanos(1));
 
-        int currentCalories = (int) current.getOrDefault("totalCalories", 0);
-        int prevCalories = (int) prevWeek.getOrDefault("totalCalories", 0);
-        double change = prevCalories > 0
-                ? ((currentCalories - prevCalories) * 100.0 / prevCalories)
-                : 0;
-
-        current.put("weekOverWeekCalorieChange", String.format("%+.1f%%", change));
+        // With nothing the week before there is no percentage to give. "+0.0%" read as
+        // "no change" even when this week went from nothing to plenty.
+        current.put("weekOverWeekCalorieChange", weekBefore > 0
+                ? String.format(Locale.ROOT, "%+.1f%%", (lastWeek - weekBefore) * 100.0 / weekBefore)
+                : null);
         return current;
     }
 

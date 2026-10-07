@@ -30,10 +30,10 @@ priority order, so priorities aren't re-derived from scratch every session.
 > **Status, 2026-09-25: P3 is done** (`API.md` for all 83 operations, and paged history).
 > Writing `API.md` turned up the 20 problems listed under **P4**.
 >
-> **Status, 2026-10-07: P4 is 8 of 20 done.** All seven bugs and security problems (P4-1
-> to P4-7) are fixed, and P4-11 closed with P4-4. The other 12 are open: four wrong
-> numbers and eight surprising behaviours, none of them a crash or a security hole.
-> Suite: **509 passing**. See `PROGRESS.md` Phases 12 and 14. The project has been in git
+> **Status, 2026-10-07: P4 is 9 of 20 done.** All seven bugs and security problems (P4-1
+> to P4-7) are fixed, P4-11 closed with P4-4, and P4-8 is fixed. The other 11 are open:
+> three wrong numbers and eight surprising behaviours, none of them a crash or a security
+> hole. Suite: **513 passing**. See `PROGRESS.md` Phases 12 and 14. The project has been in git
 > since 2026-10-07 (`main`, on GitHub).
 
 ## Priority key
@@ -449,7 +449,7 @@ struck-through row is fixed; its note says how.
 
 | | Problem | Where |
 |---|---|---|
-| **P4-8** | `/stats/monthly` `weekOverWeekCalorieChange` compares a 30-day total against a 7-day window, so it runs about 4× high. `prevFrom` is computed and never used. | `StatsService.getMonthlyStats` |
+| ~~**P4-8**~~ | ~~`/stats/monthly` `weekOverWeekCalorieChange` compares a 30-day total against a 7-day window, so it runs about 4× high. `prevFrom` is computed and never used.~~ **Fixed 2026-10-07.** Worse than "4× high": a steady month read as +300%, and a drop came out positive. It now compares the last 7 days with the 7 before them; the windows don't overlap at the boundary. With no calories the week before, it is `null` (shown as `—`) instead of a false `"+0.0%"`. Formatting is pinned to `Locale.ROOT`, so the decimal separator is always `.`. Covered by `StatsServiceMonthlyTest` (4, all failing on the old code). | `StatsService.getMonthlyStats` |
 | **P4-9** | The CSV formula guard also prefixes negative numbers (`'-0.6`), which turns numeric cells into text in a spreadsheet. | `ExportService` |
 | **P4-10** | The digest's `avgNetPerLoggedDay` divides the week's whole training burn by the number of days with food logged. | `WeeklyDigestService` |
 | ~~**P4-11**~~ | ~~h2h against yourself returns a negative `otherWinners`.~~ **Fixed with P4-4 (2026-10-07):** h2h against yourself is a 400. | `ChallengeService.getH2HStats` |
@@ -474,7 +474,7 @@ struck-through row is fixed; its note says how.
 
 **P0 to P3 are done, and so is the security half of P4.** What remains, in order:
 
-1. **The wrong numbers: P4-8, P4-9, P4-10, P4-12.** Users see these figures and act on
+1. **The wrong numbers: ~~P4-8~~, P4-9, P4-10, P4-12.** Users see these figures and act on
    them, so they come before behaviour that is merely surprising.
 2. **P4-18 and P4-17.** A dead session should always self-heal, and bad input should be
    refused rather than stored.
