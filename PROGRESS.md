@@ -514,7 +514,8 @@ Suite: **490 passing** (461 before). New: `ActivityServiceEditCaloriesTest` (10)
 `SessionRevocationIntegrationTest` (4), `RefreshTokenServiceTest` (4), and 8 friends-only
 cases in `ChallengeServiceTest`. Cases were also added to `DeadSessionRecoveryIntegrationTest`,
 `ActivityControllerIntegrationTest` and `GroupChallengeIntegrationTest`. The frontend
-halves pass `node --check` but **have not been driven in a browser yet**.
+halves pass `node --check`. P4-2, P4-3 and P4-4 were later driven in Chrome by the Phase 13
+Selenium run (all passing). P4-1's dead-session export path has not been browser-tested.
 
 ---
 
@@ -541,3 +542,25 @@ Frontend only, no backend changes. The ES-module split was kept as it was.
 * Selenium on the untouched pre-change frontend (the baseline): **28 passed, 0 failed**, plus 3 n/a for features it doesn't have. On the new frontend: **31 passed, 0 failed**. The checks drive every panel and every action by clicking. They also cover CSP blocking an injected `onerror` and reporting it, the wake notice against a deliberately slow fake backend (shown at 3.3s, gone on the response), file://, mobile sidebar, deep link + Back, and a console with 0 errors and 0 CSP violations.
 * The run also drove Phase 12's frontend halves in a real browser: an activity edit (P4-2), the session surviving a password change (P4-3), and friends-only challenges created from the picker (P4-4).
 * Backend suite, unchanged by this phase: 490 passing.
+
+---
+
+## Phase 14 — P4 fixes, continued (2026-10-07)
+
+`PLAN.md` P4-5 to P4-7. As before, each fix started with a test that failed on the old code.
+
+| | Fix |
+|---|---|
+| **P4-5** | Rate limiting **fails closed**. `tierFor()` was an allowlist, so friends, challenges, notifications, goals, health, pain, profile, plans and stats had no limit at all. Every `/api/**` route is now at least `STANDARD` (100/min per user). A new `INVITE` tier (10/min per user) covers friend requests and new challenges, the two requests that notify someone else. |
+| **P4-6** | A pain log can only link the caller's own activity (`403` otherwise), and an unknown id is a `400` instead of being silently dropped. Worse than listed: `fk_pain_log_activity` has no ON DELETE rule, so **any linked workout could never be deleted** (`409`). That included your own links, and a stranger could pin yours. `deleteActivity` now unlinks pain logs first, and the pain history survives. |
+| **P4-7** | Five client mistakes that came back as `500` are now `400`s that name the problem. Passwords over 72 bytes (BCrypt's limit, measured in UTF-8 bytes) on register, change and reset, via the new `PasswordPolicy`. A missing activity `type`, pain `bodyPart` or recommendation `activityId`. Pattern detection skips old null-`bodyPart` rows. `/auth/refresh` gives a 401 only for its own refusals; other faults are a logged `500` instead of a 401 that leaked the internal message. |
+
+### Verification
+
+Suite: **509 passing** (490 after Phase 12). New: `PainLogIntegrationTest` (4),
+`BadInputIntegrationTest` (8), `AuthControllerRefreshTest` (3), and 5 cases in
+`RateLimitingFilterTest`. Two tests there asserted unlisted routes were unlimited and were
+rewritten. Backend only: no frontend change was needed.
+
+The repo was put under git the same day (`main`, pushed to GitHub), so from here on each
+change has its own history.
