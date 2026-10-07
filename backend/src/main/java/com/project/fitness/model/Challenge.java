@@ -113,4 +113,18 @@ public class Challenge {
     public boolean involves(String userId) {
         return participantFor(userId).isPresent();
     }
+
+    /**
+     * True while the person is still part of it: invited and unanswered, or in.
+     *
+     * <p>{@link #involves} is true for anyone who was ever listed, and declining and
+     * leaving both set DECLINED, so it can't tell "in this challenge" from "walked away
+     * from it". Anything about who is currently tied up in a challenge wants this one
+     * (PLAN P4-15).
+     */
+    public boolean isStillIn(String userId) {
+        return participantFor(userId)
+                .map(p -> p.getStatus() != ParticipantStatus.DECLINED)
+                .orElse(false);
+    }
 }

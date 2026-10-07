@@ -1840,7 +1840,7 @@ Creates a challenge and invites one or more people. The caller is the creator an
   - `"Invite at least one other person to the challenge."`
   - `"A challenge can hold at most 10 people."`
   - `"You can only challenge your friends."`: an invitee is not a friend. An id that isn't an account gets this same message, so the endpoint can't be used to test which ids exist. One non-friend refuses the whole invite.
-  - `"You already have an active or pending challenge with one of these people."`: this applies to any `PENDING` or `ACTIVE` challenge the caller shares with an invitee, whatever that invitee's participant status in it.
+  - `"You already have an active or pending challenge with one of these people."`: this applies to a `PENDING` or `ACTIVE` challenge in which both the caller and that invitee are still in, meaning invited-and-unanswered or accepted. Someone who declined or left it is out of it and doesn't block a new challenge.
   - An unknown `type` value gets the standard malformed-request 400.
 
 ### `POST /api/challenges/{challengeId}/respond`

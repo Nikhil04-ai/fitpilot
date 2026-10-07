@@ -191,6 +191,72 @@ class ChallengeServiceTest {
         }
     }
 
+    // ── One open challenge per pair (PLAN P4-15) ─────────────────────────────
+
+    @Nested
+    @DisplayName("The one-live-challenge-per-person rule")
+    class OneAtATime {
+
+        private Map<String, Object> inviteOpponent() {
+            when(userRepository.findById("creator-1")).thenReturn(Optional.of(creator));
+            when(userRepository.findById("opponent-1")).thenReturn(Optional.of(opponent));
+            saveEchoes();
+            return challengeService.createChallenge("creator-1", List.of("opponent-1"),
+                    ChallengeType.WORKOUT_COUNT, "Again", 7);
+        }
+
+        /**
+         * "Involves" counted anyone who was ever on the challenge. Declining and leaving
+         * both set DECLINED, so someone who had walked away from a running challenge
+         * still blocked the two of them from starting a new one.
+         */
+        @Test
+        @DisplayName("someone who declined or left a running challenge no longer blocks a new one")
+        void declinedOrLeftDoesNotBlock() {
+            Challenge running = buildChallenge(ChallengeStatus.ACTIVE, opponent, third);
+            running.participantFor("opponent-1").orElseThrow().setStatus(ParticipantStatus.DECLINED);
+            when(challengeRepository.findAllByUserId("creator-1")).thenReturn(List.of(running));
+
+            assertThat(inviteOpponent().get("status")).isEqualTo("PENDING");
+        }
+
+        @Test
+        @DisplayName("an invitee who hasn't answered yet still blocks it")
+        void unansweredInviteStillBlocks() {
+            Challenge pending = buildChallenge(ChallengeStatus.PENDING, opponent);   // opponent is INVITED
+            when(userRepository.findById("creator-1")).thenReturn(Optional.of(creator));
+            when(userRepository.findById("opponent-1")).thenReturn(Optional.of(opponent));
+            when(challengeRepository.findAllByUserId("creator-1")).thenReturn(List.of(pending));
+
+            assertThatThrownBy(() -> challengeService.createChallenge("creator-1", List.of("opponent-1"),
+                    ChallengeType.WORKOUT_COUNT, "Again", 7)).hasMessageContaining("active or pending");
+        }
+
+        @Test
+        @DisplayName("the creator having left their own running challenge doesn't block either")
+        void creatorWhoLeftDoesNotBlock() {
+            Challenge running = buildChallenge(ChallengeStatus.ACTIVE, opponent);
+            running.participantFor("creator-1").orElseThrow().setStatus(ParticipantStatus.DECLINED);
+            when(challengeRepository.findAllByUserId("creator-1")).thenReturn(List.of(running));
+
+            assertThat(inviteOpponent().get("status")).isEqualTo("PENDING");
+        }
+
+        @Test
+        @DisplayName("one still in with the opponent is enough to block, even among several challenges")
+        void anyLiveSharedChallengeBlocks() {
+            Challenge left = buildChallenge(ChallengeStatus.ACTIVE, opponent);
+            left.participantFor("opponent-1").orElseThrow().setStatus(ParticipantStatus.DECLINED);
+            Challenge live = buildChallenge(ChallengeStatus.ACTIVE, opponent);
+            when(userRepository.findById("creator-1")).thenReturn(Optional.of(creator));
+            when(userRepository.findById("opponent-1")).thenReturn(Optional.of(opponent));
+            when(challengeRepository.findAllByUserId("creator-1")).thenReturn(List.of(left, live));
+
+            assertThatThrownBy(() -> challengeService.createChallenge("creator-1", List.of("opponent-1"),
+                    ChallengeType.WORKOUT_COUNT, "Again", 7)).hasMessageContaining("active or pending");
+        }
+    }
+
     // ── Friends only (PLAN P4-4) ─────────────────────────────────────────────
 
     @Nested

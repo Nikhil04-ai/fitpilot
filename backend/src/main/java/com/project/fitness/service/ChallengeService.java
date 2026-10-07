@@ -117,12 +117,15 @@ public class ChallengeService {
         }
 
         // One live challenge at a time with any given person, so the standings can't
-        // be split across two competitions nobody asked for.
+        // be split across two competitions nobody asked for. "With" means both of you
+        // are still in it: someone who declined or left a running challenge is out of
+        // it, and used to keep blocking a new one (PLAN P4-15).
         for (Challenge existing : challengeRepository.findAllByUserId(creatorId)) {
             if (existing.getStatus() != ChallengeStatus.ACTIVE
                     && existing.getStatus() != ChallengeStatus.PENDING) continue;
+            if (!existing.isStillIn(creatorId)) continue;
             for (String opponentId : invitees) {
-                if (existing.involves(opponentId)) {
+                if (existing.isStillIn(opponentId)) {
                     throw new RuntimeException(
                             "You already have an active or pending challenge with one of these people.");
                 }
