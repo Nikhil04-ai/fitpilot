@@ -1,6 +1,6 @@
 import { session } from '../state.js';
 import { emptyState, escapeHtml, skeletonCards, skeletonLines, trimNumber } from '../util.js';
-import { toast } from '../ui.js';
+import { renderPager, toast } from '../ui.js';
 import { api } from '../api.js';
 import { shortAxisDate } from '../charts.js';
 
@@ -146,15 +146,18 @@ export async function loadRecommendations() {
   await Promise.all([loadWeeklyDigest(), loadPerWorkoutInsights()]);
 }
 
-async function loadPerWorkoutInsights() {
+async function loadPerWorkoutInsights(page = 0) {
   const el = document.getElementById('ai-list');
   el.innerHTML = skeletonCards(3);
   try {
-    const list = await api(`/api/recommendation/user/${session.currentUser.id}`);
-    const sorted = [...list].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    el.innerHTML = sorted.length
-      ? sorted.map(recommendationCard).join('')
+    // Paged and already newest first. The whole history used to arrive in one response
+    // and be sorted here, growing with every insight (PLAN P4-19).
+    const res = await api(`/api/recommendation/user/${session.currentUser.id}?page=${page}&size=9`);
+    const rows = res.content || [];
+    el.innerHTML = rows.length
+      ? rows.map(recommendationCard).join('')
       : `<div style="grid-column:1/-1">${emptyState('🧠', 'No AI insights yet. Recommendations auto-generate every 3rd workout — or click "Generate Insight" above to get one now.')}</div>`;
+    renderPager('ai-pager', page, res.page?.totalPages ?? 1, loadPerWorkoutInsights);
   } catch (err) {
     el.innerHTML = `<div class="error-state" style="grid-column:1/-1">Couldn't load AI insights: ${escapeHtml(err.message)}</div>`;
   }
@@ -163,7 +166,9 @@ async function loadPerWorkoutInsights() {
 export async function loadOverviewAiTeaser() {
   const el = document.getElementById('overview-ai-teaser');
   try {
-    const list = await api(`/api/recommendation/user/${session.currentUser.id}`);
+    // Only the newest is shown, so only the newest is asked for (PLAN P4-19).
+    const res = await api(`/api/recommendation/user/${session.currentUser.id}?page=0&size=1`);
+    const list = res.content || [];
     if (!list.length) {
       el.innerHTML = `
         <div class="ai-teaser">
@@ -176,7 +181,7 @@ export async function loadOverviewAiTeaser() {
         </div>`;
       return;
     }
-    const latest = [...list].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+    const latest = list[0];
     const meta = REC_TYPE_META[latest.type] || { label: latest.type || 'Insight', icon: '💡' };
     el.innerHTML = `
       <div class="ai-teaser">

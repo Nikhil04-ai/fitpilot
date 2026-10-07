@@ -121,8 +121,13 @@ public class WorkoutPlanService {
 
     @Transactional(readOnly = true)
     public WorkoutPlan getPlanDetail(String planId) {
-        return planRepository.findById(planId)
+        WorkoutPlan plan = planRepository.findById(planId)
                 .orElseThrow(() -> new RuntimeException("Plan not found: " + planId));
+        // The days are lazy and are serialised after this transaction has ended. That
+        // only worked because production keeps the session open for the whole request
+        // (open-in-view); anywhere else it was a 500 (AGENT.md rule 3). Loaded here.
+        plan.getDays().size();
+        return plan;
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────

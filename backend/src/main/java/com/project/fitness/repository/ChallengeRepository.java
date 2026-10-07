@@ -19,8 +19,9 @@ import java.util.List;
 @Repository
 public interface ChallengeRepository extends JpaRepository<Challenge, String> {
 
-    /** All challenges a user is part of, in any role. */
-    @Query("SELECT DISTINCT c FROM Challenge c JOIN c.participants p WHERE p.user.id = :userId")
+    /** All challenges a user is part of, in any role, newest first (PLAN P4-19). */
+    @Query("SELECT DISTINCT c FROM Challenge c JOIN c.participants p WHERE p.user.id = :userId "
+         + "ORDER BY c.createdAt DESC")
     List<Challenge> findAllByUserId(@Param("userId") String userId);
 
     /** Active challenges past their end date — used by the settlement job. */

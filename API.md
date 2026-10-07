@@ -141,8 +141,9 @@ The paged endpoints are:
 - `GET /api/pain-log/{userId}`
 - `GET /api/health/sleep/{userId}/history`
 - `GET /api/health/metrics/{userId}/history`
+- `GET /api/recommendation/user/{userId}`
 
-The last three were unbounded lists until P3-3. On every paged endpoint a negative
+The last four were unbounded lists until P3-3 and P4-19. On every paged endpoint a negative
 `page` is treated as `0`. `activities` and `meals` also take a `sort` parameter,
 documented with each endpoint.
 
@@ -1520,7 +1521,7 @@ Returns one plan with all of its days.
   ```
   - `difficulty` and `goal` are free strings. The seeded values are `BEGINNER` / `INTERMEDIATE` and `WEIGHT_LOSS` / `MUSCLE_GAIN` / `ENDURANCE` / `FLEXIBILITY`.
   - `activityType` is an `ActivityType` value, or `null` on rest days.
-  - `days` has no guaranteed order; sort on `dayNumber`.
+  - `days` is ordered by `dayNumber`, ascending.
 - **Errors:** `400` `"Plan not found: <planId>"`
 
 ### `POST /api/plans/{planId}/enroll`
@@ -1584,7 +1585,7 @@ AI coaching advice built from the caller's last five activities. A recommendatio
 | Method | Path | Purpose |
 |---|---|---|
 | POST | `/api/recommendation/generate` | Generate a recommendation for one of the caller's activities |
-| GET | `/api/recommendation/user/{userId}` | All of the caller's recommendations |
+| GET | `/api/recommendation/user/{userId}` | The caller's recommendations, newest first, paged |
 | GET | `/api/recommendation/activity/{activityId}` | Recommendations linked to one activity |
 
 ### `POST /api/recommendation/generate`
@@ -1619,10 +1620,10 @@ Asks Gemini for a recommendation based on the caller's 5 most recent activities,
   - `400` "activityId is required: the recommendation is about one workout."
 
 ### `GET /api/recommendation/user/{userId}`
-Lists every recommendation for the caller.
+Lists the caller's recommendations, newest first, one page at a time.
 - **Auth:** `Bearer`
-- **Params:** `userId` (path, must be the caller)
-- **Response:** `200`, an array of `Recommendation` entities, same shape as the generate response. The list is unpaged and has no defined order.
+- **Params:** `userId` (path, must be the caller), and `page` / `size` (see Pagination; default `size` 20, at most 100).
+- **Response:** `200`, a page whose `content` is an array of `Recommendation` entities, same shape as the generate response, ordered by `createdAt` descending. **This used to be a bare array of every recommendation, unordered.** An empty history is a page with an empty `content`.
 
 ### `GET /api/recommendation/activity/{activityId}`
 Lists the recommendations linked to one of the caller's activities.
@@ -1900,7 +1901,7 @@ Lists every challenge the caller has a participant row in, in any status and any
 - **Auth:** `Bearer`
 - **Params:** `userId` (path): must be the caller's own id.
 - **Response:** `200`, an array of challenge objects, or `[]` when there are none.
-  - The order is not guaranteed, because the query has no `ORDER BY`.
+  - Newest first, by creation time. It is not paged.
   - Scores of `ACTIVE` challenges are recomputed live.
 
 ### `GET /api/challenges/{challengeId}`

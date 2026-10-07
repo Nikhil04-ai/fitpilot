@@ -30,10 +30,9 @@ priority order, so priorities aren't re-derived from scratch every session.
 > **Status, 2026-09-25: P3 is done** (`API.md` for all 83 operations, and paged history).
 > Writing `API.md` turned up the 20 problems listed under **P4**.
 >
-> **Status, 2026-10-08: P4 is 18 of 20 done.** All seven bugs and security problems (P4-1
-> to P4-7), P4-11 (closed with P4-4), all four wrong numbers (P4-8, P4-9, P4-10, P4-12),
-> P4-13 to P4-18 are fixed. The other 2 (P4-19, P4-20) are open and are minor, none a crash
-> or a security hole. Suite: **547 passing**. See `PROGRESS.md` Phases 12 and 14. The project has been in git
+> **Status, 2026-10-08: P4 is 19 of 20 done.** All seven bugs and security problems (P4-1
+> to P4-7), P4-11 (closed with P4-4), all four wrong numbers (P4-8, P4-9, P4-10, P4-12) and
+> P4-13 to P4-19 are fixed. Only P4-20, a set of leftovers, is open. Suite: **551 passing**. See `PROGRESS.md` Phases 12 and 14. The project has been in git
 > since 2026-10-07 (`main`, on GitHub).
 
 ## Priority key
@@ -465,7 +464,7 @@ struck-through row is fixed; its note says how.
 | ~~**P4-16**~~ | ~~A meal `PUT` never derives calories from macros, unlike `POST`, so a meal whose calories are cleared with `clear` shows no kcal.~~ **Fixed 2026-10-08.** `updateMeal` now calls the same `fillCaloriesFromMacros` that logging does, so clearing the calories of a meal with all three macros recalculates them. It only fills a gap: a figure that is there is never replaced, because it may be one the person typed (the same provenance limit as P4-2). With only some macros there is nothing to derive from, exactly as when logging. Side effect, wanted: a meal an earlier edit left with macros and no kcal is repaired by its next save. Covered by 5 new cases in `NutritionServiceTest` (three failed before). |
 | ~~**P4-17**~~ | ~~These inputs aren't validated: pain `severity`, water `amountMl` (negatives are accepted), `hoursSlept`, activity `difficultyRating` on create, and profile weight, height and age.~~ **Fixed 2026-10-08.** Each is a `400` that names the limit, from one `InputChecks` class: weight 20-500 kg, height 50-275 cm, age 5-120, severity 1-5, water 1-5000 ml, sleep more than 0 and at most 24 h, ratings 1-5. The limits are wide on purpose: they refuse what can't be true, not what is merely unusual. Beyond the list: registration and `PUT /health/metrics` write the same fields, so they get the same limits; an omitted water amount, sleep hours or severity arrives as `0` and is now refused rather than logged; and **sleep quality was silently clamped** into 1-5, so an omitted one was saved as a 1 and the client never told. It is now refused. A rejected profile update saves nothing. Covered by `InputValidationIntegrationTest` (8, all failing before) and `InputChecksTest` (4). **Not covered:** `duration` and the other activity fields, free-text lengths, and the date fields. |
 | ~~**P4-18**~~ | ~~Several reads skip the user lookup, so a dead session gets an empty result instead of the `409` self-heal: metrics history, sleep analysis and history, pain history and patterns, active plan, recommendations, timing, plateau, and both personal-best endpoints.~~ **Fixed 2026-10-08.** The list was incomplete: a test that discovers every `GET` route from Spring and calls each with a deleted account's token found **21** offenders, not about 10. It also caught goals, friends (3), challenges (2), recovery, the notification unread count and the digest (2). New `AccountGuard` (`requireSelf` / `requireCurrent`) sits beside the identity check in each controller and throws the `409` when the account is gone. It is in the controllers rather than the services so those services' unit tests are untouched. `DeadSessionReadsIntegrationTest` first proves no route rejects a live account, then deletes the account and expects the `409` from every route, so a new endpoint is covered the moment it exists. **Not covered:** write routes; most already look the user up. |
-| **P4-19** | Unbounded or unordered lists: `recommendation/user` (not paged, no order), `challenges/user` (no `ORDER BY`), and a plan's `days` (no `@OrderBy`). |
+| ~~**P4-19**~~ | ~~Unbounded or unordered lists: `recommendation/user` (not paged, no order), `challenges/user` (no `ORDER BY`), and a plan's `days` (no `@OrderBy`).~~ **Fixed 2026-10-08.** `recommendation/user` is paged and newest first, on the pattern the other history lists use (negative page is 0, size capped at 100). **This changes its response from an array to a page**, so `coach.js` changed with it: the AI panel gets a pager, and the overview teaser asks for just the newest (`size=1`) instead of downloading the history to sort it. `challenges/user` is `ORDER BY createdAt DESC`. A plan's `days` is `@OrderBy("dayNumber")`; the keys are random UUIDs, so before it the order was shuffled. Also found by the test, not on the list: `getPlanDetail` returned its lazy `days` after the transaction ended, which only worked because production runs `open-in-view=true` (the test profile turns it off, and there the endpoint was a 500). It now loads the days inside the transaction. Covered by `ListOrderingIntegrationTest` (4, all failing before). |
 | **P4-20** | Leftovers: the `PERSONAL_BEST` notification type is never emitted. `JacksonConfig` builds a Jackson 2 mapper while Boot 4.1 serializes with Jackson 3, so it may be inert (unverified). `enroll` requires a JSON body it ignores. |
 
 ---
@@ -476,7 +475,7 @@ struck-through row is fixed; its note says how.
 
 1. ~~**The wrong numbers: P4-8, P4-9, P4-10, P4-12.**~~ All done 2026-10-07.
 2. ~~**P4-18 and P4-17**~~ Done 2026-10-08.
-3. **The remaining surprises: ~~P4-13~~ to ~~P4-16~~, P4-19, P4-20.**
+3. **The remaining surprises: ~~P4-13~~ to ~~P4-19~~, P4-20.**
 4. **Not in the table, but open:**
    - Access tokens are never checked server-side, so one already issued keeps working for
      up to 48h after a password change or reset (`PROGRESS.md` Phase 12). It needs a

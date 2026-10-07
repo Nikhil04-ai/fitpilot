@@ -15,6 +15,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import java.util.List;
 
 @RestController
@@ -58,9 +61,15 @@ public class RecommendationController {
         return ResponseEntity.ok(recommendation);
     }
 
+    /** GET /api/recommendation/user/{userId}?page=&size= — newest first, paged (PLAN P4-19) */
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<Recommendation>> getUserRecommendation(@PathVariable String userId) {
-        return ResponseEntity.ok(recommendationService.getUserRecommendation(accountGuard.requireSelf(userId)));
+    public ResponseEntity<Page<Recommendation>> getUserRecommendation(
+            @PathVariable String userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(recommendationService.getUserRecommendation(accountGuard.requireSelf(userId),
+                PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100),
+                        Sort.by(Sort.Direction.DESC, "createdAt"))));
     }
 
     @GetMapping("/activity/{activityId}")

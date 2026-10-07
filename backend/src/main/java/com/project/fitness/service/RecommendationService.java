@@ -12,6 +12,8 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -127,8 +129,8 @@ public class RecommendationService {
     }
 
     @Transactional(readOnly = true)
-    public List<Recommendation> getUserRecommendation(String userId) {
-        return recommendationRepository.findByUserId(userId);
+    public Page<Recommendation> getUserRecommendation(String userId, Pageable pageable) {
+        return recommendationRepository.findByUserId(userId, pageable);
     }
 
     @Transactional(readOnly = true)

@@ -30,7 +30,10 @@ public class WorkoutPlan {
     // null = system template; userId = custom user plan
     private String createdByUserId;
 
+    // Day order is part of what a plan is. With no ORDER BY the days came back in the
+    // order of their random UUID keys, i.e. shuffled (PLAN P4-19).
     @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("dayNumber ASC")
     @Builder.Default
     private List<WorkoutPlanDay> days = new ArrayList<>();
 
