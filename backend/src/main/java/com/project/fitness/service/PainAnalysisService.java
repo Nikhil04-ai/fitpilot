@@ -38,6 +38,12 @@ public class PainAnalysisService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AccountNotFoundException(userId));
 
+        // An entry with no body part was accepted, then crashed pattern detection for
+        // that user from then on (PLAN P4-7).
+        if (bodyPart == null) {
+            throw new RuntimeException("Pick the body part that hurts.");
+        }
+
         // Ownership-checked (PLAN P4-6). This used to accept any id: someone else's
         // activity got linked, and an unknown one was silently dropped to null. Same
         // messages as ActivityService, so a client sees one contract for activity ids.
@@ -73,6 +79,9 @@ public class PainAnalysisService {
         LocalDateTime twentyOneDaysAgo = LocalDateTime.now().minusDays(21);
         List<PainLog> recentLogs = painLogRepository.findByUserId(userId).stream()
                 .filter(p -> p.getLoggedAt() != null && p.getLoggedAt().isAfter(twentyOneDaysAgo))
+                // groupingBy rejects a null key; rows saved before bodyPart was
+                // required can have one, and they'd take the whole endpoint down.
+                .filter(p -> p.getBodyPart() != null)
                 .collect(Collectors.toList());
 
         // Group by body part

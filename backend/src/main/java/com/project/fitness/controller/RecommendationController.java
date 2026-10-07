@@ -39,6 +39,10 @@ public class RecommendationController {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AccountNotFoundException(userId));
 
+        // findById(null) throws IllegalArgumentException, which surfaced as a 500.
+        if (request.getActivityId() == null || request.getActivityId().isBlank()) {
+            throw new RuntimeException("activityId is required: the recommendation is about one workout.");
+        }
         Activity activity = activityRepository.findById(request.getActivityId())
                 .orElseThrow(() -> new RuntimeException("Activity not found: " + request.getActivityId()));
 

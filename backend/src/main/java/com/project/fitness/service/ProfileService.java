@@ -4,6 +4,7 @@ import com.project.fitness.dto.UserResponse;
 import com.project.fitness.exceptions.AccountNotFoundException;
 import com.project.fitness.model.User;
 import com.project.fitness.repository.UserRepository;
+import com.project.fitness.security.PasswordPolicy;
 import com.project.fitness.security.JwtUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -50,12 +51,17 @@ public class ProfileService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AccountNotFoundException(userId));
 
-        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+        // A current password BCrypt couldn't have hashed can't be the right one, and
+        // handing it to the encoder throws rather than returning false (PLAN P4-7).
+        if (currentPassword == null
+                || currentPassword.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > PasswordPolicy.MAX_BYTES
+                || !passwordEncoder.matches(currentPassword, user.getPassword())) {
             throw new RuntimeException("Current password is incorrect.");
         }
         if (newPassword == null || newPassword.length() < 8) {
             throw new RuntimeException("New password must be at least 8 characters.");
         }
+        PasswordPolicy.requireHashable(newPassword);
 
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);

@@ -228,6 +228,7 @@ Creates a `USER`-role account. It does not sign the user in, because no tokens a
 - **Errors:**
   - `400` `{"email":"Email is required"}` / `{"email":"Invalid email"}` / `{"password":"Password is required"}` / `{"password":"Password must be at least 8 characters"}`. These are validation errors, so they use the field-map shape.
   - `400` "An account with this email already exists. Try logging in instead."
+  - `400` "Password is too long: keep it to 72 characters or fewer (fewer if it uses accented letters or emoji)." The password is over 72 bytes in UTF-8, which BCrypt can't hash. This used to be a `500`.
   - `409` "That value is already in use. Please choose a different one." This only happens when two registrations with the same email race each other.
 
 ### `POST /api/auth/login`
@@ -277,6 +278,8 @@ Exchanges a valid refresh token for a new access token and a new refresh token. 
   - "Invalid refresh token." The token is unknown or missing.
   - "Refresh token has been revoked. Please log in again." The token was already rotated (including by a concurrent refresh with the same token), or the user logged out or changed their password.
   - "Refresh token has expired. Please log in again."
+
+  Any other failure during a refresh is a real fault and returns the generic `500`. It used to come back as a `401` showing the internal error message.
 
 ### `POST /api/auth/logout`
 Revokes **all** refresh tokens for the caller. The caller is identified by the Bearer token if one is sent, otherwise by owning the refresh token in the body.
@@ -334,6 +337,7 @@ Sets a new password using a reset token, then revokes every refresh token for th
 - **Errors:** all of these are `400`. The length check runs before the token lookup.
   - "This reset link is not valid. Request a new one." The token is blank or missing.
   - "Your new password must be at least 8 characters." The number reflects the configured minimum.
+  - "Password is too long: keep it to 72 characters or fewer (fewer if it uses accented letters or emoji)." The new password is over 72 bytes. Like the minimum, this is checked before the token, so the link isn't used up.
   - "This reset link has expired or already been used. Request a new one." This single message covers unknown, used and expired tokens, so the response does not reveal which case applies.
 
 ---
@@ -408,6 +412,7 @@ Changes the password after checking the current one.
 - **Errors:**
   - `400` "Current password is incorrect." This also covers a missing `currentPassword`.
   - `400` "New password must be at least 8 characters."
+  - `400` "Password is too long: keep it to 72 characters or fewer (fewer if it uses accented letters or emoji)." The new password is over 72 bytes. A *current* password over 72 bytes is reported as "Current password is incorrect."
 
 ---
 
@@ -465,7 +470,7 @@ Logs a workout. The response also reports what the save triggered: streaks, reco
     "userId": "ignored"
   }
   ```
-  - `type` is effectively **required**. The request is not validated, so a missing `type` fails part-way through the save with a `500` instead of a `400`.
+  - `type` is **required**. Without it the response is `400` "An activity needs a type, such as RUNNING or WEIGHT_TRAINING."
   - Every other field is optional.
   - `duration` is in minutes.
   - If `startTime` is left out, it defaults to now. It is a local date-time with no zone.
@@ -1440,6 +1445,7 @@ Logs a pain entry for the caller, optionally linked to a workout.
 - **Errors:**
   - `400` "Activity not found: <activityId>"
   - `403` "You don't have access to this activity." The activity belongs to someone else.
+  - `400` "Pick the body part that hurts." `bodyPart` is required.
   - An unknown `bodyPart` returns the generic unreadable-request `400`.
 
 ### `GET /api/pain-log/{userId}`
@@ -1456,7 +1462,7 @@ Returns one alert for each body part reported 3 or more times in the last 21 day
   ```json
   ["You've reported left knee discomfort 3 times in 3 weeks. Consider resting this area and consulting a professional."]
   ```
-- **Errors:** If any entry in the window has a `null` `bodyPart`, the request fails with `500`, because grouping on a null key throws.
+- **Errors:** none specific. Entries with no `bodyPart` (possible in data saved before it was required) are skipped.
 
 ---
 
@@ -1595,7 +1601,7 @@ Asks Gemini for a recommendation based on the caller's 5 most recent activities,
 - **Errors:**
   - `400` `"Activity not found: <activityId>"`
   - `403` `"You don't have access to this activity."`
-  - A missing `activityId` currently returns `500`, not `400`.
+  - `400` "activityId is required: the recommendation is about one workout."
 
 ### `GET /api/recommendation/user/{userId}`
 Lists every recommendation for the caller.

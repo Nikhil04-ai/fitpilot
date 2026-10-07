@@ -6,6 +6,7 @@ import com.project.fitness.dto.UserResponse;
 import com.project.fitness.model.User;
 import com.project.fitness.model.UserRole;
 import com.project.fitness.repository.UserRepository;
+import com.project.fitness.security.PasswordPolicy;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -18,6 +19,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
 
     public UserResponse register(RegisterRequest request) {
+        PasswordPolicy.requireHashable(request.getPassword());
         String email = request.getEmail() != null ? request.getEmail().trim().toLowerCase() : null;
 
         // Checked here so the person gets a clear message instead of the generic

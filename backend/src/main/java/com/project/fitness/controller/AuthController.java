@@ -70,7 +70,14 @@ public class AuthController {
         try {
             return ResponseEntity.ok(refreshTokenService.refreshAccessToken(request.getRefreshToken()));
         } catch (RuntimeException e) {
-            return ResponseEntity.status(401).body(Map.of("error", e.getMessage()));
+            // Only the service's own "invalid / revoked / expired" refusals, which are
+            // exact RuntimeExceptions, are a 401 (PLAN P4-7). Anything else is a real
+            // fault: it used to be a 401 carrying its internal message, or a 500 from
+            // Map.of when that message was null. GlobalExceptionHandler logs it and
+            // answers with a generic 500 instead.
+            if (e.getClass() != RuntimeException.class) throw e;
+            return ResponseEntity.status(401).body(Map.of("error",
+                    e.getMessage() != null ? e.getMessage() : "Invalid refresh token."));
         }
     }
 

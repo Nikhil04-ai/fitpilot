@@ -53,6 +53,13 @@ public class ActivityService {
         User user = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new AccountNotFoundException(request.getUserId()));
 
+        // The type drives calories, recovery and personal bests, and a null one used to
+        // crash further down as a 500 (PLAN P4-7). After the account check, so a dead
+        // session still gets its 409.
+        if (request.getType() == null) {
+            throw new RuntimeException("An activity needs a type, such as RUNNING or WEIGHT_TRAINING.");
+        }
+
         Map<String, Object> comebackPlan = comebackService.evaluateComeback(user);
 
         Integer calories = resolveCalories(request.getCaloriesBurned(), request.getType(),

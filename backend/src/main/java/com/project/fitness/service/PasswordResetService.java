@@ -4,6 +4,7 @@ import com.project.fitness.model.PasswordResetToken;
 import com.project.fitness.model.User;
 import com.project.fitness.repository.PasswordResetTokenRepository;
 import com.project.fitness.repository.UserRepository;
+import com.project.fitness.security.PasswordPolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -138,6 +139,9 @@ public class PasswordResetService {
         if (newPassword == null || newPassword.length() < minPasswordLength) {
             throw new RuntimeException("Your new password must be at least " + minPasswordLength + " characters.");
         }
+        // Before the token lookup, like the minimum: a valid link must not be spent
+        // on a password that can't be hashed.
+        PasswordPolicy.requireHashable(newPassword);
 
         Optional<PasswordResetToken> found = tokenRepository.findByTokenHash(hash(rawToken));
 
