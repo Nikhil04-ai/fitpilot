@@ -30,10 +30,10 @@ priority order, so priorities aren't re-derived from scratch every session.
 > **Status, 2026-09-25: P3 is done** (`API.md` for all 83 operations, and paged history).
 > Writing `API.md` turned up the 20 problems listed under **P4**.
 >
-> **Status, 2026-10-07: P4 is 10 of 20 done.** All seven bugs and security problems (P4-1
-> to P4-7) are fixed, P4-11 closed with P4-4, and P4-8 and P4-9 are fixed. The other 10 are
-> open: two wrong numbers and eight surprising behaviours, none of them a crash or a
-> security hole. Suite: **515 passing**. See `PROGRESS.md` Phases 12 and 14. The project has been in git
+> **Status, 2026-10-07: P4 is 11 of 20 done.** All seven bugs and security problems (P4-1
+> to P4-7) are fixed, P4-11 closed with P4-4, and P4-8 to P4-10 are fixed. The other 9 are
+> open: one wrong number (P4-12) and eight surprising behaviours, none of them a crash or
+> a security hole. Suite: **516 passing**. See `PROGRESS.md` Phases 12 and 14. The project has been in git
 > since 2026-10-07 (`main`, on GitHub).
 
 ## Priority key
@@ -451,7 +451,7 @@ struck-through row is fixed; its note says how.
 |---|---|---|
 | ~~**P4-8**~~ | ~~`/stats/monthly` `weekOverWeekCalorieChange` compares a 30-day total against a 7-day window, so it runs about 4× high. `prevFrom` is computed and never used.~~ **Fixed 2026-10-07.** Worse than "4× high": a steady month read as +300%, and a drop came out positive. It now compares the last 7 days with the 7 before them; the windows don't overlap at the boundary. With no calories the week before, it is `null` (shown as `—`) instead of a false `"+0.0%"`. Formatting is pinned to `Locale.ROOT`, so the decimal separator is always `.`. Covered by `StatsServiceMonthlyTest` (4, all failing on the old code). | `StatsService.getMonthlyStats` |
 | ~~**P4-9**~~ | ~~The CSV formula guard also prefixes negative numbers (`'-0.6`), which turns numeric cells into text in a spreadsheet.~~ **Fixed 2026-10-07.** A value that is a Java `Number` is never prefixed, since it can't hold a formula. Free text is still guarded even when it looks numeric, because a note reading `-1+1` would evaluate. Covered by two new cases in `ExportServiceTest`. | `ExportService` |
-| **P4-10** | The digest's `avgNetPerLoggedDay` divides the week's whole training burn by the number of days with food logged. | `WeeklyDigestService` |
+| ~~**P4-10**~~ | ~~The digest's `avgNetPerLoggedDay` divides the week's whole training burn by the number of days with food logged.~~ **Fixed 2026-10-07.** Intake was already averaged over the logged days, but the burn was the whole week's training divided by that count, so a workout on an unlogged day was charged against the logged ones. It now sums the burn on the logged days only. In the new test the old code gave -1286 where the right answer is -986. Covered by one new case in `WeeklyDigestServiceTest`. | `WeeklyDigestService` |
 | ~~**P4-11**~~ | ~~h2h against yourself returns a negative `otherWinners`.~~ **Fixed with P4-4 (2026-10-07):** h2h against yourself is a 400. | `ChallengeService.getH2HStats` |
 | **P4-12** | Every `PUT /health/metrics` writes a weigh-in row, even with an empty body, and stores `0` for any unknown value. | `BodyMetricsService.updateMetrics` |
 
@@ -474,7 +474,7 @@ struck-through row is fixed; its note says how.
 
 **P0 to P3 are done, and so is the security half of P4.** What remains, in order:
 
-1. **The wrong numbers: ~~P4-8~~, ~~P4-9~~, P4-10, P4-12.** Users see these figures and act on
+1. **The wrong numbers: ~~P4-8~~, ~~P4-9~~, ~~P4-10~~, P4-12.** Users see these figures and act on
    them, so they come before behaviour that is merely surprising.
 2. **P4-18 and P4-17.** A dead session should always self-heal, and bad input should be
    refused rather than stored.

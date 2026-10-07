@@ -292,7 +292,16 @@ public class WeeklyDigestService {
                 // Averaged over the days that were actually logged, not over seven. A
                 // day nobody recorded is missing data, and treating it as a zero-calorie
                 // fast would report a starvation week to anyone who skipped logging.
-                int avgBurn = calories / Math.max(1, days);
+                //
+                // The burn is averaged over the same days (PLAN P4-10). It used to be the
+                // whole week's training divided by the logged-day count, so a workout on
+                // a day with no food logged was charged against the days that had some.
+                int burnOnLoggedDays = activities.stream()
+                        .filter(a -> a.getStartTime() != null && a.getCaloriesBurned() != null
+                                && byDay.containsKey(a.getStartTime().toLocalDate()))
+                        .mapToInt(Activity::getCaloriesBurned)
+                        .sum();
+                int avgBurn = burnOnLoggedDays / days;
                 nutrition.put("maintenanceCalories", maintenance);
                 nutrition.put("avgNetPerLoggedDay", (totalCalories / days) - maintenance - avgBurn);
             }

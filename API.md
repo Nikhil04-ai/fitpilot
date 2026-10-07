@@ -2079,6 +2079,7 @@ A summary of one Monday-to-Sunday week that looks at training, strength, nutriti
 - `aiGenerated: false` means the rule-based fallback wrote `headline`, `narrative`, `observations` and `focusNextWeek`. The fallback states the numbers without interpreting them, and its `narrative` says so.
 - **`dataPoints` holds the computed facts the prose was written from.** It is stored with the digest, so the text can be checked against it later. The model never supplies these numbers. Its structure is dynamic, and sub-keys appear only when they have data:
   - `nutrition` is just `{"daysLogged": 0}` when no meals were logged. `maintenanceCalories` and `avgNetPerLoggedDay` are present only if the profile lets maintenance calories be calculated.
+  - `avgNetPerLoggedDay` is the average intake on the days with food logged, minus maintenance, minus the average training burn **on those same days**. A workout on a day with no food logged is left out of it (it still counts in `training`).
   - `sleep.avgHours` and `sleep.avgQuality` are present only when at least one night was logged.
   - `bodyWeight` is `{}` when no weight was logged during the week.
   - `pain.maxSeverity` and `pain.bodyParts` are present only when there is at least one pain entry.

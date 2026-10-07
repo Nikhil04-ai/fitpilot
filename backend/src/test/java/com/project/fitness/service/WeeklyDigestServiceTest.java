@@ -151,6 +151,33 @@ class WeeklyDigestServiceTest {
             assertThat(nutrition).containsEntry("avgProteinPerLoggedDay", 75.0);
         }
 
+        /**
+         * Intake was averaged over the days with food logged, but the burn was the whole
+         * week's training divided by that day count, so a workout on an unlogged day was
+         * charged against the logged ones (PLAN P4-10).
+         */
+        @Test
+        @DisplayName("net uses the burn from the logged days only")
+        void netCountsBurnOnLoggedDaysOnly() {
+            trainedLastWeek(activity(lastMonday.atTime(9, 0), 30, 300),            // a logged day
+                            activity(lastMonday.plusDays(3).atTime(18, 0), 60, 600)); // not logged
+            when(mealLogRepository.findByUserIdAndLoggedAtBetweenOrderByLoggedAtAsc(
+                    eq("user-1"), any(), any()))
+                    .thenReturn(List.of(
+                            meal(lastMonday.atTime(8, 0), 600, 40.0),
+                            meal(lastMonday.atTime(13, 0), 800, 50.0),
+                            meal(lastMonday.plusDays(1).atTime(9, 0), 1000, 60.0)));
+
+            WeeklyDigestResponse digest = service.generate("user-1", lastMonday);
+
+            int maintenance = calorieCalculatorService.maintenanceCalories(user);
+            Map<String, Object> nutrition = section(digest, "nutrition");
+            // Intake (1400 + 1000) / 2 = 1200. Burn on the two logged days is 300 + 0,
+            // so 150 a day. The old figure charged 900 / 2 = 450.
+            assertThat(nutrition).containsEntry("maintenanceCalories", maintenance);
+            assertThat(nutrition).containsEntry("avgNetPerLoggedDay", 1200 - maintenance - 150);
+        }
+
         @Test
         @DisplayName("leave a week-on-week change out entirely when there is no baseline")
         void noBaselineMeansNoPercentage() {
