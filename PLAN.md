@@ -25,8 +25,16 @@ priority order, so priorities aren't re-derived from scratch every session.
 > **Both follow-ups are done (2026-09-25):** the full suite re-ran green, and Phase 9 was
 > verified live on real MySQL and driven in Chrome. That surfaced five bugs —
 > the worst being a retired Gemini model that had every AI feature silently on its
-> fallback — all fixed; suite now **443 passing**. See `PROGRESS.md` Phase 9. Next up is
-> P3.
+> fallback — all fixed; suite now **443 passing**. See `PROGRESS.md` Phase 9.
+>
+> **Status, 2026-09-25: P3 is done** (`API.md` for all 83 operations, and paged history).
+> Writing `API.md` turned up the 20 problems listed under **P4**.
+>
+> **Status, 2026-10-07: P4 is 8 of 20 done.** All seven bugs and security problems (P4-1
+> to P4-7) are fixed, and P4-11 closed with P4-4. The other 12 are open: four wrong
+> numbers and eight surprising behaviours, none of them a crash or a security hole.
+> Suite: **509 passing**. See `PROGRESS.md` Phases 12 and 14. The project has been in git
+> since 2026-10-07 (`main`, on GitHub).
 
 ## Priority key
 
@@ -425,7 +433,7 @@ Tracing all 83 endpoints from controller to wire turned these up. `API.md` docum
 one as it **currently behaves**, so fixing one means updating its entry there too. A
 struck-through row is fixed; its note says how.
 
-**Bugs and security problems.** Fix these first.
+**Bugs and security problems.** All fixed 2026-10-07.
 
 | | Problem | Where |
 |---|---|---|
@@ -464,13 +472,28 @@ struck-through row is fixed; its note says how.
 
 # Suggested order
 
-**P0, P1 and P2 are all done.** What remains is verification and P3.
+**P0 to P3 are done, and so is the security half of P4.** What remains, in order:
+
+1. **The wrong numbers: P4-8, P4-9, P4-10, P4-12.** Users see these figures and act on
+   them, so they come before behaviour that is merely surprising.
+2. **P4-18 and P4-17.** A dead session should always self-heal, and bad input should be
+   refused rather than stored.
+3. **The remaining surprises: P4-13 to P4-16, P4-19, P4-20.**
+4. **Not in the table, but open:**
+   - Access tokens are never checked server-side, so one already issued keeps working for
+     up to 48h after a password change or reset (`PROGRESS.md` Phase 12). It needs a
+     per-user token version checked in `JwtAuthenticationFilter`.
+   - P4-1's dead-session export path has not been driven in a browser.
+   - **Deployment.** `frontend/js/config.js` still holds the placeholder Render URL. Render
+     also needs `FRONTEND_URL` and the `MAIL_*` variables.
+
+Done earlier:
 
 1. ~~**Re-run the full suite.**~~ Done 2026-09-25 — 437 passing, 0 failures.
 2. ~~**Drive Phase 9 in a real browser.**~~ Done 2026-09-25 in Chrome on real MySQL; five bugs found and fixed (`PROGRESS.md` Phase 9).
 3. ~~**P3-2 (`API.md`)**~~ Done 2026-09-25.
 4. ~~**P3-3 (pagination)**~~ Done 2026-09-25.
-5. **P4**: the problems found while tracing every endpoint for `API.md`. Do P4-1 to P4-4 first.
+5. ~~**P4-1 to P4-7**~~ Done 2026-10-07 (`PROGRESS.md` Phases 12 and 14).
 
 The original ordering notes follow.
 
