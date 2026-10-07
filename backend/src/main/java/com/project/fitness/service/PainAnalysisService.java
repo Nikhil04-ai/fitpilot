@@ -43,6 +43,7 @@ public class PainAnalysisService {
         if (bodyPart == null) {
             throw new RuntimeException("Pick the body part that hurts.");
         }
+        InputChecks.painSeverity(severity);
 
         // Ownership-checked (PLAN P4-6). This used to accept any id: someone else's
         // activity got linked, and an unknown one was silently dropped to null. Same

@@ -37,6 +37,9 @@ public class BodyMetricsService {
         if (weight == null && height == null) {
             throw new RuntimeException("Send a weight or a height to record.");
         }
+        // Same limits as the profile: this writes the same two fields (PLAN P4-17).
+        InputChecks.weightKg(weight);
+        InputChecks.heightCm(height);
 
         if (weight != null) user.setWeight(weight);
         if (height != null) user.setHeight(height);

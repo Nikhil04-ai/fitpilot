@@ -59,6 +59,7 @@ public class ActivityService {
         if (request.getType() == null) {
             throw new RuntimeException("An activity needs a type, such as RUNNING or WEIGHT_TRAINING.");
         }
+        InputChecks.difficultyRating(request.getDifficultyRating());   // only update checked it (PLAN P4-17)
 
         Map<String, Object> comebackPlan = comebackService.evaluateComeback(user);
 
@@ -169,11 +170,8 @@ public class ActivityService {
         if (request.getStartTime() != null) activity.setStartTime(request.getStartTime());
         if (request.getNotes() != null)     activity.setNotes(request.getNotes());
         if (request.getDifficultyRating() != null) {
-            int rating = request.getDifficultyRating();
-            if (rating < 1 || rating > 5) {
-                throw new RuntimeException("Rating must be between 1 and 5");
-            }
-            activity.setDifficultyRating(rating);
+            InputChecks.difficultyRating(request.getDifficultyRating());
+            activity.setDifficultyRating(request.getDifficultyRating());
         }
         if (request.getAdditionalMetrics() != null) {
             activity.setAdditionalMetrics(request.getAdditionalMetrics());

@@ -31,6 +31,10 @@ public class WaterIntakeService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AccountNotFoundException(userId));
 
+        // A body with no amountMl arrives as 0 and used to be saved as a drink of 0 ml;
+        // a negative one pulled the day's total down (PLAN P4-17).
+        InputChecks.waterMl(amountMl);
+
         LocalDate logDate = date != null ? date : LocalDate.now();
         WaterLog log = WaterLog.builder()
                 .user(user).amountMl(amountMl).logDate(logDate).build();

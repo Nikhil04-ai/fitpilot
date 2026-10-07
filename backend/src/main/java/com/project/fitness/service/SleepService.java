@@ -37,6 +37,9 @@ public class SleepService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AccountNotFoundException(userId));
 
+        InputChecks.sleepHours(hoursSlept);
+        InputChecks.sleepQuality(qualityRating);   // was clamped: a missing rating was saved as 1
+
         LocalDate date = sleepDate != null ? sleepDate : LocalDate.now().minusDays(1);
 
         // Upsert — one log per day
@@ -44,7 +47,7 @@ public class SleepService {
                 .orElse(SleepLog.builder().user(user).sleepDate(date).build());
 
         log.setHoursSlept(hoursSlept);
-        log.setQualityRating(Math.max(1, Math.min(5, qualityRating)));
+        log.setQualityRating(qualityRating);
         log.setBedtime(bedtime);
         log.setWakeTime(wakeTime);
         log.setNotes(notes);

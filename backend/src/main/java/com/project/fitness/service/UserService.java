@@ -20,6 +20,9 @@ public class UserService {
 
     public UserResponse register(RegisterRequest request) {
         PasswordPolicy.requireHashable(request.getPassword());
+        InputChecks.weightKg(request.getWeight());
+        InputChecks.heightCm(request.getHeight());
+        InputChecks.age(request.getAge());
         String email = request.getEmail() != null ? request.getEmail().trim().toLowerCase() : null;
 
         // Checked here so the person gets a clear message instead of the generic

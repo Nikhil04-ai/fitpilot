@@ -212,7 +212,7 @@ Creates a `USER`-role account. It does not sign the user in, because no tokens a
   }
   ```
   - `email` (required, valid email) and `password` (required, at least 8 characters) are checked with `@Valid`. All other fields are optional.
-  - `weight` is in kg and `height` in cm. Weight is what lets the server estimate calories for activities later, so leaving it out means `caloriesBurned` stays `null` unless the client sends it.
+  - `weight` (kg, 20 to 500), `height` (cm, 50 to 275) and `age` (5 to 120) are optional, and refused when outside their range, with the same messages as `PUT /api/profile/{userId}`. Weight is what lets the server estimate calories for activities later, so leaving it out means `caloriesBurned` stays `null` unless the client sends it.
   - The email is trimmed and lower-cased before it is stored.
   - There is no `role` field. A `role` sent by the client is ignored, and every new account is `USER`.
 - **Response:** `200`, a `UserResponse`. This is the same shape as `GET /api/profile/{userId}`. `currentStreak` and `longestStreak` both start at `0`.
@@ -390,10 +390,10 @@ Updates some profile fields and leaves the others as they are.
   ```
   - Every field is optional. Anything left out or set to `null` keeps its current value.
   - A blank `firstName` or `lastName` is also ignored, so a name cannot be cleared.
-  - `weight` is in kg and `height` in cm. They are not range-checked.
+  - `weight` is in kg (20 to 500), `height` in cm (50 to 275) and `age` in years (5 to 120). A value outside its range is refused, and nothing in the request is saved.
   - `email` and `password` cannot be changed here. Any other field sent is ignored.
 - **Response:** `200`, the updated `UserResponse` (the same shape as `GET` above).
-- **Errors:** none specific.
+- **Errors:** `400` "Weight must be between 20 and 500 kg." / "Height must be between 50 and 275 cm." / "Age must be between 5 and 120 years."
 
 ### `PUT /api/profile/{userId}/password`
 Changes the password after checking the current one.
@@ -488,7 +488,7 @@ Logs a workout. The response also reports what the save triggered: streaks, reco
     - Entries with a blank `name` are skipped.
     - The order of the entries is kept.
     - A `null` `weightKg` means a bodyweight movement.
-  - `difficultyRating` is meant to be 1–5, but it is **not range-checked on create**.
+  - `difficultyRating` is optional, and must be 1 to 5 when given (`400` "Rating must be between 1 and 5"), as on edit.
   - `userId` is ignored. The activity is always saved to the caller's account.
 - **Response:** `200`
   ```json
@@ -1255,7 +1255,9 @@ Updates the profile's weight and/or height, writes a weigh-in row, and refreshes
   - `bmi` and `bmiCategory` are `null`, and `healthyWeightRange` and `bmiNote` are absent, unless both weight and height are known.
   - `goalAchievements` appears only when a weight goal was just reached.
   - This response has no `history`.
-- **Errors:** `400` "Send a weight or a height to record." Neither field was sent, and nothing is written. A dead session still gets the `409`, which is checked first.
+- **Errors:**
+  - `400` "Send a weight or a height to record." Neither field was sent, and nothing is written. A dead session still gets the `409`, which is checked first.
+  - `400` "Weight must be between 20 and 500 kg." / "Height must be between 50 and 275 cm." The same limits as the profile, since this writes the same two fields.
 
 ### `GET /api/health/metrics/{userId}`
 Returns current body metrics plus the most recent weigh-ins for the trend chart.
@@ -1291,7 +1293,7 @@ Adds a water entry and returns that day's hydration summary.
   ```json
   { "amountMl": 350, "date": "2026-09-25" }
   ```
-  - `amountMl` is a number. There is no validation: an omitted value logs `0`, and negative values are accepted.
+  - `amountMl` is required and must be from 1 to 5000. An omitted value (it arrives as `0`), a negative one or a larger one is refused: `400` "Water amount must be between 1 and 5000 ml."
   - `date` (ISO date) is optional and defaults to today.
   - Each call adds a new entry; entries for a day are summed.
 - **Response:** `200`, the summary for the logged `date`:
@@ -1309,6 +1311,7 @@ Adds a water entry and returns that day's hydration summary.
   - `goalMl` is `max(2000, weight × 35)`, or 2000 when no weight is set.
   - `progressPercent` is capped at 100.
   - `status` is one of five fixed strings, from `"Very low — drink water now!"` (under 25%) to `"Fully hydrated! Great work."` (100%).
+- **Errors:** `400` "Water amount must be between 1 and 5000 ml."
 
 ### `GET /api/health/water/{userId}/today`
 Returns today's hydration summary.
@@ -1345,8 +1348,8 @@ Logs one night's sleep. There is one entry per `sleepDate`: logging a date again
   }
   ```
   - `sleepDate` is the evening the person went to bed. It defaults to yesterday.
-  - `qualityRating` is clamped to 1–5 rather than rejected. An omitted value becomes `1`.
-  - `hoursSlept` is not validated, and an omitted value becomes `0`.
+  - `qualityRating` is required and must be 1 to 5: `400` "Sleep quality must be between 1 and 5." It used to be clamped, so an omitted value was saved as `1`.
+  - `hoursSlept` is required, more than 0 and at most 24: `400` "Hours slept must be more than 0 and at most 24."
   - `bedtime`, `wakeTime` and `notes` are optional.
   - When a date is logged again, **every** field is replaced. An omitted optional field becomes `null`; it does not keep the previous value.
 - **Response:** `200`, the `SleepLog` entity:
@@ -1362,6 +1365,9 @@ Logs one night's sleep. There is one entry per `sleepDate`: logging a date again
     "loggedAt": "2026-09-25T06:45:03.220"
   }
   ```
+- **Errors:**
+  - `400` "Hours slept must be more than 0 and at most 24."
+  - `400` "Sleep quality must be between 1 and 5."
 
 ### `GET /api/health/sleep/{userId}/analysis`
 Returns averages, history and text insights for sleep dates in the last 7 days (today − 6 through today).
@@ -1435,7 +1441,7 @@ Logs a pain entry for the caller, optionally linked to a workout.
   }
   ```
   - `bodyPart` is one of `LEFT_KNEE`, `RIGHT_KNEE`, `LEFT_SHOULDER`, `RIGHT_SHOULDER`, `LOWER_BACK`, `UPPER_BACK`, `LEFT_ANKLE`, `RIGHT_ANKLE`, `NECK`, `HIPS`, `OTHER`.
-  - `severity` is intended to be 1–5, but it is **not** validated or clamped. An omitted value is stored as `0`.
+  - `severity` is required and must be 1 to 5. An omitted value (it arrives as `0`) or one outside the range is refused: `400` "Pain severity must be between 1 and 5."
   - `activityId` is optional, and must be one of the caller's own activities. Omitted, `null` or blank saves the entry unlinked.
   - Nothing is technically required.
   - A `userId` in the body is ignored.
@@ -1453,6 +1459,7 @@ Logs a pain entry for the caller, optionally linked to a workout.
 - **Errors:**
   - `400` "Activity not found: <activityId>"
   - `403` "You don't have access to this activity." The activity belongs to someone else.
+  - `400` "Pain severity must be between 1 and 5."
   - `400` "Pick the body part that hurts." `bodyPart` is required.
   - An unknown `bodyPart` returns the generic unreadable-request `400`.
 

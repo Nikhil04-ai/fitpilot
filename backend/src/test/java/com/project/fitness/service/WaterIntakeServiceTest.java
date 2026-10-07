@@ -65,7 +65,9 @@ class WaterIntakeServiceTest {
         when(waterLogRepository.save(any())).thenAnswer(i -> i.getArgument(0));
         when(waterLogRepository.sumByUserIdAndDate(eq("user-1"), any())).thenReturn(0.0);
 
-        Map<String, Object> result = waterIntakeService.logWater("user-1", 0, LocalDate.now());
+        // Any real drink will do: the test is about the goal. A 0 ml entry is refused now
+        // (PLAN P4-17), and it only ever stood in for "no particular amount" here.
+        Map<String, Object> result = waterIntakeService.logWater("user-1", 250, LocalDate.now());
 
         assertThat((Double) result.get("goalMl")).isGreaterThanOrEqualTo(2000.0);
     }

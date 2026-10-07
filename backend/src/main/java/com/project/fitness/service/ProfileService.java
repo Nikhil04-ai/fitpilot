@@ -30,6 +30,12 @@ public class ProfileService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AccountNotFoundException(userId));
 
+        // All three before any is applied, so a bad age can't leave a new weight behind
+        // (PLAN P4-17).
+        InputChecks.weightKg(weight);
+        InputChecks.heightCm(height);
+        InputChecks.age(age);
+
         if (firstName != null && !firstName.isBlank()) user.setFirstName(firstName);
         if (lastName  != null && !lastName.isBlank())  user.setLastName(lastName);
         if (weight    != null) user.setWeight(weight);
