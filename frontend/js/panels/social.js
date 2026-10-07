@@ -161,6 +161,10 @@ function challengeCard(c, isInvite) {
     actions = `<span class="cdl"><span style="color:var(--red)">${c.daysRemaining ?? '?'}</span> days left</span>${leave}<button class="btn-ghost" data-action="challenge-detail" data-id="${c.id}">Details</button>`;
   } else if (c.status === 'COMPLETED') {
     actions = `<span class="cdl">${escapeHtml(c.resultMessage || 'Challenge complete')}</span><button class="btn-ghost" data-action="challenge-detail" data-id="${c.id}">Details</button>`;
+  } else if (c.status === 'CANCELLED' && c.resultMessage) {
+    // Settled with no contest ("Nobody else joined"). The message says why; the bare
+    // status word did not (PLAN P4-14). A challenge its creator cancelled has no message.
+    actions = `<span class="cdl">${escapeHtml(c.resultMessage)}</span>`;
   } else {
     actions = `<span class="cdl">${escapeHtml(c.status || '')}</span>`;
   }

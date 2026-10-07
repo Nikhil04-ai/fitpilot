@@ -1799,6 +1799,8 @@ Fields that only appear when `status` is `COMPLETED`:
 - `winner`: the winner's full name, or `"Draw"`.
 - `resultMessage`: for example `"Asha wins! 1840.0 calories burned, ahead of Ravi on 1210.0, from 3 competitors."`.
 
+A challenge settled as `CANCELLED` because nobody else joined also carries `resultMessage` (`"Nobody else joined, so there was no contest."`), and has no `winner`. One its creator cancelled while it was pending has neither.
+
 `your*` fields describe the caller. They are always present, because every endpoint requires the caller to be a participant.
 - `yourStatus`: the caller's `ParticipantStatus`.
 - `youAreCreator`: whether the caller created the challenge.
@@ -2007,7 +2009,7 @@ The caller's in-app feed of things the app worked out on its own schedule: diges
 |---|---|---|
 | `WEEKLY_DIGEST` | The scheduled Monday 08:00 digest is written | `ai` |
 | `PLATEAU` | The plateau scan finds an activity type that has stopped improving | `insights` |
-| `CHALLENGE_RESULT` | A challenge is settled. Sent to every `ACCEPTED` competitor | `challenges` |
+| `CHALLENGE_RESULT` | A challenge is settled. Sent to every `ACCEPTED` competitor. A challenge settled with no contest is titled "Your challenge was cancelled", not "ended in a draw" | `challenges` |
 | `GOAL_DEADLINE` | A goal that isn't met yet is due within 7 days. Sent once per goal and deadline | `goals` |
 | `PERSONAL_BEST` | Defined, but no code sends it yet | — |
 | `GENERAL` | A friend request is received or accepted, or a challenge invite arrives | `challenges` |

@@ -586,6 +586,64 @@ class ChallengeServiceTest {
             assertThat(challenge.getResultMessage()).contains("no contest");
         }
 
+        /**
+         * The no-contest path settled a challenge as CANCELLED, then announced it with
+         * the same title as a tie, because "no winner" was read as "draw" (PLAN P4-14).
+         */
+        @Test
+        @DisplayName("a cancelled challenge is announced as cancelled, not as a draw")
+        void cancelledIsNotAnnouncedAsADraw() {
+            Challenge challenge = expired(opponent);
+            challenge.participantFor("opponent-1").orElseThrow()
+                    .setStatus(ParticipantStatus.DECLINED);
+            when(challengeRepository.findExpiredActiveChallenges(any())).thenReturn(List.of(challenge));
+            noActivities();
+            saveEchoes();
+
+            challengeService.declareExpiredChallengeWinners();
+
+            org.mockito.ArgumentCaptor<String> title = org.mockito.ArgumentCaptor.forClass(String.class);
+            org.mockito.ArgumentCaptor<String> body = org.mockito.ArgumentCaptor.forClass(String.class);
+            // Only the creator is still competing, so only the creator is told.
+            verify(notificationService, times(1)).notify(any(User.class), eq(NotificationType.CHALLENGE_RESULT),
+                    title.capture(), body.capture(), eq("challenges"), anyString());
+            assertThat(title.getValue()).doesNotContainIgnoringCase("draw").containsIgnoringCase("cancel");
+            assertThat(body.getValue()).contains("Nobody else joined");
+        }
+
+        /**
+         * The challenge map only carried resultMessage for COMPLETED, so the one line that
+         * says why a cancelled challenge ended never reached the client (PLAN P4-14).
+         */
+        @Test
+        @DisplayName("a challenge cancelled with no contest still carries its message, but names no winner")
+        void cancelledChallengeCarriesItsMessage() {
+            Challenge challenge = expired(opponent);
+            challenge.participantFor("opponent-1").orElseThrow().setStatus(ParticipantStatus.DECLINED);
+            when(challengeRepository.findExpiredActiveChallenges(any())).thenReturn(List.of(challenge));
+            noActivities();
+            saveEchoes();
+            challengeService.declareExpiredChallengeWinners();
+            when(challengeRepository.findById("challenge-1")).thenReturn(Optional.of(challenge));
+
+            Map<String, Object> view = challengeService.getChallengeDetail("challenge-1", "creator-1");
+
+            assertThat(view.get("status")).isEqualTo("CANCELLED");
+            assertThat(view.get("resultMessage")).isEqualTo("Nobody else joined, so there was no contest.");
+            assertThat(view).doesNotContainKey("winner");   // there isn't one, and "Draw" would be wrong
+        }
+
+        @Test
+        @DisplayName("a challenge its creator cancelled has no message to show")
+        void creatorCancelledHasNoMessage() {
+            Challenge challenge = buildChallenge(ChallengeStatus.CANCELLED, opponent);
+            when(challengeRepository.findById("challenge-1")).thenReturn(Optional.of(challenge));
+
+            Map<String, Object> view = challengeService.getChallengeDetail("challenge-1", "creator-1");
+
+            assertThat(view).doesNotContainKey("resultMessage");
+        }
+
         private Activity activityBurning(int calories) {
             Activity a = new Activity();
             a.setCaloriesBurned(calories);

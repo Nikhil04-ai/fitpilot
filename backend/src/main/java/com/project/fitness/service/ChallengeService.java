@@ -552,10 +552,15 @@ public class ChallengeService {
 
             boolean won = challenge.getWinner() != null
                     && challenge.getWinner().getId().equals(user.getId());
-            boolean draw = challenge.getWinner() == null;
+            // No winner means a draw only for a challenge that was actually contested.
+            // One settled as CANCELLED ("nobody else joined") has no winner either, and
+            // used to be announced as "ended in a draw" (PLAN P4-14).
+            boolean cancelled = challenge.getStatus() == ChallengeStatus.CANCELLED;
+            boolean draw = !cancelled && challenge.getWinner() == null;
 
             notificationService.notify(user, NotificationType.CHALLENGE_RESULT,
-                    draw ? "Your challenge ended in a draw"
+                    cancelled ? "Your challenge was cancelled"
+                    : draw ? "Your challenge ended in a draw"
                          : won ? "You won your challenge" : "Your challenge has ended",
                     message,
                     "challenges",
@@ -638,6 +643,12 @@ public class ChallengeService {
 
         if (c.getStatus() == ChallengeStatus.COMPLETED) {
             map.put("winner", c.getWinner() != null ? fullName(c.getWinner()) : "Draw");
+            map.put("resultMessage", c.getResultMessage());
+        } else if (c.getStatus() == ChallengeStatus.CANCELLED && c.getResultMessage() != null) {
+            // Settled with no contest ("Nobody else joined"). The message says why, and
+            // was withheld with the rest, so nobody could tell (PLAN P4-14). No `winner`:
+            // there isn't one, and "Draw" would be wrong. A challenge its creator
+            // cancelled has no message and adds nothing.
             map.put("resultMessage", c.getResultMessage());
         }
 

@@ -30,10 +30,10 @@ priority order, so priorities aren't re-derived from scratch every session.
 > **Status, 2026-09-25: P3 is done** (`API.md` for all 83 operations, and paged history).
 > Writing `API.md` turned up the 20 problems listed under **P4**.
 >
-> **Status, 2026-10-08: P4 is 15 of 20 done.** All seven bugs and security problems (P4-1
+> **Status, 2026-10-08: P4 is 16 of 20 done.** All seven bugs and security problems (P4-1
 > to P4-7), P4-11 (closed with P4-4), all four wrong numbers (P4-8, P4-9, P4-10, P4-12),
-> P4-13, P4-17 and P4-18 are fixed. The other 5 are open and are all behaviour that
-> surprises, none a crash or a security hole. Suite: **535 passing**. See `PROGRESS.md` Phases 12 and 14. The project has been in git
+> P4-13, P4-14, P4-17 and P4-18 are fixed. The other 4 are open and are all behaviour that
+> surprises, none a crash or a security hole. Suite: **538 passing**. See `PROGRESS.md` Phases 12 and 14. The project has been in git
 > since 2026-10-07 (`main`, on GitHub).
 
 ## Priority key
@@ -460,7 +460,7 @@ struck-through row is fixed; its note says how.
 | | Problem |
 |---|---|
 | ~~**P4-13**~~ | ~~Omitting `accept` on challenge respond **declines** the invite (primitive `boolean`).~~ **Fixed 2026-10-08.** `accept` is a `Boolean` and `null` is a `400` that leaves the invite unanswered. Declining is permanent, so guessing "no" was the worst default. The frontend's buttons always send `true` or `false`, so nothing changed there. Covered by a new case in `GroupChallengeIntegrationTest` (an empty body, a body with only `userId`, and an explicit `null`; the first failed before). |
-| **P4-14** | A challenge settled as CANCELLED ("nobody else joined") hides its `resultMessage`, and nobody is told. |
+| ~~**P4-14**~~ | ~~A challenge settled as CANCELLED ("nobody else joined") hides its `resultMessage`, and nobody is told.~~ **Fixed 2026-10-08.** There were three faults, not one. The API returned `resultMessage` only for `COMPLETED`; the card showed only the bare word "CANCELLED"; and the notification, which *was* sent, was titled "Your challenge ended in a draw", because "no winner" was read as "draw". The map now carries the message for a challenge cancelled with no contest (and no `winner`), the card shows it, and the notification is titled "Your challenge was cancelled". A challenge its creator cancelled has no message and is unchanged. Covered by 3 new cases in `ChallengeServiceTest` (two failed before). |
 | **P4-15** | The one-open-challenge-per-pair rule still blocks a pair after one of them declined or left a challenge that is still running. |
 | **P4-16** | A meal `PUT` never derives calories from macros, unlike `POST`, so a meal whose calories are cleared with `clear` shows no kcal. |
 | ~~**P4-17**~~ | ~~These inputs aren't validated: pain `severity`, water `amountMl` (negatives are accepted), `hoursSlept`, activity `difficultyRating` on create, and profile weight, height and age.~~ **Fixed 2026-10-08.** Each is a `400` that names the limit, from one `InputChecks` class: weight 20-500 kg, height 50-275 cm, age 5-120, severity 1-5, water 1-5000 ml, sleep more than 0 and at most 24 h, ratings 1-5. The limits are wide on purpose: they refuse what can't be true, not what is merely unusual. Beyond the list: registration and `PUT /health/metrics` write the same fields, so they get the same limits; an omitted water amount, sleep hours or severity arrives as `0` and is now refused rather than logged; and **sleep quality was silently clamped** into 1-5, so an omitted one was saved as a 1 and the client never told. It is now refused. A rejected profile update saves nothing. Covered by `InputValidationIntegrationTest` (8, all failing before) and `InputChecksTest` (4). **Not covered:** `duration` and the other activity fields, free-text lengths, and the date fields. |
@@ -476,7 +476,7 @@ struck-through row is fixed; its note says how.
 
 1. ~~**The wrong numbers: P4-8, P4-9, P4-10, P4-12.**~~ All done 2026-10-07.
 2. ~~**P4-18 and P4-17**~~ Done 2026-10-08.
-3. **The remaining surprises: ~~P4-13~~, P4-14 to P4-16, P4-19, P4-20.**
+3. **The remaining surprises: ~~P4-13~~, ~~P4-14~~, P4-15, P4-16, P4-19, P4-20.**
 4. **Not in the table, but open:**
    - Access tokens are never checked server-side, so one already issued keeps working for
      up to 48h after a password change or reset (`PROGRESS.md` Phase 12). It needs a
