@@ -1,0 +1,31 @@
+# ── Maven / Java ──────────────────────────────────────────────────────────
+backend/target/
+# Eclipse's build output (IntelliJ uses target/)
+backend/bin/
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+
+# ── IDE ───────────────────────────────────────────────────────────────────
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# ── Environment secrets — NEVER commit these ────────────────────────────────
+.env
+.env.local
+*.env
+
+# ── Logs ──────────────────────────────────────────────────────────────────
+*.log
+
+# ── OS ────────────────────────────────────────────────────────────────────
+Thumbs.db
+
+# Local dev secrets (see backend/local.properties.example)
+local.properties
+
+# ── Python (the Selenium e2e script) ────────────────────────────────────────
+__pycache__/
+*.pyc

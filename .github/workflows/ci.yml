@@ -1,0 +1,198 @@
+name: CI/CD Pipeline
+
+# Backend: build, test, coverage, and (on main) a Docker smoke test.
+# Frontend: still no build step. Its unit tests run on Node's built-in test runner,
+# with no npm install and no package.json (frontend/tests/).
+# `paths` filters the whole workflow, not single jobs, so a change on either side
+# runs both test jobs side by side.
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths: [ 'backend/**', 'frontend/**', '.github/workflows/ci.yml' ]
+  pull_request:
+    branches: [ main ]
+    paths: [ 'backend/**', 'frontend/**', '.github/workflows/ci.yml' ]
+
+jobs:
+
+  # ── Frontend unit tests ────────────────────────────────────────────────────
+  frontend-tests:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 22.7+ loads the app's plain .js files as ES modules with no package.json
+      # (module syntax detection), and has the mock timers the tests use.
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run frontend tests
+        run: node --test "tests/*.test.mjs"
+
+  # ── Job 1: Build and test ──────────────────────────────────────────────────
+  build-and-test:
+    name: Build, Test & Coverage
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+
+      - name: Build project
+        run: ./mvnw clean package -DskipTests
+        env:
+          # These are only needed for compilation — tests use H2 in-memory DB
+          DB_URL: jdbc:h2:mem:testdb
+          DB_USER: sa
+          DB_PWD: ''
+          JWT_SECRET: dGVzdC1zZWNyZXQta2V5LWZvci1jaS1waXBlbGluZS10aGF0LWlzLWxvbmctZW5vdWdo
+          GEMINI_API_KEY: ''
+
+      - name: Run all tests
+        run: ./mvnw test
+        env:
+          DB_URL: jdbc:h2:mem:testdb
+          DB_USER: sa
+          DB_PWD: ''
+          JWT_SECRET: dGVzdC1zZWNyZXQta2V5LWZvci1jaS1waXBlbGluZS10aGF0LWlzLWxvbmctZW5vdWdo
+          GEMINI_API_KEY: ''
+
+      - name: Generate JaCoCo coverage report
+        run: ./mvnw jacoco:report
+        env:
+          DB_URL: jdbc:h2:mem:testdb
+          DB_USER: sa
+          DB_PWD: ''
+          JWT_SECRET: dGVzdC1zZWNyZXQta2V5LWZvci1jaS1waXBlbGluZS10aGF0LWlzLWxvbmctZW5vdWdo
+          GEMINI_API_KEY: ''
+
+      - name: Upload coverage report as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-coverage-report
+          path: backend/target/site/jacoco/
+          retention-days: 14
+
+      - name: Publish test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: backend/target/surefire-reports/
+          retention-days: 14
+
+  # ── Job 2: Docker build + real health check (only on main) ────────────────
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+
+      - name: Build JAR for Docker
+        run: ./mvnw clean package -DskipTests
+        env:
+          DB_URL: jdbc:h2:mem:testdb
+          DB_USER: sa
+          DB_PWD: ''
+          JWT_SECRET: dGVzdC1zZWNyZXQta2V5LWZvci1jaS1waXBlbGluZS10aGF0LWlzLWxvbmctZW5vdWdo
+          GEMINI_API_KEY: ''
+
+      - name: Build Docker image
+        run: docker build -t fitness-app:${{ github.sha }} -t fitness-app:latest .
+
+
+      - name: Smoke test Docker container
+        run: |
+          set -euo pipefail
+
+          # The container has to talk to a real MySQL: h2 is a test-scoped dependency,
+          # so the runtime image has no H2 driver on the classpath and the old
+          # `-e DB_URL=jdbc:h2:mem:smokedb` meant the app could never start here.
+          # A shared docker network is used rather than a `services:` block so the app
+          # container can reach MySQL by name without host port juggling.
+          docker network create fitness-smoke-net
+
+          docker run -d --name fitness-smoke-db --network fitness-smoke-net \
+            -e MYSQL_ROOT_PASSWORD=smokepass \
+            -e MYSQL_DATABASE=fitness_smoke \
+            --health-cmd="mysqladmin ping -h 127.0.0.1 -psmokepass" \
+            --health-interval=5s --health-timeout=5s --health-retries=20 \
+            mysql:8.4
+
+          echo "Waiting for MySQL to become healthy..."
+          if ! timeout 180 bash -c 'until [ "$(docker inspect -f "{{.State.Health.Status}}" fitness-smoke-db)" = "healthy" ]; do sleep 3; done'; then
+            echo "MySQL never became healthy - logs:"
+            docker logs fitness-smoke-db
+            exit 1
+          fi
+
+          docker run -d --name fitness-smoke --network fitness-smoke-net -p 8080:8080 \
+            -e DB_URL=jdbc:mysql://fitness-smoke-db:3306/fitness_smoke \
+            -e DB_USER=root \
+            -e DB_PWD=smokepass \
+            -e JWT_SECRET=dGVzdC1zZWNyZXQta2V5LWZvci1jaS1waXBlbGluZS10aGF0LWlzLWxvbmctZW5vdWdo \
+            -e GEMINI_API_KEY= \
+            fitness-app:latest
+
+          # Wait up to 120s for /actuator/health to report UP.
+          # If it never comes up, this job correctly FAILS (unlike the original
+          # version, which silently passed even on a timeout).
+          if ! timeout 120 bash -c 'until curl -sf http://localhost:8080/actuator/health 2>/dev/null | grep -q "UP"; do sleep 2; done'; then
+            echo "Health check timed out - container logs:"
+            docker logs fitness-smoke
+            exit 1
+          fi
+          echo "Health check passed."
+
+          # /actuator/health only proves the app booted. Hit a real protected route
+          # too: an unauthenticated call must be rejected with 401 - not 403, which
+          # the frontend's silent token refresh does not act on - and must not return
+          # anyone's data.
+          status=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/api/activities)
+          if [ "$status" != "401" ]; then
+            echo "Expected 401 from unauthenticated /api/activities, got $status"
+            docker logs fitness-smoke
+            exit 1
+          fi
+          echo "Auth smoke check passed (unauthenticated request rejected with 401)."
+
+      - name: Tear down smoke test containers
+        if: always()
+        run: |
+          docker rm -f fitness-smoke fitness-smoke-db 2>/dev/null || true
+          docker network rm fitness-smoke-net 2>/dev/null || true

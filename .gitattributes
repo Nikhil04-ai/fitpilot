@@ -1,0 +1,15 @@
+# Normalise text files to LF in the repository; Git picks the working-copy ending.
+* text=auto
+
+# Shell scripts must stay LF even on Windows, or Linux and Docker fail on "/bin/sh^M".
+mvnw text eol=lf
+*.sh text eol=lf
+
+# Windows batch files need CRLF.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Binary
+*.png binary
+*.jpg binary
+*.jar binary

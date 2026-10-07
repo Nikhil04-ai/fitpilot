@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: fitpilot-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: DB_URL
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PWD
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      # Password reset email (PLAN P1-4). Optional: with no MAIL_API_KEY the backend
+      # logs the reset link instead of sending it, which is fine locally and useless
+      # in production - set it before telling anyone the feature exists.
+      - key: MAIL_PROVIDER
+        value: brevo
+      - key: MAIL_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        sync: false

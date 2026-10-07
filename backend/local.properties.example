@@ -1,0 +1,22 @@
+# ============================================================================
+# TEMPLATE - copy to local.properties and fill in real values.
+# Supplies the values that application.properties references as ${DB_PWD},
+# ${JWT_SECRET} and ${GEMINI_API_KEY}. Real environment variables, when set,
+# take precedence over everything in here.
+# ============================================================================
+
+DB_URL=jdbc:mysql://localhost:3306/fitness_demo
+DB_USER=root
+DB_PWD=your_mysql_password
+
+JWT_SECRET=any_long_random_base64_string
+
+# Get a free key at https://aistudio.google.com/app/apikey
+# Leave blank to run without AI features - the app degrades gracefully.
+GEMINI_API_KEY=
+
+# Password reset email - see README > Password reset email.
+# Leave MAIL_API_KEY blank and reset links are written to the backend log instead.
+MAIL_PROVIDER=brevo
+MAIL_API_KEY=
+MAIL_FROM=FitPilot <the-address-you-verified@gmail.com>

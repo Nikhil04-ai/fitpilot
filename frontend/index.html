@@ -1,0 +1,1297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<!-- Content-Security-Policy. GitHub Pages can't send headers, hence a meta tag; it has
+     to come before anything it governs. What each line allows, and why:
+       script-src  this site plus the pinned Chart.js on jsDelivr. No 'unsafe-inline':
+                   there are no inline scripts or on*= handlers left (js/actions.js),
+                   so injected markup can't run script even if an escapeHtml() is missed.
+       style-src   'unsafe-inline' stays: ~150 style="" attributes, in this file and in
+                   the HTML the panels build. Moving them all to classes is a rewrite.
+       connect-src the API: any https origin, because ?api=<url> may point anywhere
+                   (js/config.js), plus a local backend on any port.
+     tests/markup.test.mjs pins the no-'unsafe-inline' script rule. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https: http://localhost:* http://127.0.0.1:*; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FitPilot — Guide Your Fitness Journey</title>
+<meta name="description" content="FitPilot — AI-powered fitness tracking. Log workouts, track goals, and get coaching insights.">
+<meta name="color-scheme" content="dark">
+<link rel="icon" href="logo-128.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#080B0F;--panel:#111820;--panel2:#151D27;--panel3:#1B2530;
+  --blue:#0EA5FF;--cyan:#00FFD1;--purple:#7C3AED;--red:#FF3B5C;--gold:#FFB800;
+  --white:#F1F5FF;--silver:#8899AA;--muted:#808C9F; /* >=4.5:1 on every surface; #4A5568 was ~2.4:1 */
+  --border:rgba(14,165,255,.14);
+  --fd:'Barlow Condensed',sans-serif;--fb:'Inter',sans-serif;--fm:'JetBrains Mono',monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--white);font-family:var(--fb);overflow-x:hidden;line-height:1.6;min-height:100vh}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--blue);border-radius:3px}
+.bg-grad{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(ellipse 70% 50% at 50% -10%,rgba(14,165,255,.08) 0%,transparent 70%),
+             radial-gradient(ellipse 50% 40% at 90% 90%,rgba(0,255,209,.05) 0%,transparent 70%)}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit}
+a{color:inherit}
+
+/* ═══ BUTTONS ═══ */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;
+  font-family:var(--fd);font-size:15px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
+  padding:12px 28px;border-radius:10px;border:none;transition:all .25s;position:relative}
+.btn-prim{background:linear-gradient(135deg,var(--blue),var(--cyan));color:var(--bg);box-shadow:0 0 20px rgba(14,165,255,.25)}
+.btn-prim:hover{transform:translateY(-2px);box-shadow:0 6px 30px rgba(14,165,255,.45)}
+.btn-prim:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-sec{background:transparent;color:var(--silver);border:1px solid rgba(14,165,255,.25)}
+.btn-sec:hover{color:var(--blue);border-color:var(--blue);background:rgba(14,165,255,.05)}
+.btn-ghost{background:rgba(14,165,255,.08);color:var(--blue);font-size:12px;padding:7px 16px;border-radius:7px;border:1px solid rgba(14,165,255,.18)}
+.btn-ghost:hover{background:rgba(14,165,255,.16)}
+.btn-sm{padding:7px 16px;font-size:12px}
+.btn-block{width:100%}
+
+/* ═══ AUTH SCREEN ═══ */
+#auth-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;
+  padding:40px 20px;position:relative;z-index:1}
+.auth-card{width:100%;max-width:420px;background:var(--panel);border:1px solid var(--border);
+  border-radius:24px;padding:40px;position:relative;overflow:hidden}
+.auth-card::before{content:'';position:absolute;top:-80px;left:-80px;width:220px;height:220px;
+  border-radius:50%;background:radial-gradient(circle,rgba(14,165,255,.1),transparent 70%)}
+.auth-logo{display:flex;flex-direction:column;align-items:center;margin-bottom:28px;position:relative;z-index:1}
+.auth-logo img{height:64px;width:64px;object-fit:contain;margin-bottom:12px;filter:drop-shadow(0 0 16px rgba(14,165,255,.5))}
+.auth-logo-fallback{height:64px;width:64px;margin-bottom:12px;border-radius:16px;display:none;
+  background:linear-gradient(135deg,var(--blue),var(--cyan));align-items:center;justify-content:center;font-size:30px}
+.auth-logo-text{font-family:var(--fd);font-size:26px;font-weight:800;letter-spacing:3px}
+.auth-logo-text span{color:var(--blue)}
+.auth-tag{font-family:var(--fm);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-top:4px}
+
+.auth-tabs{display:flex;gap:4px;background:var(--panel2);border-radius:10px;padding:4px;margin-bottom:24px;position:relative;z-index:1}
+.auth-tab{flex:1;text-align:center;font-family:var(--fd);font-size:14px;font-weight:700;letter-spacing:1px;
+  text-transform:uppercase;padding:9px;border-radius:7px;border:none;background:transparent;color:var(--muted);transition:all .2s}
+.auth-tab.on{background:linear-gradient(135deg,rgba(14,165,255,.2),rgba(0,255,209,.08));color:var(--blue)}
+
+.field{margin-bottom:14px;position:relative;z-index:1}
+.field label{display:block;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.field input,.field select{width:100%;background:var(--panel2);border:1px solid var(--border);
+  border-radius:9px;padding:11px 14px;color:var(--white);font-size:14px;transition:border-color .2s}
+/* Inline controls outside a .field (the add-friend box, the export picker) get the same
+   look — without this they fell back to the browser's light default. */
+.export-row input,.export-row select{background:var(--panel2);border:1px solid var(--border);
+  border-radius:9px;padding:9px 12px;color:var(--white);font-size:14px;transition:border-color .2s}
+.export-row input::placeholder{color:var(--muted)}
+.field input:focus,.field select:focus,
+.export-row input:focus,.export-row select:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(14,165,255,.1)}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.field-row .field{margin-bottom:0}
+
+.auth-error{background:rgba(255,59,92,.1);border:1px solid rgba(255,59,92,.3);color:var(--red);
+  font-size:13px;padding:10px 14px;border-radius:9px;margin-bottom:14px;display:none}
+.auth-error.show{display:block}
+.auth-hint{font-size:12px;color:var(--muted);text-align:center;margin-top:16px;position:relative;z-index:1}
+.auth-hint a{color:var(--blue);cursor:pointer;text-decoration:underline}
+
+/* ═══ APP SHELL ═══ */
+#app-shell{display:none;min-height:100vh;position:relative;z-index:1}
+#app-shell.show{display:flex}
+
+.sidebar{width:240px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;height:100vh;position:sticky;top:0}
+.sb-logo{display:flex;align-items:center;gap:10px;padding:22px 20px;border-bottom:1px solid var(--border)}
+.sb-logo img{height:32px;width:32px;object-fit:contain;filter:drop-shadow(0 0 8px rgba(14,165,255,.5))}
+.sb-logo-fallback{height:32px;width:32px;border-radius:8px;display:none;
+  background:linear-gradient(135deg,var(--blue),var(--cyan));align-items:center;justify-content:center;font-size:16px}
+.sb-logo-text{font-family:var(--fd);font-size:18px;font-weight:800;letter-spacing:2px}
+.sb-logo-text span{color:var(--blue)}
+
+.sb-nav{flex:1;padding:16px 12px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+.sb-link{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:10px;
+  color:var(--silver);text-decoration:none;font-size:14px;font-weight:500;border:none;background:transparent;
+  width:100%;text-align:left;transition:all .2s;position:relative}
+.sb-link:hover{background:rgba(14,165,255,.06);color:var(--white)}
+.sb-link.on{background:linear-gradient(135deg,rgba(14,165,255,.16),rgba(0,255,209,.06));color:var(--blue)}
+.sb-link.on::before{content:'';position:absolute;left:-12px;top:50%;transform:translateY(-50%);
+  width:3px;height:18px;border-radius:2px;background:var(--blue);box-shadow:0 0 8px var(--blue)}
+.sb-ic{font-size:18px;width:20px;text-align:center;flex-shrink:0}
+.sb-badge{margin-left:auto;font-family:var(--fm);font-size:10px;background:rgba(255,59,92,.15);
+  color:var(--red);padding:2px 7px;border-radius:10px}
+
+.sb-user{padding:14px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.sb-av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--cyan));
+  display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:var(--bg);flex-shrink:0}
+.sb-uname{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sb-uemail{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sb-logout{background:transparent;border:none;color:var(--muted);font-size:16px;margin-left:auto;flex-shrink:0;padding:4px}
+.sb-logout:hover{color:var(--red)}
+
+.main{flex:1;min-width:0;display:flex;flex-direction:column;height:100vh;overflow-y:auto}
+.topbar{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;
+  padding:18px 32px;background:rgba(8,11,15,.85);backdrop-filter:blur(16px);border-bottom:1px solid var(--border)}
+.topbar-ttl{font-family:var(--fd);font-size:26px;font-weight:800}
+.topbar-right{display:flex;align-items:center;gap:14px}
+.streak-pill{display:flex;align-items:center;gap:7px;background:var(--panel2);border:1px solid var(--border);
+  border-radius:20px;padding:7px 16px;font-family:var(--fm);font-size:13px}
+.streak-pill .fl{font-size:15px}
+
+.content{padding:28px 32px 60px;flex:1}
+.panel{display:none}
+.panel.on{display:block;animation:panelIn .35s ease}
+@keyframes panelIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* ═══ CARDS / GRID ═══ */
+.grid{display:grid;gap:18px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+.gcol-260{grid-template-columns:260px 1fr 240px}
+
+.card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:22px}
+/* Charts. A canvas has no intrinsic height, so the wrapper supplies one and
+   Chart.js is told not to keep its own aspect ratio - without both, the canvas
+   grows a little on every resize event and slowly pushes the panel off-screen. */
+.chartbox{position:relative;height:220px;margin-top:6px}
+.chartbox.tall{height:260px}
+.chart-note{font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5}
+/* Rendered as <h3> for document structure. font-weight is pinned because an h3
+   would otherwise arrive bold and these are meant to read as quiet eyebrow labels. */
+.clbl{font-size:10px;font-weight:400;letter-spacing:2px;text-transform:uppercase;color:var(--muted);
+  margin-bottom:14px;display:flex;align-items:center;gap:7px}
+.clbl::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--blue);
+  box-shadow:0 0 7px var(--blue);animation:bk 2s ease-in-out infinite;flex-shrink:0}
+@keyframes bk{0%,100%{opacity:1}50%{opacity:.25}}
+.card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+
+.sec-head{margin-bottom:24px}
+.sec-ttl{font-family:var(--fd);font-size:28px;font-weight:800}
+.sec-sub{font-size:13px;color:var(--muted);margin-top:4px}
+
+.smc{display:flex;align-items:center;gap:14px}
+.smi{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.smi.b{background:rgba(14,165,255,.12)}.smi.c{background:rgba(0,255,209,.12)}
+.smi.g{background:rgba(255,184,0,.12)}.smi.p{background:rgba(124,58,237,.12)}
+.smv{font-family:var(--fm);font-size:24px;color:var(--white);line-height:1}
+.smk{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:3px}
+.smd{font-family:var(--fm);font-size:11px;color:var(--cyan);margin-top:3px}
+
+.av-lg{width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--cyan));
+  display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:var(--bg);margin-bottom:12px}
+.pname{font-family:var(--fd);font-size:20px;font-weight:800}
+.phandle{font-family:var(--fm);font-size:11px;color:var(--muted);margin-top:2px}
+.pstats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0}
+.ps{background:var(--panel2);border:1px solid var(--border);border-radius:9px;padding:10px;text-align:center}
+.psv{font-family:var(--fm);font-size:17px;color:var(--blue)}
+.psk{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px}
+.sring{display:flex;align-items:center;gap:14px;margin-top:14px}
+.srw{width:70px;height:70px;flex-shrink:0;position:relative;display:flex;align-items:center;justify-content:center}
+.srw svg{position:absolute;transform:rotate(-90deg)}
+.srn{font-family:var(--fm);font-size:18px;color:var(--cyan);position:relative;z-index:1}
+.srt{font-size:13px;font-weight:600}
+.srs{font-size:11px;color:var(--muted);margin-top:2px}
+
+.af{display:flex;flex-direction:column;gap:8px}
+.ai{display:flex;align-items:center;gap:10px;padding:11px 13px;background:var(--panel2);border-radius:10px;
+  border:1px solid transparent;transition:border-color .2s}
+.ai:hover{border-color:var(--border)}
+.ad{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.an{font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.am{font-family:var(--fm);font-size:11px;color:var(--muted);white-space:nowrap}
+.apr{font-family:var(--fm);font-size:9px;color:var(--cyan);background:rgba(0,255,209,.1);padding:2px 6px;border-radius:3px;flex-shrink:0}
+
+/* Activity row body — the second line carries the date, the parsed metrics
+   (distance/sets/reps) and the difficulty rating, none of which the row used to
+   show at all. See PLAN.md P0-1 and P0-2. */
+.ai-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.ai-sub{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:var(--fm);font-size:10px;color:var(--muted)}
+.ai-chip{background:rgba(255,255,255,.05);border-radius:3px;padding:1px 5px;white-space:nowrap}
+.ai-acts{display:flex;gap:2px;flex-shrink:0}
+.ai-acts button{background:none;border:none;color:var(--muted);font-size:12px;padding:3px 5px;border-radius:5px;line-height:1}
+.ai-acts button:hover{background:rgba(255,255,255,.07);color:var(--fg)}
+.ai-acts button.danger:hover{color:var(--red)}
+.rate{display:inline-flex;gap:1px}
+.rate button{background:none;border:none;padding:0 1px;font-size:11px;line-height:1;color:var(--muted);opacity:.45}
+.rate button.on{opacity:1;color:var(--gold)}
+.rate:hover button{opacity:.8}
+.rate button:hover{opacity:1;color:var(--gold)}
+.g-exp{font-family:var(--fm);font-size:9px;color:var(--red);background:rgba(255,77,79,.12);padding:2px 6px;border-radius:3px}
+
+/* Nutrition (PLAN P2-1). The estimate badge is load-bearing rather than decorative:
+   a parsed calorie count is a language model's guess at a portion size, and showing
+   it identically to a figure the user read off a packet would be the app overstating
+   what it actually knows. */
+.est{font-family:var(--fm);font-size:9px;color:var(--gold);background:rgba(255,184,0,.12);
+  padding:1px 5px;border-radius:3px;white-space:nowrap;cursor:help}
+.field-hint{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5}
+.export-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px}
+
+/* Weekly digest (PLAN P2-3). The figures sit next to the prose on purpose: a digest
+   whose numbers can't be checked is one the reader has to take on faith. */
+.dg-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
+.dg-hl{font-size:17px;font-weight:600;color:var(--white);line-height:1.4}
+.dg-week{font-family:var(--fm);font-size:11px;color:var(--muted);white-space:nowrap;margin-top:4px}
+.dg-nar{font-size:13px;color:var(--silver);line-height:1.65;margin:12px 0 4px}
+.dg-sec{margin-top:16px}
+.dg-sec h4{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.dg-sec ul{list-style:none;display:flex;flex-direction:column;gap:7px}
+.dg-sec li{font-size:13px;color:var(--silver);line-height:1.5;padding-left:16px;position:relative}
+.dg-sec li:before{content:"▸";position:absolute;left:0;color:var(--blue)}
+.dg-sec.focus li:before{content:"→";color:var(--cyan)}
+.dg-facts{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;margin-top:16px;
+  padding-top:16px;border-top:1px solid var(--border)}
+.dg-fact b{display:block;font-family:var(--fm);font-size:17px;color:var(--white);font-weight:400}
+.dg-fact span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
+.dg-src{font-family:var(--fm);font-size:9px;padding:2px 7px;border-radius:3px;white-space:nowrap}
+.dg-src.ai{color:var(--cyan);background:rgba(0,255,209,.1)}
+.dg-src.rules{color:var(--muted);background:rgba(255,255,255,.05)}
+
+/* Notifications (PLAN P2-2) */
+.bell{position:relative;background:none;border:1px solid var(--border);border-radius:9px;
+  width:36px;height:36px;font-size:15px;line-height:1;color:var(--silver);cursor:pointer;transition:border-color .2s}
+.bell:hover{border-color:var(--blue)}
+.bell-dot{position:absolute;top:-5px;right:-5px;min-width:17px;height:17px;padding:0 4px;
+  border-radius:9px;background:var(--red);color:#fff;font-family:var(--fm);font-size:10px;
+  display:flex;align-items:center;justify-content:center}
+/* display:flex above outranks the browser's own [hidden] rule, so without this the dot
+   showed "0" permanently. */
+.bell-dot[hidden]{display:none}
+/* An unread row is the one you haven't dealt with, so it keeps a marker until you do. */
+.ai.unread{border-color:rgba(14,165,255,.35);background:rgba(14,165,255,.05)}
+.nt-ic{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+  font-size:14px;flex-shrink:0;background:rgba(255,255,255,.05)}
+.nt-body{font-size:12px;color:var(--muted);line-height:1.5;margin-top:2px}
+
+/* Group challenge standings (PLAN P2-4). The two-avatar "VS" block only ever
+   described two people; a ranked list is the shape that works for two and for eight. */
+.std{display:flex;flex-direction:column;gap:6px;margin:14px 0}
+.stdr{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;background:var(--panel2)}
+.stdr.me{border:1px solid rgba(14,165,255,.35)}
+.stdr.out{opacity:.45}
+.stdp{font-family:var(--fm);font-size:11px;color:var(--muted);width:18px;flex-shrink:0}
+.stdn{flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stds{font-family:var(--fm);font-size:13px;color:var(--white)}
+.stdr.lead .stds{color:var(--cyan)}
+.fr{display:flex;align-items:center;gap:10px}
+.fr-av{width:28px;height:28px;border-radius:8px;background:rgba(14,165,255,.12);display:flex;
+  align-items:center;justify-content:center;font-family:var(--fm);font-size:12px;flex-shrink:0}
+.export-row select{flex:1;min-width:180px}
+.est-note{font-size:11px;color:var(--muted);margin:-6px 0 16px 2px;line-height:1.5}
+.mbar{display:flex;height:8px;border-radius:4px;overflow:hidden;background:var(--panel2);margin:10px 0 12px}
+.mbar span{display:block;height:100%}
+.mk{display:flex;justify-content:space-between;font-family:var(--fm);font-size:11px;color:var(--muted)}
+.mk b{display:block;font-size:16px;color:var(--white);font-weight:400;margin-bottom:2px}
+.mdot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:5px}
+/* A budget that has been blown reads red, not "complete". */
+.gf.over{background:linear-gradient(90deg,var(--gold),var(--red))}
+
+.empty-state{text-align:center;padding:48px 20px;color:var(--muted)}
+.empty-state .es-icon{font-size:40px;margin-bottom:12px;opacity:.5}
+.empty-state .es-text{font-size:14px;margin-bottom:16px}
+.loading-state{text-align:center;padding:40px;color:var(--muted);font-family:var(--fm);font-size:13px}
+.spinner{width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--blue);
+  border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.error-state{text-align:center;padding:32px;color:var(--red);font-size:13px}
+
+.gi{margin-bottom:16px}
+.git{display:flex;justify-content:space-between;margin-bottom:6px}
+.gn{font-size:13px;font-weight:500}.gp{font-family:var(--fm);font-size:12px;color:var(--cyan)}
+.gb2{height:6px;background:var(--panel2);border-radius:3px;overflow:hidden}
+.gf{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--blue),var(--cyan));
+  transition:width 1s cubic-bezier(.23,1,.32,1);position:relative}
+.gf.done{background:linear-gradient(90deg,var(--cyan),var(--gold))}
+.g-meta{font-size:11px;color:var(--muted);margin-top:4px;display:flex;justify-content:space-between}
+.g-del{background:none;border:none;color:var(--muted);font-size:11px}
+.g-del:hover{color:var(--red)}
+
+.pb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.pb-card{background:var(--panel2);border:1px solid var(--border);border-radius:14px;padding:18px}
+.pb-type{font-family:var(--fm);font-size:10px;color:var(--gold);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.pb-row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px}
+.pb-val{font-family:var(--fm);color:var(--white)}
+/* Exercise logging (PLAN P1-1) */
+.exrows{display:flex;flex-direction:column;gap:8px;margin-bottom:8px}
+.exrow{display:grid;grid-template-columns:1fr 62px 62px 72px 30px;gap:6px;align-items:center}
+.exrow input{width:100%;background:var(--panel2);border:1px solid var(--border);border-radius:8px;
+  padding:9px 10px;color:var(--white);font-size:13px}
+.exrow input:focus{outline:none;border-color:var(--blue)}
+.exrow .exdel{background:none;border:none;color:var(--muted);font-size:14px;cursor:pointer;padding:4px}
+.exrow .exdel:hover{color:var(--red)}
+.exhead{display:grid;grid-template-columns:1fr 62px 62px 72px 30px;gap:6px;
+  font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+/* Exercises as rendered on an activity row */
+.exlist{display:flex;flex-direction:column;gap:2px;margin-top:6px}
+.exli{display:flex;gap:8px;align-items:baseline;font-size:12px;color:var(--silver)}
+.exli .exn{font-weight:500}
+.exli .exs{font-family:var(--fm);font-size:11px;color:var(--muted)}
+.exli .ex1rm{font-family:var(--fm);font-size:10px;color:var(--cyan);opacity:.8}
+.exli .expr{font-family:var(--fm);font-size:9px;color:var(--gold);background:rgba(255,184,0,.12);
+  padding:1px 5px;border-radius:3px}
+
+.cg{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.chc{background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:22px;position:relative}
+.cbadge{position:absolute;top:16px;right:16px;font-family:var(--fm);font-size:10px;padding:3px 9px;border-radius:12px;letter-spacing:.8px}
+.bl{background:rgba(0,255,209,.12);color:var(--cyan)}
+.bp2{background:rgba(255,184,0,.12);color:var(--gold)}
+.bd{background:rgba(255,59,92,.12);color:var(--red)}
+.bn{background:rgba(14,165,255,.12);color:var(--blue)}
+.ctype{font-family:var(--fm);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:2px;margin-bottom:9px}
+.ctitle{font-family:var(--fd);font-size:19px;font-weight:800;margin-bottom:16px;line-height:1.2}
+.vs{display:flex;align-items:center;gap:9px;margin-bottom:16px}
+.vsp{flex:1;text-align:center;background:var(--panel2);border-radius:10px;padding:10px 6px;border:1px solid var(--border)}
+.vsav{width:30px;height:30px;border-radius:50%;margin:0 auto 6px;background:linear-gradient(135deg,var(--blue),var(--cyan));
+  display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:var(--bg)}
+.vsav.op{background:linear-gradient(135deg,#6C63FF,#A855F7)}
+.vsn{font-size:11px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vssc{font-family:var(--fm);font-size:17px;color:var(--blue);margin-top:3px}
+.vsdi{font-family:var(--fd);font-size:13px;font-weight:800;color:var(--muted);flex-shrink:0}
+.cf{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.cdl{font-family:var(--fm);font-size:11px;color:var(--muted)}
+
+.rg{display:grid;grid-template-columns:1fr 320px;gap:24px;align-items:start}
+.bmap{background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:28px;display:flex;flex-direction:column;align-items:center}
+.leg{display:flex;gap:14px;justify-content:center;margin-top:16px;flex-wrap:wrap}
+.li{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--silver)}
+.ld{width:8px;height:8px;border-radius:50%}
+.ld.f{background:var(--cyan)}.ld.m{background:var(--gold)}.ld.s{background:var(--red)}
+.rl{display:flex;flex-direction:column;gap:9px}
+.ri{background:var(--panel);border:1px solid var(--border);border-radius:11px;padding:13px 16px;display:flex;align-items:center;gap:12px}
+.rd{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.rd.f{background:var(--cyan);box-shadow:0 0 7px var(--cyan)}
+.rd.m{background:var(--gold);box-shadow:0 0 7px var(--gold)}
+.rd.s{background:var(--red);box-shadow:0 0 7px var(--red)}
+.rmu{font-size:13px;font-weight:500;flex:1}
+.rt2{font-family:var(--fm);font-size:11px;color:var(--muted)}
+
+.wviz{display:flex;align-items:flex-end;gap:5px;height:80px;margin-top:14px}
+.wb{flex:1;border-radius:3px 3px 0 0;background:linear-gradient(0deg,#0066AA,var(--blue));min-height:6px;transition:height .8s ease}
+.wlbs{display:flex;gap:5px;margin-top:6px}
+.wl{flex:1;text-align:center;font-size:9px;color:var(--muted)}
+.water-add{display:flex;gap:8px;margin-top:16px}
+.water-add input{flex:1}
+.slpbars{display:flex;flex-direction:column;gap:9px;margin-top:14px}
+.slpr{display:flex;align-items:center;gap:10px}
+.slpd{font-family:var(--fm);font-size:10px;color:var(--muted);width:28px}
+.slpt{flex:1;height:20px;background:var(--panel2);border-radius:4px;overflow:hidden;position:relative}
+.slpf{height:100%;border-radius:4px;display:flex;align-items:center;justify-content:flex-end;padding-right:7px;
+  background:linear-gradient(90deg,rgba(14,165,255,.25),rgba(0,255,209,.45))}
+.slph{font-family:var(--fm);font-size:9px;color:var(--white)}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);
+  z-index:500;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.show{display:flex}
+.modal{width:100%;max-width:440px;background:var(--panel);border:1px solid var(--border);
+  border-radius:20px;padding:28px;max-height:88vh;overflow-y:auto}
+.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.modal-ttl{font-family:var(--fd);font-size:22px;font-weight:800}
+.modal-close{background:var(--panel2);border:none;color:var(--silver);width:30px;height:30px;
+  border-radius:50%;font-size:16px;flex-shrink:0}
+.modal-close:hover{color:var(--red)}
+.modal-actions{display:flex;gap:10px;margin-top:20px}
+/* The confirm dialog (js/ui.js confirmDialog) — replaced window.confirm(). */
+.modal-sm{max-width:380px}
+.confirm-msg{font-size:14px;color:var(--silver);line-height:1.6}
+.btn-danger{background:linear-gradient(135deg,var(--red),#FF6B81);color:var(--white);box-shadow:0 0 20px rgba(255,59,92,.25)}
+.btn-danger:hover{transform:translateY(-2px);box-shadow:0 6px 30px rgba(255,59,92,.45)}
+
+/* ═══ WAKE NOTICE ═══
+   Shown by js/wake.js while a sleeping Render instance starts (30–60s). Top centre,
+   clear of the toast in the bottom corner. */
+.wake-notice{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:950;
+  display:none;align-items:center;gap:12px;width:calc(100% - 32px);max-width:440px;
+  background:var(--panel);border:1px solid rgba(14,165,255,.3);border-radius:12px;padding:12px 16px;
+  box-shadow:0 8px 40px rgba(0,0,0,.5);font-size:13px;color:var(--white)}
+.wake-notice.show{display:flex}
+.wake-notice .spinner{width:18px;height:18px;margin:0;flex-shrink:0}
+.wake-sub{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.5}
+
+.toast{position:fixed;bottom:24px;right:24px;z-index:900;background:var(--panel);
+  border:1px solid rgba(0,255,209,.25);border-radius:12px;padding:13px 16px;
+  display:flex;align-items:center;gap:10px;font-size:13px;color:var(--white);
+  transform:translateX(130%);transition:transform .4s cubic-bezier(.23,1,.32,1);
+  box-shadow:0 8px 40px rgba(0,0,0,.5);max-width:300px}
+.toast.on{transform:translateX(0)}
+.toast.err{border-color:rgba(255,59,92,.3)}
+.tic{font-size:18px;flex-shrink:0}
+
+.fab{position:fixed;bottom:28px;right:28px;z-index:50;width:56px;height:56px;border-radius:50%;
+  background:linear-gradient(135deg,var(--blue),var(--cyan));border:none;display:flex;align-items:center;
+  justify-content:center;font-size:24px;box-shadow:0 4px 24px rgba(14,165,255,.4);transition:all .3s;color:var(--bg)}
+.fab:hover{transform:scale(1.1) rotate(90deg)}
+
+/* AI Coach cards */
+.ai-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
+.ac{background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:22px;position:relative;overflow:hidden}
+.ac::before{content:'';position:absolute;top:-40px;right:-40px;width:140px;height:140px;
+  border-radius:50%;background:radial-gradient(circle,rgba(14,165,255,.06),transparent 70%)}
+.atag{display:inline-flex;align-items:center;gap:7px;font-family:var(--fm);font-size:10px;
+  letter-spacing:1.5px;text-transform:uppercase;padding:4px 11px;border-radius:14px;margin-bottom:14px}
+.atag.b{color:var(--blue);background:rgba(14,165,255,.08);border:1px solid rgba(14,165,255,.2)}
+.atag.c{color:var(--cyan);background:rgba(0,255,209,.08);border:1px solid rgba(0,255,209,.2)}
+.atag.g{color:var(--gold);background:rgba(255,184,0,.08);border:1px solid rgba(255,184,0,.2)}
+.atag.r{color:var(--red);background:rgba(255,59,92,.08);border:1px solid rgba(255,59,92,.2)}
+.adot{width:5px;height:5px;border-radius:50%;animation:bk 1.5s ease-in-out infinite}
+.adot.b{background:var(--blue)}.adot.c{background:var(--cyan)}.adot.g{background:var(--gold)}.adot.r{background:var(--red)}
+.attl{font-family:var(--fd);font-size:19px;font-weight:800;margin-bottom:9px;line-height:1.2}
+.abody{font-size:13px;color:var(--silver);line-height:1.85;margin-bottom:14px}
+.apills{display:flex;gap:6px;flex-wrap:wrap}
+.apill{font-family:var(--fm);font-size:10px;padding:3px 9px;border-radius:14px;
+  background:rgba(14,165,255,.08);color:var(--blue);border:1px solid rgba(14,165,255,.16)}
+.ai-teaser{background:linear-gradient(135deg,var(--panel),rgba(14,165,255,.05));border:1px solid var(--border);
+  border-radius:16px;padding:22px;margin-top:18px;display:flex;align-items:center;gap:18px}
+.ai-teaser-icon{width:48px;height:48px;border-radius:12px;background:rgba(14,165,255,.12);
+  display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+
+/* Warning / alert boxes (pain patterns, plateau alerts) */
+.warnbox{background:rgba(255,59,92,.07);border:1px solid rgba(255,59,92,.2);border-radius:11px;padding:13px 16px}
+.wtt{font-size:12px;font-weight:600;color:var(--red);margin-bottom:4px}
+.wtb{font-size:12px;color:var(--muted)}
+
+/* Textarea (natural language logging) */
+.field textarea{width:100%;background:var(--panel2);border:1px solid var(--border);border-radius:9px;
+  padding:11px 14px;color:var(--white);font-size:14px;font-family:inherit;resize:vertical;transition:border-color .2s}
+.field textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(14,165,255,.1)}
+
+/* ═══ SKIP LINK ═══ */
+.skip-link{position:absolute;left:-9999px;top:0;z-index:1000;background:var(--blue);color:var(--bg);
+  font-family:var(--fd);font-size:14px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
+  padding:12px 20px;border-radius:0 0 10px 0;text-decoration:none}
+.skip-link:focus{left:0}
+
+/* ═══ FOCUS VISIBILITY ═══
+   Keyboard users need to see where they are. :focus-visible (not :focus) so a
+   mouse click doesn't leave a ring behind on every button it touches. */
+button:focus-visible,a:focus-visible,[tabindex]:focus-visible{
+  outline:2px solid var(--blue);outline-offset:2px;border-radius:6px}
+input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none}
+
+/* ═══ MOBILE MENU BUTTON ═══
+   Purely CSS-driven. It used to be toggled once in enterApp() from
+   window.innerWidth, with no resize listener - so narrowing a desktop window
+   after login left the sidebar parked off-screen with no way to open it. */
+.mobile-menu-btn{display:none;font-size:20px}
+
+/* Scroll lock while a modal is open, so the page behind doesn't scroll away. */
+body.modal-open{overflow:hidden}
+
+/* ═══ SKELETONS ═══
+   Shown instead of a centred spinner so the layout doesn't jump when real
+   content lands. Each skeleton mirrors the geometry of the card it replaces. */
+@keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
+.sk{background:linear-gradient(90deg,var(--panel2) 25%,var(--panel3) 50%,var(--panel2) 75%);
+  background-size:800px 100%;animation:shimmer 1.4s linear infinite;border-radius:7px}
+.sk-line{height:11px;margin-bottom:9px}
+.sk-line.w40{width:40%}.sk-line.w60{width:60%}.sk-line.w80{width:80%}.sk-line.w100{width:100%}
+.sk-stat{display:flex;align-items:center;gap:14px}
+.sk-stat .sk-ic{width:46px;height:46px;border-radius:12px;flex-shrink:0}
+.sk-stat .sk-txt{flex:1}
+.sk-row{display:flex;align-items:center;gap:10px;padding:11px 13px;background:var(--panel2);
+  border-radius:10px;margin-bottom:8px}
+.sk-row .sk-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.sk-row .sk-txt{flex:1}
+.sk-block{height:120px;border-radius:12px}
+.sk-chart{height:220px;border-radius:12px}
+
+/* ═══ PAGER ═══
+   Prev / "n of m" / Next. It used to render one button per page, which wrapped
+   across three lines once someone had a few months of history. */
+.pager{display:flex;justify-content:center;align-items:center;gap:14px;margin-top:18px}
+.pager-pos{font-family:var(--fm);font-size:12px;color:var(--muted);min-width:78px;text-align:center}
+.pager button:disabled{opacity:.35;cursor:not-allowed}
+
+/* Toast dismiss — errors used to vanish after 3.5s with no way to hold them. */
+.toast-close{background:none;border:none;color:var(--muted);font-size:15px;line-height:1;
+  padding:2px 4px;margin-left:auto;flex-shrink:0}
+.toast-close:hover{color:var(--white)}
+
+@media(max-width:1000px){
+  .gcol-260{grid-template-columns:1fr 1fr}
+  .g3,.g4{grid-template-columns:1fr 1fr}
+  .rg{grid-template-columns:1fr}
+  .g2{grid-template-columns:1fr}
+}
+@media(max-width:720px){
+  .sidebar{position:fixed;left:-240px;z-index:200;transition:left .3s;box-shadow:20px 0 60px rgba(0,0,0,.5)}
+  .sidebar.show{left:0}
+  .topbar{padding:16px}
+  .content{padding:18px}
+  .g3,.g4,.gcol-260{grid-template-columns:1fr}
+  .mobile-menu-btn{display:block}
+}
+
+/* ═══ REDUCED MOTION ═══
+   Panel transitions, the blinking card labels, the rotating FAB and the 1s goal
+   bars are all decoration. Honour the OS setting and drop them. */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:.01ms !important;animation-iteration-count:1 !important;
+    transition-duration:.01ms !important;scroll-behavior:auto !important}
+  .fab:hover{transform:none}
+  .btn-prim:hover,.btn-danger:hover{transform:none}
+  .sk{animation:none;background:var(--panel2)}
+}
+</style>
+</head>
+<body>
+<div class="bg-grad"></div>
+<a class="skip-link" href="#main-content">Skip to content</a>
+<!-- role=status so a screen reader announces a toast without stealing focus. -->
+<div class="toast" id="toast" role="status" aria-live="polite">
+  <div class="tic" aria-hidden="true">✓</div>
+  <div id="tmsg">Done</div>
+  <button class="toast-close" data-action="hide-toast" aria-label="Dismiss notification">✕</button>
+</div>
+<!-- Shown by js/wake.js when a request to a possibly-sleeping backend is slow. -->
+<div class="wake-notice" id="wake-notice" role="status" aria-live="polite">
+  <div class="spinner" aria-hidden="true"></div>
+  <div>
+    <strong>Waking up the server…</strong>
+    <div class="wake-sub">The free-tier backend sleeps after 15 minutes without visitors and takes 30–60 seconds to start. Your request is still on its way — no need to retry.</div>
+  </div>
+</div>
+
+<!-- ═══════════ AUTH SCREEN ═══════════ -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <img src="logo-128.png" alt="" width="64" height="64" id="auth-logo-img">
+      <div class="auth-logo-fallback" id="auth-logo-fb" aria-hidden="true">💪</div>
+      <h1 class="auth-logo-text">FIT<span>PILOT</span></h1>
+      <p class="auth-tag">Guide Your Fitness Journey</p>
+    </div>
+
+    <div class="auth-tabs" role="tablist" aria-label="Log in or sign up">
+      <button class="auth-tab on" id="tab-login" role="tab" aria-selected="true" data-action="auth-tab" data-tab="login">Log In</button>
+      <button class="auth-tab" id="tab-register" role="tab" aria-selected="false" data-action="auth-tab" data-tab="register">Sign Up</button>
+    </div>
+
+    <div class="auth-error" id="auth-error" role="alert"></div>
+
+    <form id="form-login" data-submit="login">
+      <div class="field">
+        <label for="login-email">Email</label>
+        <input type="email" id="login-email" required placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="field">
+        <label for="login-password">Password</label>
+        <input type="password" id="login-password" required placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn btn-prim btn-block" id="login-btn">💪 Log In</button>
+      <div class="auth-hint">No account yet? <a data-action="auth-tab" data-tab="register">Create one</a></div>
+      <div class="auth-hint"><a data-action="auth-tab" data-tab="forgot" id="forgot-link">Forgot your password?</a></div>
+    </form>
+
+    <!-- Step 1 of recovery: ask for a link. Deliberately says the same thing whether
+         or not the address has an account - the API does too (PLAN P1-4). -->
+    <form id="form-forgot" style="display:none" data-submit="forgot-password">
+      <div class="field">
+        <label for="forgot-email">Email</label>
+        <input type="email" id="forgot-email" required placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:14px">
+        We will send a reset link if an account exists for that address. The link is good for 30 minutes.
+      </div>
+      <button type="submit" class="btn btn-prim btn-block" id="forgot-btn">Send reset link</button>
+      <div class="auth-hint">Remembered it? <a data-action="auth-tab" data-tab="login">Back to log in</a></div>
+    </form>
+
+    <!-- Step 2: shown when the page is opened from the emailed link (?reset=token). -->
+    <form id="form-reset" style="display:none" data-submit="reset-password">
+      <div class="field">
+        <label for="reset-password">New Password</label>
+        <input type="password" id="reset-password" required minlength="8"
+               placeholder="At least 8 characters" autocomplete="new-password">
+      </div>
+      <div class="field">
+        <label for="reset-password2">Confirm New Password</label>
+        <input type="password" id="reset-password2" required minlength="8"
+               placeholder="Type it again" autocomplete="new-password">
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:14px">
+        Setting a new password signs you out on every device.
+      </div>
+      <button type="submit" class="btn btn-prim btn-block" id="reset-btn">Set new password</button>
+      <div class="auth-hint"><a data-action="auth-tab" data-tab="login">Back to log in</a></div>
+    </form>
+
+    <form id="form-register" style="display:none" data-submit="register">
+      <div class="field-row">
+        <div class="field"><label for="reg-first">First Name</label><input type="text" id="reg-first" required placeholder="Nikhil"></div>
+        <div class="field"><label for="reg-last">Last Name</label><input type="text" id="reg-last" placeholder="Mehta"></div>
+      </div>
+      <div class="field">
+        <label for="reg-email">Email</label>
+        <input type="email" id="reg-email" required placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="field">
+        <label for="reg-password">Password</label>
+        <input type="password" id="reg-password" required placeholder="At least 8 characters" autocomplete="new-password" minlength="6">
+      </div>
+      <div class="field-row">
+        <div class="field"><label for="reg-weight">Weight (kg)</label><input type="number" id="reg-weight" placeholder="75" step="0.1"></div>
+        <div class="field"><label for="reg-height">Height (cm)</label><input type="number" id="reg-height" placeholder="175" step="0.1"></div>
+      </div>
+      <div class="field"><label for="reg-age">Age</label><input type="number" id="reg-age" placeholder="25"></div>
+      <button type="submit" class="btn btn-prim btn-block" id="register-btn">🚀 Create Account</button>
+      <div class="auth-hint">Already have an account? <a data-action="auth-tab" data-tab="login">Log in</a></div>
+    </form>
+  </div>
+</div>
+
+<!-- ═══════════ APP SHELL ═══════════ -->
+<div id="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-logo">
+      <img src="logo-128.png" alt="" width="32" height="32" id="sb-logo-img">
+      <div class="sb-logo-fallback" id="sb-logo-fb" aria-hidden="true">💪</div>
+      <div class="sb-logo-text">FIT<span>PILOT</span></div>
+    </div>
+    <nav class="sb-nav" aria-label="Sections">
+      <button class="sb-link on" data-panel="overview" data-action="nav"><span class="sb-ic">🏠</span>Overview</button>
+      <button class="sb-link" data-panel="activities" data-action="nav"><span class="sb-ic">🏃</span>Activities</button>
+      <button class="sb-link" data-panel="nutrition" data-action="nav"><span class="sb-ic">🍽</span>Nutrition</button>
+      <button class="sb-link" data-panel="goals" data-action="nav"><span class="sb-ic">🎯</span>Goals</button>
+      <button class="sb-link" data-panel="bests" data-action="nav"><span class="sb-ic">🏆</span>Personal Bests</button>
+      <button class="sb-link" data-panel="ai" data-action="nav"><span class="sb-ic">🧠</span>AI Coach</button>
+      <button class="sb-link" data-panel="pain" data-action="nav"><span class="sb-ic">🩹</span>Pain Log</button>
+      <button class="sb-link" data-panel="plans" data-action="nav"><span class="sb-ic">📋</span>Workout Plans</button>
+      <button class="sb-link" data-panel="insights" data-action="nav"><span class="sb-ic">📊</span>Stats &amp; Insights</button>
+      <button class="sb-link" data-panel="challenges" data-action="nav"><span class="sb-ic">⚔️</span>Challenges<span class="sb-badge" id="invite-badge" style="display:none">0</span></button>
+      <button class="sb-link" data-panel="recovery" data-action="nav"><span class="sb-ic">🛡</span>Recovery</button>
+      <button class="sb-link" data-panel="health" data-action="nav"><span class="sb-ic">💧</span>Health</button>
+      <button class="sb-link" data-panel="notifications" data-action="nav"><span class="sb-ic">🔔</span>Notifications<span class="sb-badge" id="notif-badge" style="display:none">0</span></button>
+      <button class="sb-link" data-panel="profile" data-action="nav"><span class="sb-ic">👤</span>Profile</button>
+    </nav>
+    <div class="sb-user">
+      <div class="sb-av" id="sb-av">?</div>
+      <div style="min-width:0">
+        <div class="sb-uname" id="sb-uname">—</div>
+        <div class="sb-uemail" id="sb-uemail">—</div>
+      </div>
+      <button class="sb-logout" data-action="logout" title="Log out">⏻</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:14px">
+        <button class="sb-logout mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle navigation"
+                aria-controls="sidebar" aria-expanded="false" data-action="toggle-sidebar">☰</button>
+        <h1 class="topbar-ttl" id="topbar-ttl">Overview</h1>
+      </div>
+      <div class="topbar-right">
+        <div class="streak-pill"><span class="fl" aria-hidden="true">🔥</span><span id="topbar-streak">0</span> day streak</div>
+        <button class="bell" id="bell-btn" data-action="nav" data-panel="notifications"
+                aria-label="Notifications" title="Notifications">🔔<span class="bell-dot" id="bell-count" hidden>0</span></button>
+        <button class="btn btn-prim btn-sm" data-action="open-modal" data-modal="modal-log-activity">+ Log Workout</button>
+      </div>
+    </div>
+
+    <div class="content" id="main-content">
+
+      <section class="panel on" id="panel-overview">
+        <div class="grid g4" id="overview-stats" style="margin-bottom:18px">
+          <div class="loading-state" style="grid-column:1/-1"><div class="spinner"></div>Loading your stats…</div>
+        </div>
+        <div class="grid gcol-260">
+          <div class="card" id="overview-profile"><div class="loading-state"><div class="spinner"></div></div></div>
+          <div class="card">
+            <h3 class="clbl">Recent Activities</h3>
+            <div class="af" id="overview-activities"><div class="loading-state"><div class="spinner"></div>Loading…</div></div>
+          </div>
+          <div class="card" id="overview-goals">
+            <h3 class="clbl">Active Goals</h3>
+            <div class="loading-state"><div class="spinner"></div></div>
+          </div>
+        </div>
+        <div id="overview-ai-teaser"></div>
+      </section>
+
+      <section class="panel" id="panel-activities">
+        <div class="sec-head" style="display:flex;justify-content:space-between;align-items:flex-end">
+          <div><h2 class="sec-ttl">Your Activities</h2><div class="sec-sub">Every workout, automatically tracked and scored.</div></div>
+          <button class="btn btn-prim btn-sm" data-action="open-modal" data-modal="modal-log-activity">+ Log Workout</button>
+        </div>
+        <div class="card">
+          <div class="af" id="activities-list"><div class="loading-state"><div class="spinner"></div>Loading activities…</div></div>
+          <div class="pager" id="activities-pager"></div>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-nutrition">
+        <div class="sec-head" style="display:flex;justify-content:space-between;align-items:flex-end">
+          <div><h2 class="sec-ttl">Nutrition</h2><div class="sec-sub">What you eat against what you spend — the other half of the equation.</div></div>
+          <button class="btn btn-prim btn-sm" data-action="open-modal" data-modal="modal-log-meal">+ Log Meal</button>
+        </div>
+        <div class="grid g4" style="margin-bottom:18px" id="nutrition-summary-row">
+          <div class="loading-state" style="grid-column:1/-1"><div class="spinner"></div></div>
+        </div>
+        <div class="est-note" id="nutrition-estimate-note"></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3 class="clbl">Today&#39;s Meals</h3>
+            <div class="af" id="nutrition-meals"><div class="loading-state"><div class="spinner"></div></div></div>
+          </div>
+          <div class="card">
+            <h3 class="clbl">Macros Today</h3>
+            <div id="nutrition-macros"><div class="loading-state"><div class="spinner"></div></div></div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:18px">
+          <h3 class="clbl">Energy Balance &mdash; Last 30 Days</h3>
+          <div class="chartbox tall"><canvas id="chart-nutrition"></canvas></div>
+          <div class="chart-note" id="chart-nutrition-note"></div>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-goals">
+        <div class="sec-head" style="display:flex;justify-content:space-between;align-items:flex-end">
+          <div><h2 class="sec-ttl">Goals</h2><div class="sec-sub">Weekly training targets, daily nutrition budgets and a body-weight goal — all scored automatically.</div></div>
+          <button class="btn btn-prim btn-sm" data-action="create-goal">+ New Goal</button>
+        </div>
+        <div class="card"><div id="goals-list"><div class="loading-state"><div class="spinner"></div>Loading goals…</div></div></div>
+      </section>
+
+      <section class="panel" id="panel-bests">
+        <div class="sec-head"><h2 class="sec-ttl">Personal Bests</h2><div class="sec-sub">Your top record for every activity type, and for every movement you lift.</div></div>
+        <h3 class="clbl" style="margin-left:2px">By Activity</h3>
+        <div id="bests-list" style="margin-bottom:24px"><div class="loading-state"><div class="spinner"></div>Loading records…</div></div>
+        <h3 class="clbl" style="margin-left:2px">By Exercise</h3>
+        <div id="exercise-bests-list"><div class="loading-state"><div class="spinner"></div>Loading records…</div></div>
+      </section>
+
+      <section class="panel" id="panel-ai">
+        <div class="sec-head" style="display:flex;justify-content:space-between;align-items:flex-end">
+          <div><h2 class="sec-ttl">AI Coach</h2><div class="sec-sub">Your week reasoned over as a whole, plus per-workout insights.</div></div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-sec btn-sm" data-action="generate-digest" id="gen-digest-btn">📋 Weekly Digest</button>
+            <button class="btn btn-prim btn-sm" data-action="generate-insight" id="gen-insight-btn">✨ Generate Insight</button>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:22px" id="digest-card">
+          <div class="loading-state"><div class="spinner"></div>Loading your weekly digest…</div>
+        </div>
+
+        <h3 class="clbl" style="margin-left:2px">Per-Workout Insights</h3>
+        <div class="ai-grid" id="ai-list"><div class="loading-state" style="grid-column:1/-1"><div class="spinner"></div>Loading insights…</div></div>
+      </section>
+
+      <section class="panel" id="panel-pain">
+        <div class="sec-head" style="display:flex;justify-content:space-between;align-items:flex-end">
+          <div><h2 class="sec-ttl">Pain Log</h2><div class="sec-sub">Track discomfort early — patterns get flagged before they become injuries.</div></div>
+          <button class="btn btn-prim btn-sm" data-action="open-modal" data-modal="modal-log-pain">+ Log Pain</button>
+        </div>
+        <div id="pain-warnings"></div>
+        <div class="card"><div id="pain-list"><div class="loading-state"><div class="spinner"></div>Loading…</div></div><div class="pager" id="pain-pager"></div></div>
+      </section>
+
+      <section class="panel" id="panel-plans">
+        <div class="sec-head"><h2 class="sec-ttl">Workout Plans</h2><div class="sec-sub">Structured programs — enroll and follow day by day.</div></div>
+        <div id="active-plan-card" style="margin-bottom:24px"></div>
+        <h3 class="clbl" style="margin-left:2px">Available Plans</h3>
+        <div class="cg" id="plans-list"><div class="loading-state" style="grid-column:1/-1"><div class="spinner"></div>Loading plans…</div></div>
+      </section>
+
+      <section class="panel" id="panel-insights">
+        <div class="sec-head"><h2 class="sec-ttl">Stats &amp; Insights</h2><div class="sec-sub">Monthly trends, your peak workout time, and plateau detection.</div></div>
+        <div class="grid g2" style="margin-bottom:18px">
+          <div class="card"><h3 class="clbl">Monthly Overview</h3><div id="monthly-stats"><div class="loading-state"><div class="spinner"></div></div></div></div>
+          <div class="card"><h3 class="clbl">Peak Workout Time</h3><div id="timing-stats"><div class="loading-state"><div class="spinner"></div></div></div></div>
+        </div>
+        <div class="card" style="margin-bottom:18px">
+          <h3 class="clbl">Training Volume — Last 30 Days</h3>
+          <div class="chartbox tall"><canvas id="chart-volume"></canvas></div>
+          <div class="chart-note" id="chart-volume-note"></div>
+        </div>
+        <div class="card" style="margin-bottom:18px">
+          <h3 class="clbl">When You Train — Last 30 Days</h3>
+          <div class="chartbox"><canvas id="chart-hours"></canvas></div>
+          <div class="chart-note" id="chart-hours-note"></div>
+        </div>
+        <div class="card">
+          <h3 class="clbl">Plateau Check</h3>
+          <div style="display:flex;gap:10px;margin-bottom:16px">
+            <select id="plateau-type" style="flex:1;background:var(--panel2);border:1px solid var(--border);border-radius:9px;padding:11px 14px;color:var(--white);font-size:14px">
+              <option value="RUNNING">🏃 Running</option>
+              <option value="WALKING">🚶 Walking</option>
+              <option value="CYCLING">🚴 Cycling</option>
+              <option value="SWIMMING">🏊 Swimming</option>
+              <option value="WEIGHT_TRAINING">🏋️ Weight Training</option>
+              <option value="YOGA">🧘 Yoga</option>
+              <option value="HIIT">⚡ HIIT</option>
+              <option value="CARDIO">🏄 Cardio</option>
+              <option value="STRETCHING">🤸 Stretching</option>
+              <option value="OTHER">➕ Other</option>
+            </select>
+            <button class="btn btn-prim btn-sm" data-action="check-plateau">Check</button>
+          </div>
+          <div id="plateau-result"><div style="font-size:12px;color:var(--muted)">Pick an activity type and click Check to see if your progress has stalled.</div></div>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-challenges">
+        <div class="sec-head" style="display:flex;justify-content:space-between;align-items:flex-end">
+          <div><h2 class="sec-ttl">Challenges</h2><div class="sec-sub">Battle friends across calories, workouts, duration, and streaks.</div></div>
+          <button class="btn btn-prim btn-sm" data-action="open-modal" data-modal="modal-create-challenge">+ New Challenge</button>
+        </div>
+        <div id="invites-section" style="display:none;margin-bottom:24px">
+          <h3 class="clbl" style="margin-left:2px">Pending Invites</h3>
+          <div class="cg" id="invites-list"></div>
+        </div>
+
+        <div class="card" style="margin-bottom:24px">
+          <h3 class="clbl">Friends</h3>
+          <div class="field-hint" style="margin-top:0">Add people by the address they signed up with, then challenge them by name instead of pasting an ID.</div>
+          <form class="export-row" data-submit="add-friend">
+            <input type="email" id="friend-email" placeholder="their@email.com" required style="flex:1;min-width:200px">
+            <button type="submit" class="btn btn-prim btn-sm" id="add-friend-btn">+ Add friend</button>
+          </form>
+          <div id="friend-invites" style="margin-top:16px"></div>
+          <div class="af" id="friends-list" style="margin-top:16px"><div class="loading-state"><div class="spinner"></div></div></div>
+        </div>
+
+        <h3 class="clbl" style="margin-left:2px">Your Challenges</h3>
+        <div class="cg" id="challenges-list"><div class="loading-state"><div class="spinner"></div>Loading…</div></div>
+      </section>
+
+      <section class="panel" id="panel-recovery">
+        <div class="sec-head"><h2 class="sec-ttl">Muscle Recovery</h2><div class="sec-sub">48-hour recovery windows per muscle group — know when to rest.</div></div>
+        <div id="recovery-content"><div class="loading-state"><div class="spinner"></div>Loading recovery data…</div></div>
+      </section>
+
+      <section class="panel" id="panel-health">
+        <div class="sec-head"><h2 class="sec-ttl">Health Tracking</h2><div class="sec-sub">BMI, hydration, and sleep — the metrics that move the needle.</div></div>
+        <div class="grid g3" style="margin-bottom:18px" id="health-bmi-row">
+          <div class="loading-state" style="grid-column:1/-1"><div class="spinner"></div></div>
+        </div>
+        <div class="grid g2">
+          <div class="card"><h3 class="clbl">Hydration Today</h3><div id="water-content"><div class="loading-state"><div class="spinner"></div></div></div></div>
+          <div class="card"><h3 class="clbl">Sleep — Last 7 Nights</h3><div id="sleep-content"><div class="loading-state"><div class="spinner"></div></div></div></div>
+        </div>
+        <div class="card" style="margin-top:18px">
+          <h3 class="clbl">Weight &amp; BMI Trend</h3>
+          <div class="chartbox tall"><canvas id="chart-body"></canvas></div>
+          <div class="chart-note" id="chart-body-note"></div>
+        </div>
+        <div class="card" style="margin-top:18px">
+          <h3 class="clbl">Sleep vs Next-Day Output</h3>
+          <div class="chartbox tall"><canvas id="chart-sleepperf"></canvas></div>
+          <div class="chart-note" id="chart-sleepperf-note"></div>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-notifications">
+        <div class="sec-head" style="display:flex;justify-content:space-between;align-items:flex-end">
+          <div><h2 class="sec-ttl">Notifications</h2><div class="sec-sub">What FitPilot worked out while you weren&#39;t looking.</div></div>
+          <button class="btn btn-sec btn-sm" data-action="mark-all-read" id="mark-all-read-btn">Mark all read</button>
+        </div>
+        <div class="card">
+          <div class="af" id="notif-list"><div class="loading-state"><div class="spinner"></div>Loading…</div></div>
+          <div class="pager" id="notif-pager"></div>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-profile">
+        <div class="sec-head"><h2 class="sec-ttl">Profile Settings</h2></div>
+        <div class="grid g2">
+          <div class="card">
+            <h3 class="clbl">Edit Profile</h3>
+            <form id="form-profile" data-submit="update-profile">
+              <div class="field-row">
+                <div class="field"><label for="prof-first">First Name</label><input type="text" id="prof-first"></div>
+                <div class="field"><label for="prof-last">Last Name</label><input type="text" id="prof-last"></div>
+              </div>
+              <div class="field-row">
+                <div class="field"><label for="prof-weight">Weight (kg)</label><input type="number" id="prof-weight" step="0.1"></div>
+                <div class="field"><label for="prof-height">Height (cm)</label><input type="number" id="prof-height" step="0.1"></div>
+              </div>
+              <div class="field"><label for="prof-age">Age</label><input type="number" id="prof-age"></div>
+              <button type="submit" class="btn btn-prim btn-block">Save Changes</button>
+            </form>
+          </div>
+          <div class="card">
+            <h3 class="clbl">Change Password</h3>
+            <form id="form-password" data-submit="change-password">
+              <div class="field"><label for="pwd-current">Current Password</label><input type="password" id="pwd-current" required></div>
+              <div class="field"><label for="pwd-new">New Password</label><input type="password" id="pwd-new" required minlength="8"></div>
+              <button type="submit" class="btn btn-sec btn-block">Update Password</button>
+            </form>
+          </div>
+        </div>
+              <div class="card" style="margin-top:18px">
+          <h3 class="clbl">Export Your Data</h3>
+          <div class="field-hint" style="margin-top:0">
+            Everything FitPilot holds on you &mdash; workouts, movements, meals, goals, body metrics,
+            sleep, water, pain logs and records. The archive is one CSV per dataset; the JSON is the
+            same data in one file. Neither contains your password.
+          </div>
+          <div class="export-row">
+            <button class="btn btn-prim btn-sm" data-action="export" data-format="zip">⬇ Everything (.zip of CSVs)</button>
+            <button class="btn btn-sec btn-sm" data-action="export" data-format="json">⬇ Everything (.json)</button>
+          </div>
+          <div class="export-row">
+            <select id="export-dataset" aria-label="Dataset to export as CSV"></select>
+            <button class="btn btn-ghost btn-sm" data-action="export" data-format="csv">⬇ One dataset (.csv)</button>
+          </div>
+        </div>
+</section>
+
+    </div>
+  </main>
+</div>
+
+<!-- ═══════════ MODALS ═══════════ -->
+<div class="modal-overlay" id="modal-log-activity">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-log-activity-title">
+    <div class="modal-head"><h2 class="modal-ttl" id="modal-log-activity-title">Log Workout</h2><button class="modal-close" data-action="close-modal" data-modal="modal-log-activity">✕</button></div>
+
+    <div class="auth-tabs" style="margin-bottom:18px">
+      <button class="auth-tab on" id="log-tab-manual" data-action="log-tab" data-tab="manual">📝 Manual</button>
+      <button class="auth-tab" id="log-tab-natural" data-action="log-tab" data-tab="natural">💬 Describe it</button>
+    </div>
+
+    <form id="form-log-activity" data-submit="log-activity">
+      <div class="field">
+        <label for="act-type">Activity Type</label>
+        <select id="act-type" required>
+          <option value="RUNNING">🏃 Running</option>
+          <option value="WALKING">🚶 Walking</option>
+          <option value="CYCLING">🚴 Cycling</option>
+          <option value="SWIMMING">🏊 Swimming</option>
+          <option value="WEIGHT_TRAINING">🏋️ Weight Training</option>
+          <option value="YOGA">🧘 Yoga</option>
+          <option value="HIIT">⚡ HIIT</option>
+          <option value="CARDIO">🏄 Cardio</option>
+          <option value="STRETCHING">🤸 Stretching</option>
+          <option value="OTHER">➕ Other</option>
+        </select>
+      </div>
+      <div class="field-row">
+        <div class="field"><label for="act-duration">Duration (min)</label><input type="number" id="act-duration" required min="1" placeholder="30"></div>
+        <div class="field"><label for="act-calories">Calories (optional)</label><input type="number" id="act-calories" placeholder="Auto-calculated"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label for="act-distance">Distance (km, optional)</label><input type="number" step="0.01" min="0" id="act-distance" placeholder="5.0"></div>
+        <div class="field"><label for="act-notes">Notes (optional)</label><input type="text" id="act-notes" placeholder="Felt great today!"></div>
+      </div>
+
+      <div class="field">
+        <label for="natural-description">Exercises (optional)</label>
+        <div class="exhead"><span>Movement</span><span>Sets</span><span>Reps</span><span>kg</span><span></span></div>
+        <div class="exrows" id="act-exercises"></div>
+        <button type="button" class="btn btn-ghost" data-action="add-exercise" data-target="act-exercises">+ Add exercise</button>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-sec" style="flex:1" data-action="close-modal" data-modal="modal-log-activity">Cancel</button>
+        <button type="submit" class="btn btn-prim" style="flex:1" id="log-activity-btn">Log It 💪</button>
+      </div>
+    </form>
+
+    <form id="form-log-natural" style="display:none" data-submit="log-natural">
+      <div class="field">
+        <label for="natural-description">Describe your workout</label>
+        <textarea id="natural-description" required rows="3" placeholder="I ran 5km in 30 minutes this morning"></textarea>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:14px">Powered by Gemini — needs GEMINI_API_KEY configured on the backend to work.</div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-sec" style="flex:1" data-action="close-modal" data-modal="modal-log-activity">Cancel</button>
+        <button type="submit" class="btn btn-prim" style="flex:1" id="log-natural-btn">Parse &amp; Log 💬</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-edit-activity">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-edit-activity-title">
+    <div class="modal-head"><h2 class="modal-ttl" id="modal-edit-activity-title">Edit Workout</h2><button class="modal-close" data-action="close-modal" data-modal="modal-edit-activity">&#10005;</button></div>
+    <form id="form-edit-activity" data-submit="edit-activity">
+      <input type="hidden" id="edit-act-id">
+      <div class="field">
+        <label for="edit-act-type">Activity Type</label>
+        <select id="edit-act-type" required>
+          <option value="RUNNING">&#127939; Running</option>
+          <option value="WALKING">&#128694; Walking</option>
+          <option value="CYCLING">&#128692; Cycling</option>
+          <option value="SWIMMING">&#127946; Swimming</option>
+          <option value="WEIGHT_TRAINING">&#127947; Weight Training</option>
+          <option value="YOGA">&#129496; Yoga</option>
+          <option value="HIIT">&#9889; HIIT</option>
+          <option value="CARDIO">&#127940; Cardio</option>
+          <option value="STRETCHING">&#129336; Stretching</option>
+          <option value="OTHER">&#10133; Other</option>
+        </select>
+      </div>
+      <div class="field-row">
+        <div class="field"><label for="edit-act-duration">Duration (min)</label><input type="number" id="edit-act-duration" required min="1"></div>
+        <div class="field"><label for="edit-act-calories">Calories</label><input type="number" id="edit-act-calories" placeholder="Leave blank to recalculate"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label for="edit-act-distance">Distance (km)</label><input type="number" step="0.01" min="0" id="edit-act-distance" placeholder="5.0"></div>
+        <div class="field"><label for="edit-act-notes">Notes</label><input type="text" id="edit-act-notes" placeholder="Felt great today!"></div>
+      </div>
+
+      <div class="field">
+        <label for="pain-bodypart">Exercises</label>
+        <div class="exhead"><span>Movement</span><span>Sets</span><span>Reps</span><span>kg</span><span></span></div>
+        <div class="exrows" id="edit-act-exercises"></div>
+        <button type="button" class="btn btn-ghost" data-action="add-exercise" data-target="edit-act-exercises">+ Add exercise</button>
+      </div>
+
+      <div style="font-size:11px;color:var(--muted);margin-bottom:14px">Streaks, personal bests, strength records and goal progress are all rebuilt after an edit.</div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-sec" style="flex:1" data-action="close-modal" data-modal="modal-edit-activity">Cancel</button>
+        <button type="submit" class="btn btn-prim" style="flex:1" id="edit-activity-btn">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+<div class="modal-overlay" id="modal-log-pain">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-log-pain-title">
+    <div class="modal-head"><h2 class="modal-ttl" id="modal-log-pain-title">Log Pain</h2><button class="modal-close" data-action="close-modal" data-modal="modal-log-pain">✕</button></div>
+    <form id="form-log-pain" data-submit="log-pain">
+      <div class="field">
+        <label for="pain-bodypart">Body Part</label>
+        <select id="pain-bodypart" required>
+          <option value="LEFT_KNEE">Left Knee</option>
+          <option value="RIGHT_KNEE">Right Knee</option>
+          <option value="LEFT_SHOULDER">Left Shoulder</option>
+          <option value="RIGHT_SHOULDER">Right Shoulder</option>
+          <option value="LOWER_BACK">Lower Back</option>
+          <option value="UPPER_BACK">Upper Back</option>
+          <option value="LEFT_ANKLE">Left Ankle</option>
+          <option value="RIGHT_ANKLE">Right Ankle</option>
+          <option value="NECK">Neck</option>
+          <option value="HIPS">Hips</option>
+          <option value="OTHER">Other</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="pain-severity">Severity (1 = mild, 5 = severe)</label>
+        <select id="pain-severity" required>
+          <option value="1">1 — Mild</option>
+          <option value="2">2 — Noticeable</option>
+          <option value="3">3 — Moderate</option>
+          <option value="4">4 — Significant</option>
+          <option value="5">5 — Severe</option>
+        </select>
+      </div>
+      <div class="field"><label for="pain-description">Description (optional)</label><input type="text" id="pain-description" placeholder="Sharp pain after running downhill"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-sec" style="flex:1" data-action="close-modal" data-modal="modal-log-pain">Cancel</button>
+        <button type="submit" class="btn btn-prim" style="flex:1" id="log-pain-btn">Log It</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-edit-goal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-edit-goal-title">
+    <div class="modal-head"><h2 class="modal-ttl" id="modal-edit-goal-title">Edit Goal</h2><button class="modal-close" data-action="close-modal" data-modal="modal-edit-goal">✕</button></div>
+    <form id="form-edit-goal" data-submit="edit-goal">
+      <input type="hidden" id="edit-goal-id">
+      <div class="field"><label for="edit-goal-target">Target Value</label><input type="number" id="edit-goal-target" required min="0.1" step="any"></div>
+      <div class="field"><label for="edit-goal-deadline">Deadline (optional)</label><input type="date" id="edit-goal-deadline"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-sec" style="flex:1" data-action="close-modal" data-modal="modal-edit-goal">Cancel</button>
+        <button type="submit" class="btn btn-prim" style="flex:1" id="edit-goal-btn">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-challenge-detail">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="cd-title">
+    <div class="modal-head"><h2 class="modal-ttl" id="cd-title">Challenge</h2><button class="modal-close" data-action="close-modal" data-modal="modal-challenge-detail">✕</button></div>
+    <div id="cd-content"><div class="loading-state"><div class="spinner"></div></div></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-log-meal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-log-meal-title">
+    <div class="modal-head"><h2 class="modal-ttl" id="modal-log-meal-title">Log Meal</h2><button class="modal-close" data-action="close-modal" data-modal="modal-log-meal">&#10005;</button></div>
+
+    <div class="auth-tabs" style="margin-bottom:18px">
+      <button class="auth-tab on" id="meal-tab-manual" data-action="meal-tab" data-tab="manual">📝 Manual</button>
+      <button class="auth-tab" id="meal-tab-natural" data-action="meal-tab" data-tab="natural">💬 Describe it</button>
+    </div>
+
+    <form id="form-log-meal" data-submit="log-meal">
+      <div class="field-row">
+        <div class="field">
+          <label for="meal-type">Meal</label>
+          <select id="meal-type">
+            <option value="BREAKFAST">🌅 Breakfast</option>
+            <option value="LUNCH">🥗 Lunch</option>
+            <option value="DINNER">🍽 Dinner</option>
+            <option value="SNACK">🍎 Snack</option>
+            <option value="OTHER">➕ Other</option>
+          </select>
+        </div>
+        <div class="field"><label for="meal-calories">Calories</label><input type="number" id="meal-calories" min="0" placeholder="Or fill the macros below"></div>
+      </div>
+      <div class="field"><label for="meal-description">What was it?</label><input type="text" id="meal-description" placeholder="Porridge with berries"></div>
+      <div class="field-row">
+        <div class="field"><label for="meal-protein">Protein (g)</label><input type="number" id="meal-protein" min="0" step="any" placeholder="optional"></div>
+        <div class="field"><label for="meal-carbs">Carbs (g)</label><input type="number" id="meal-carbs" min="0" step="any" placeholder="optional"></div>
+        <div class="field"><label for="meal-fat">Fat (g)</label><input type="number" id="meal-fat" min="0" step="any" placeholder="optional"></div>
+      </div>
+      <div class="field-hint">Leave calories blank and they&#39;re worked out from the macros at 4/4/9 kcal per gram.</div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-sec" style="flex:1" data-action="close-modal" data-modal="modal-log-meal">Cancel</button>
+        <button type="submit" class="btn btn-prim" style="flex:1" id="log-meal-btn">Log It 🍽</button>
+      </div>
+    </form>
+
+    <form id="form-log-meal-natural" style="display:none" data-submit="log-meal-natural">
+      <div class="field">
+        <label for="meal-natural-description">Describe what you ate</label>
+        <textarea id="meal-natural-description" required rows="3" placeholder="two eggs, toast and a flat white"></textarea>
+      </div>
+      <div class="field-hint">Powered by Gemini &mdash; needs GEMINI_API_KEY on the backend. The numbers come back as an
+        <strong>estimate</strong> from typical portion sizes, not from a food database, and every estimated meal is
+        marked so you can correct it.</div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-sec" style="flex:1" data-action="close-modal" data-modal="modal-log-meal">Cancel</button>
+        <button type="submit" class="btn btn-prim" style="flex:1" id="log-meal-natural-btn">Estimate &amp; Log 💬</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-edit-meal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-edit-meal-title">
+    <div class="modal-head"><h2 class="modal-ttl" id="modal-edit-meal-title">Edit Meal</h2><button class="modal-close" data-action="close-modal" data-modal="modal-edit-meal">&#10005;</button></div>
+    <form id="form-edit-meal" data-submit="edit-meal">
+      <input type="hidden" id="edit-meal-id">
+      <div class="field-row">
+        <div class="field">
+          <label for="edit-meal-type">Meal</label>
+          <select id="edit-meal-type">
+            <option value="BREAKFAST">🌅 Breakfast</option>
+            <option value="LUNCH">🥗 Lunch</option>
+            <option value="DINNER">🍽 Dinner</option>
+            <option value="SNACK">🍎 Snack</option>
+            <option value="OTHER">➕ Other</option>
+          </select>
+        </div>
+        <div class="field"><label for="edit-meal-calories">Calories</label><input type="number" id="edit-meal-calories" min="0"></div>
+      </div>
+      <div class="field"><label for="edit-meal-description">What was it?</label><input type="text" id="edit-meal-description"></div>
+      <div class="field-row">
+        <div class="field"><label for="edit-meal-protein">Protein (g)</label><input type="number" id="edit-meal-protein" min="0" step="any"></div>
+        <div class="field"><label for="edit-meal-carbs">Carbs (g)</label><input type="number" id="edit-meal-carbs" min="0" step="any"></div>
+        <div class="field"><label for="edit-meal-fat">Fat (g)</label><input type="number" id="edit-meal-fat" min="0" step="any"></div>
+      </div>
+      <div class="field-hint" id="edit-meal-note"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-sec" style="flex:1" data-action="close-modal" data-modal="modal-edit-meal">Cancel</button>
+        <button type="submit" class="btn btn-prim" style="flex:1" id="edit-meal-btn">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-create-goal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-create-goal-title">
+    <div class="modal-head"><h2 class="modal-ttl" id="modal-create-goal-title">New Goal</h2><button class="modal-close" data-action="close-modal" data-modal="modal-create-goal">✕</button></div>
+    <form id="form-create-goal" data-submit="create-goal">
+      <div class="field">
+        <label for="goal-type">Goal Type</label>
+        <select id="goal-type" required data-change="goal-target-hint">
+          <option value="CALORIES_PER_WEEK">🔥 Calories per week</option>
+          <option value="WORKOUTS_PER_WEEK">💪 Workouts per week</option>
+          <option value="DURATION_PER_WEEK">⏱ Minutes per week</option>
+          <option value="CALORIE_INTAKE_PER_DAY">🍽 Calorie budget per day</option>
+          <option value="PROTEIN_PER_DAY">🥩 Protein per day (g)</option>
+          <option value="TARGET_WEIGHT">⚖️ Target body weight (kg)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="goal-target">Target Value</label>
+        <input type="number" id="goal-target" required min="0.1" step="any" placeholder="e.g. 3000">
+        <!-- Filled in by goalTargetHint(): a body-weight goal and a calorie budget want
+             very different numbers, and a single generic placeholder invited people to
+             type a weekly figure into a daily budget. -->
+        <div class="field-hint" id="goal-target-hint"></div>
+      </div>
+      <div class="field"><label for="goal-deadline">Deadline (optional)</label><input type="date" id="goal-deadline"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-sec" style="flex:1" data-action="close-modal" data-modal="modal-create-goal">Cancel</button>
+        <button type="submit" class="btn btn-prim" style="flex:1" id="create-goal-btn">Create Goal</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-create-challenge">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-create-challenge-title">
+    <div class="modal-head"><h2 class="modal-ttl" id="modal-create-challenge-title">New Challenge</h2><button class="modal-close" data-action="close-modal" data-modal="modal-create-challenge">✕</button></div>
+    <form id="form-create-challenge" data-submit="create-challenge">
+      <div class="field">
+        <label for="ch-opponents">Who&#39;s competing</label>
+        <!-- A multi-select of friends, because a challenge can hold a group now
+             (PLAN P2-4). Friends are the only people you can challenge (PLAN P4-4):
+             the old paste-an-Athlete-ID box let anyone with your id invite you. -->
+        <select id="ch-opponents" multiple size="4" style="min-height:96px"></select>
+        <div class="field-hint">Hold Ctrl (⌘ on Mac) to pick more than one. Up to 9 others.</div>
+      </div>
+      <div class="field">
+        <label for="ch-type">Challenge Type</label>
+        <select id="ch-type" required>
+          <option value="CALORIES_BURNED">🔥 Most calories burned</option>
+          <option value="WORKOUT_COUNT">💪 Most workouts logged</option>
+          <option value="TOTAL_DURATION">⏱ Most minutes trained</option>
+          <option value="STREAK_LENGTH">⚡ Longest streak</option>
+        </select>
+      </div>
+      <div class="field"><label for="ch-title">Title (optional)</label><input type="text" id="ch-title" placeholder="Week Burn Off"></div>
+      <div class="field"><label for="ch-days">Duration (days)</label><input type="number" id="ch-days" value="7" min="1" max="30"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-sec" style="flex:1" data-action="close-modal" data-modal="modal-create-challenge">Cancel</button>
+        <button type="submit" class="btn btn-prim" style="flex:1" id="create-challenge-btn">Send Challenge</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- One confirm dialog for every destructive action — see confirmDialog() in js/ui.js.
+     Last of the modals so it stacks above any it is opened from. Cancel comes first, so
+     it is what openModal() focuses. -->
+<div class="modal-overlay" id="modal-confirm">
+  <div class="modal modal-sm" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-message">
+    <div class="modal-head"><h2 class="modal-ttl" id="confirm-title">Are you sure?</h2><button class="modal-close" data-action="close-modal" data-modal="modal-confirm" aria-label="Close">✕</button></div>
+    <p class="confirm-msg" id="confirm-message"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-sec" style="flex:1" id="confirm-cancel" data-action="close-modal" data-modal="modal-confirm">Cancel</button>
+      <button type="button" class="btn btn-danger" style="flex:1" id="confirm-ok" data-action="confirm-accept">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<button class="fab" data-action="open-modal" data-modal="modal-log-activity" title="Log Workout" id="fab-log" style="display:none">+</button>
+
+<!-- Chart.js from a CDN, pinned. No build step, no npm - consistent with the rest
+     of this frontend. A classic script runs before any module, so window.Chart exists
+     by the time a panel renders; js/charts.js still guards on it, so a blocked CDN
+     degrades to the numbers that were always there rather than a broken panel.
+     integrity pins the exact bytes, so a tampered CDN copy is refused rather than run.
+     It must stay chart.umd.js: there is no chart.umd.min.js in the 4.4.3 package, so
+     jsDelivr generates that one itself and warns never to put SRI on it. To upgrade,
+     change the version and recompute: openssl dgst -sha384 -binary chart.umd.js | openssl base64 -A -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.js"
+        integrity="sha384-tgbB5AKnszdcfwcZtTfuhR3Ko1XZdlDfsLtkxiiAZiVkkXCkFmp+FQFh+V/UTo54"
+        crossorigin="anonymous"></script>
+<!-- Browsers refuse to load ES modules from file://, so opening this file directly
+     leaves a login form whose buttons do nothing. This says so instead. A classic
+     script, because those still load from file://; a file, because the CSP above
+     allows no inline script. -->
+<script src="js/file-protocol-check.js"></script>
+<!-- The app itself: native ES modules under js/, entry point main.js. Still no build step. -->
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
