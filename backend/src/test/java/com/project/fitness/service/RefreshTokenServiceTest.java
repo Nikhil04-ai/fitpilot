@@ -80,6 +80,15 @@ class RefreshTokenServiceTest {
     }
 
     @Test
+    @DisplayName("logout ends every session: refresh tokens revoked and access tokens retired")
+    void endAllSessions_revokesAndRetires() {
+        refreshTokenService.endAllSessions("user-1");
+
+        verify(refreshTokenRepository).revokeAllByUserId("user-1");
+        verify(userRepository).retireIssuedTokens("user-1");
+    }
+
+    @Test
     @DisplayName("the daily purge removes spent tokens as of now")
     void purge_deletesSpentTokens() {
         refreshTokenService.purgeSpentTokens();

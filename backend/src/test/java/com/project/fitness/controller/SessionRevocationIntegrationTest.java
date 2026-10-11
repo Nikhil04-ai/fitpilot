@@ -143,6 +143,53 @@ class SessionRevocationIntegrationTest {
         assertThat(getProfile(userId, changed.get("accessToken").asText()).statusCode()).isEqualTo(401);
     }
 
+    /**
+     * Logout revoked every refresh token but left each device's access token working for
+     * up to 48 hours, so "All sessions revoked" was only true of renewal. It now retires
+     * the access tokens too, through the same token version a password change bumps.
+     */
+    @Test
+    @DisplayName("Logging out kills every access token already issued, on every device")
+    void logout_invalidatesAccessTokens() throws Exception {
+        String email = register("logout");
+        JsonNode laptop = login(email, PASSWORD);
+        JsonNode phone = login(email, PASSWORD);
+        String userId = laptop.get("user").get("id").asText();
+
+        assertThat(getProfile(userId, laptop.get("accessToken").asText()).statusCode()).isEqualTo(200);
+        assertThat(getProfile(userId, phone.get("accessToken").asText()).statusCode()).isEqualTo(200);
+
+        // As the frontend sends it: the access token, and the refresh token in the body.
+        HttpResponse<String> out = send(post("/api/auth/logout",
+                Map.of("refreshToken", laptop.get("refreshToken").asText()))
+                .header("Authorization", "Bearer " + laptop.get("accessToken").asText()));
+        assertThat(out.statusCode()).isEqualTo(200);
+        assertThat(out.body()).contains("All sessions revoked");
+
+        assertThat(getProfile(userId, laptop.get("accessToken").asText()).statusCode()).isEqualTo(401);
+        assertThat(getProfile(userId, phone.get("accessToken").asText()).statusCode()).isEqualTo(401);
+        assertThat(refresh(phone.get("refreshToken").asText()).statusCode()).isEqualTo(401);
+
+        // Logging back in works, at the new version.
+        JsonNode again = login(email, PASSWORD);
+        assertThat(getProfile(userId, again.get("accessToken").asText()).statusCode()).isEqualTo(200);
+    }
+
+    /** A device whose access token had already lapsed proves itself with the refresh token. */
+    @Test
+    @DisplayName("Logging out with only a refresh token retires the access tokens too")
+    void logoutWithRefreshTokenOnly_invalidatesAccessTokens() throws Exception {
+        String email = register("logout-refresh-only");
+        JsonNode me = login(email, PASSWORD);
+        String userId = me.get("user").get("id").asText();
+
+        HttpResponse<String> out = send(post("/api/auth/logout",
+                Map.of("refreshToken", me.get("refreshToken").asText())));
+        assertThat(out.body()).contains("All sessions revoked");
+
+        assertThat(getProfile(userId, me.get("accessToken").asText()).statusCode()).isEqualTo(401);
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────
 
     private HttpResponse<String> getProfile(String userId, String accessToken) throws Exception {

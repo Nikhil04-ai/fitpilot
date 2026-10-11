@@ -21,8 +21,8 @@ import java.util.Map;
  * <p>Each login adds a session and leaves the others alone; each refresh retires only
  * the token it was given (PLAN P4-3). Issuing a token used to revoke every other token
  * the user held, so signing in on a phone, or one tab renewing its session, signed out
- * every other device. Everything ends together only on logout, a password change and a
- * password reset — the three places that call {@link #revokeAll}.
+ * every other device. Everything ends together only on logout ({@link #endAllSessions}),
+ * a password change and a password reset (both {@link #revokeAll}).
  */
 @Slf4j
 @Service
@@ -99,6 +99,18 @@ public class RefreshTokenService {
     @Transactional
     public void revokeAll(String userId) {
         refreshTokenRepository.revokeAllByUserId(userId);
+    }
+
+    /**
+     * Logout: ends every session the user has, access tokens included. Revoking refresh
+     * tokens alone stops renewal, but each device's access token would live out its 48
+     * hours. Bumping the token version retires those too, through the same check a
+     * password change relies on. Nobody is handed a new token: they log in.
+     */
+    @Transactional
+    public void endAllSessions(String userId) {
+        refreshTokenRepository.revokeAllByUserId(userId);
+        userRepository.retireIssuedTokens(userId);
     }
 
     /**

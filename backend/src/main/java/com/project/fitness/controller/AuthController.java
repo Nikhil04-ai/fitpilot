@@ -82,7 +82,8 @@ public class AuthController {
     }
 
     /**
-     * Logout — revokes all refresh tokens for the user.
+     * Logout — ends every session for the user: all refresh tokens are revoked and
+     * every access token already issued stops working (the token version moves on).
      * POST /api/auth/logout
      * Body: { "refreshToken": "..." }   (optional if a valid access token is sent)
      *
@@ -106,7 +107,7 @@ public class AuthController {
             return ResponseEntity.ok(Map.of("message", "Logged out locally. No active session to revoke."));
         }
 
-        refreshTokenService.revokeAll(userId);
+        refreshTokenService.endAllSessions(userId);
         return ResponseEntity.ok(Map.of("message", "Logged out successfully. All sessions revoked."));
     }
 

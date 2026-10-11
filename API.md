@@ -47,7 +47,7 @@ Requests and responses are JSON (UTF-8), except the export downloads. Send
 
 | Token | Lifetime | Notes |
 |---|---|---|
-| Access (JWT) | 48 hours | A signed JWT whose subject is the user id. It also carries the account's **token version** (claim `tv`), which is checked on every request: a password change or reset adds one, so every access token issued before it stops working at once. Tokens from before versions existed have no claim and count as version 0. |
+| Access (JWT) | 48 hours | A signed JWT whose subject is the user id. It also carries the account's **token version** (claim `tv`), which is checked on every request: logout, a password change or a reset adds one, so every access token issued before it stops working at once. Tokens from before versions existed have no claim and count as version 0. |
 | Refresh | 30 days | Stored server-side, one per signed-in device, and **rotated**: every refresh revokes the one it was given and no other. Logout, a password change and a password reset revoke all of them. Revoked and expired tokens are deleted daily at 03:45. |
 
 **Public routes** (no token needed): `/api/auth/**`, `/actuator/health`, `/swagger-ui/**`
@@ -192,7 +192,7 @@ Account creation, sign-in, token renewal, sign-out, and password recovery for us
 | POST | `/api/auth/register` | Create an account |
 | POST | `/api/auth/login` | Exchange email + password for an access/refresh token pair |
 | POST | `/api/auth/refresh` | Exchange a refresh token for a new pair (rotation) |
-| POST | `/api/auth/logout` | Revoke the caller's refresh tokens |
+| POST | `/api/auth/logout` | End all of the caller's sessions (refresh and access tokens) |
 | POST | `/api/auth/forgot-password` | Email a password-reset link |
 | POST | `/api/auth/reset-password` | Set a new password using a reset token |
 
@@ -289,7 +289,7 @@ Exchanges a valid refresh token for a new access token and a new refresh token. 
   Any other failure during a refresh is a real fault and returns the generic `500`. It used to come back as a `401` showing the internal error message.
 
 ### `POST /api/auth/logout`
-Revokes **all** refresh tokens for the caller. The caller is identified by the Bearer token if one is sent, otherwise by owning the refresh token in the body.
+Ends **every** session for the caller: all refresh tokens are revoked, and every access token already issued stops working. The caller is identified by the Bearer token if one is sent, otherwise by owning the refresh token in the body.
 - **Auth:** `Public`, with an optional `Bearer` header. At least one of the Bearer token or `refreshToken` is needed for anything to be revoked on the server.
 - **Rate limit:** auth tier
 - **Body (optional):**
@@ -304,7 +304,7 @@ Revokes **all** refresh tokens for the caller. The caller is identified by the B
   { "message": "Logged out successfully. All sessions revoked." }
   ```
   If no caller could be identified, the response is `{"message":"Logged out locally. No active session to revoke."}`.
-  - Logout revokes refresh tokens only. The access token **stays valid until it expires** (up to 48 hours), because logout doesn't change the token version. A password change or reset does.
+  - Logout adds one to the account's token version, as a password change or reset does, so every access token issued before it, on every device, is a `401` from then on. Nobody is handed a new pair: signing back in is a fresh login.
 - **Errors:** none specific.
 
 ### `POST /api/auth/forgot-password`

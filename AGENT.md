@@ -92,12 +92,12 @@ Spring's default for a stateless API returns **403 for both**. That meant a pers
 
 ### Access tokens carry a version — pass the user's current one
 
-`JwtAuthenticationFilter` compares the token's `tv` claim with the account's `tokenVersion` on every request and refuses a mismatch (a 401). A password change or reset calls `user.retireIssuedTokens()`, which is how every token issued before it dies at once.
+`JwtAuthenticationFilter` compares the token's `tv` claim with the account's `tokenVersion` on every request and refuses a mismatch (a 401). A password change or reset calls `user.retireIssuedTokens()`, and logout calls `RefreshTokenService.endAllSessions()` (an atomic `UPDATE`, since logout holds only an id). That is how every token issued before them dies at once.
 
 - **Mint a real token with `generateToken(id, role, user.getTokenVersion())`**, and only after any bump, so the caller's own fresh token carries the new version. The two-argument overload issues version 0 and exists for tests: use it in production code and that token dies the first time the password changes, with nothing to say why.
 - A token with no `tv` claim counts as version 0, which is what keeps every pre-upgrade token working.
 - An account that no longer exists is deliberately **not** refused in the filter. The request goes on and the controller returns the 409 the frontend recovers from; a 401 would just loop through the refresh.
-- Logout does not bump it (only refresh tokens are revoked), so a logged-out access token lives out its 48 hours.
+- Logout bumps it too, so logging out on one device ends the access token on every device, matching the refresh tokens, which it already revoked everywhere. Don't switch logout back to `revokeAll()` alone: that left each device's access token alive for 48 hours. Because logout can be proved with a refresh token alone, and `resolveUserId` accepts one already revoked or expired, whoever holds an old refresh token can end the account's sessions until the daily purge removes it. That was true of the refresh tokens before; it now reaches the access tokens too.
 - It costs one small query per authenticated request. If that ever matters, a short cache is the lever, at the price of the old token surviving for that long.
 
 ### Roles need the `ROLE_` prefix
