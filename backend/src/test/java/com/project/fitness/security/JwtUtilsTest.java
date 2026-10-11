@@ -113,6 +113,22 @@ class JwtUtilsTest {
         assertThat(token1).isNotEqualTo(token2);
     }
 
+    // ── Token version (PLAN P4-3) ─────────────────────────────────────────────
+
+    @Test
+    @DisplayName("the account's token version round-trips through the token")
+    void tokenVersion_roundTrips() {
+        String token = jwtUtils.generateToken("user-1", "USER", 7);
+        assertThat(jwtUtils.tokenVersionOf(jwtUtils.getAllClaims(token))).isEqualTo(7);
+    }
+
+    @Test
+    @DisplayName("the two-argument overload issues version 0, the default account's version")
+    void tokenVersion_defaultsToZero() {
+        String token = jwtUtils.generateToken("user-1", "USER");
+        assertThat(jwtUtils.tokenVersionOf(jwtUtils.getAllClaims(token))).isZero();
+    }
+
     // ── Expired token ─────────────────────────────────────────────────────────
 
     @Test

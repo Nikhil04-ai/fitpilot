@@ -152,6 +152,9 @@ public class PasswordResetService {
 
         User user = token.getUser();
         user.setPassword(passwordEncoder.encode(newPassword));
+        // Retires access tokens already issued, which would otherwise outlive the reset
+        // by up to 48 hours (PLAN P4-3). Nobody is handed a new one: they log in.
+        user.retireIssuedTokens();
         userRepository.save(user);
 
         token.setUsedAt(LocalDateTime.now());

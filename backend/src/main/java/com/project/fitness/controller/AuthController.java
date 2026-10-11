@@ -43,7 +43,7 @@ public class AuthController {
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
         try {
             User user = userService.authenticate(loginRequest);
-            String accessToken   = jwtUtils.generateToken(user.getId(), user.getRole().name());
+            String accessToken   = jwtUtils.generateToken(user.getId(), user.getRole().name(), user.getTokenVersion());
             RefreshToken refresh = refreshTokenService.createRefreshToken(user);
 
             Map<String, Object> response = new LinkedHashMap<>();

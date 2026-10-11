@@ -90,6 +90,16 @@ Spring's default for a stateless API returns **403 for both**. That meant a pers
 
 `AccessDeniedException` thrown *inside* a controller or service never reaches Spring Security's `ExceptionTranslationFilter` — that only sees exceptions escaping the filter chain — so `GlobalExceptionHandler` has an explicit handler for it. Without that specific handler it falls into the `RuntimeException` catch-all and is reported as a 400, which reads like the client sent something malformed.
 
+### Access tokens carry a version — pass the user's current one
+
+`JwtAuthenticationFilter` compares the token's `tv` claim with the account's `tokenVersion` on every request and refuses a mismatch (a 401). A password change or reset calls `user.retireIssuedTokens()`, which is how every token issued before it dies at once.
+
+- **Mint a real token with `generateToken(id, role, user.getTokenVersion())`**, and only after any bump, so the caller's own fresh token carries the new version. The two-argument overload issues version 0 and exists for tests: use it in production code and that token dies the first time the password changes, with nothing to say why.
+- A token with no `tv` claim counts as version 0, which is what keeps every pre-upgrade token working.
+- An account that no longer exists is deliberately **not** refused in the filter. The request goes on and the controller returns the 409 the frontend recovers from; a 401 would just loop through the refresh.
+- Logout does not bump it (only refresh tokens are revoked), so a logged-out access token lives out its 48 hours.
+- It costs one small query per authenticated request. If that ever matters, a short cache is the lever, at the price of the old token surviving for that long.
+
 ### Roles need the `ROLE_` prefix
 
 `SecurityConfig` guards `/api/admin/**` with `.hasRole("ADMIN")`, and `hasRole()` looks for the authority **`ROLE_ADMIN`**. `JwtAuthenticationFilter` was granting a bare `ADMIN`, so that rule could never match anyone — a dead rule that looked live. The filter now adds the prefix. `JwtAuthenticationFilterTest` asserts it.

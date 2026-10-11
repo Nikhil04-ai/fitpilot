@@ -86,6 +86,12 @@ class PasswordResetIntegrationTest {
     @Order(2)
     @DisplayName("The emailed link resets the password and the new one works")
     void resetWithTheEmailedLink() throws Exception {
+        // Signed in before the reset, as whoever the reset is meant to lock out would be.
+        JsonNode before = objectMapper.readTree(login(OLD_PASSWORD).body());
+        String userId = before.get("user").get("id").asText();
+        String oldAccessToken = before.get("accessToken").asText();
+        assertThat(profileStatus(userId, oldAccessToken)).isEqualTo(200);
+
         assertThat(send(post("/api/auth/forgot-password", Map.of("email", EMAIL))).statusCode())
                 .isEqualTo(200);
 
@@ -98,6 +104,10 @@ class PasswordResetIntegrationTest {
 
         assertThat(login(NEW_PASSWORD).statusCode()).as("new password works").isEqualTo(200);
         assertThat(login(OLD_PASSWORD).statusCode()).as("old password is dead").isEqualTo(401);
+
+        // The reset also ends sessions that were already open: a refresh token is gone,
+        // and now so is the access token, which used to live out its 48 hours (PLAN P4-3).
+        assertThat(profileStatus(userId, oldAccessToken)).as("old access token").isEqualTo(401);
     }
 
     @Test
@@ -182,6 +192,11 @@ class PasswordResetIntegrationTest {
         int start = body.indexOf("?reset=") + "?reset=".length();
         int end = body.indexOf('"', start);
         return body.substring(start, end);
+    }
+
+    private int profileStatus(String userId, String accessToken) throws Exception {
+        return send(HttpRequest.newBuilder().uri(URI.create(url("/api/profile/" + userId)))
+                .header("Authorization", "Bearer " + accessToken).GET().build()).statusCode();
     }
 
     private HttpResponse<String> login(String password) throws Exception {

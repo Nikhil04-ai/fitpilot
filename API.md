@@ -47,7 +47,7 @@ Requests and responses are JSON (UTF-8), except the export downloads. Send
 
 | Token | Lifetime | Notes |
 |---|---|---|
-| Access (JWT) | 48 hours | Stateless. The subject is the user id. |
+| Access (JWT) | 48 hours | A signed JWT whose subject is the user id. It also carries the account's **token version** (claim `tv`), which is checked on every request: a password change or reset adds one, so every access token issued before it stops working at once. Tokens from before versions existed have no claim and count as version 0. |
 | Refresh | 30 days | Stored server-side, one per signed-in device, and **rotated**: every refresh revokes the one it was given and no other. Logout, a password change and a password reset revoke all of them. Revoked and expired tokens are deleted daily at 03:45. |
 
 **Public routes** (no token needed): `/api/auth/**`, `/actuator/health`, `/swagger-ui/**`
@@ -304,7 +304,7 @@ Revokes **all** refresh tokens for the caller. The caller is identified by the B
   { "message": "Logged out successfully. All sessions revoked." }
   ```
   If no caller could be identified, the response is `{"message":"Logged out locally. No active session to revoke."}`.
-  - The access token is a stateless JWT and **stays valid until it expires**. Only refresh tokens are revoked.
+  - Logout revokes refresh tokens only. The access token **stays valid until it expires** (up to 48 hours), because logout doesn't change the token version. A password change or reset does.
 - **Errors:** none specific.
 
 ### `POST /api/auth/forgot-password`
@@ -328,7 +328,7 @@ Starts a password reset. If the address belongs to an account, the server emails
 - **Errors:** none specific. Every well-formed request gets the `200` above.
 
 ### `POST /api/auth/reset-password`
-Sets a new password using a reset token, then revokes every refresh token for the account.
+Sets a new password using a reset token, then revokes every refresh token for the account and every access token already issued.
 - **Auth:** `Public` (the reset token is the credential)
 - **Rate limit:** auth tier
 - **Body:**
@@ -415,7 +415,7 @@ Changes the password after checking the current one.
   ```
   - Like `/api/auth/reset-password`, this **revokes every refresh token** for the account, including the caller's.
   - The response carries a fresh pair so the caller stays signed in. Clients should replace their stored tokens with it.
-  - Access tokens already issued are stateless and stay valid until they expire (up to 48 hours).
+  - Every access token issued before the change, including the caller's own, stops working immediately: the next call with one is a `401`. The pair in this response carries the new token version. This is checked against the account on each request, one small lookup, so there is no waiting for expiry.
 - **Errors:**
   - `400` "Current password is incorrect." This also covers a missing `currentPassword`.
   - `400` "New password must be at least 8 characters."

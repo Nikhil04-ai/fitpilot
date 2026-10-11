@@ -70,7 +70,7 @@ public class RefreshTokenService {
         User user = stored.getUser();
 
         // Issue new access token
-        String newAccessToken = jwtUtils.generateToken(user.getId(), user.getRole().name());
+        String newAccessToken = jwtUtils.generateToken(user.getId(), user.getRole().name(), user.getTokenVersion());
 
         RefreshToken newRefreshToken = createRefreshToken(user);
 

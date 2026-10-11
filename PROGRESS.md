@@ -504,9 +504,8 @@ P4-11 closed along with P4-4. Each fix started with a test that failed on the ol
   a migration.
 * **Logout still ends every session.** That is documented and deliberate. Only login and
   refresh stopped doing it.
-* **Still open:** access tokens are never checked server-side, so after a password change or
-  reset, an access token already issued works for up to 48h. That needs a per-user token
-  version checked in `JwtAuthenticationFilter`.
+* **Was still open, fixed 2026-10-08 (Phase 16):** access tokens were never checked
+  server-side, so after a password change or reset, one already issued worked for up to 48h.
 
 ### Verification
 
@@ -595,4 +594,42 @@ classes include `DeadSessionReadsIntegrationTest`, `InputValidationIntegrationTe
 `ListOrderingIntegrationTest`, `BodyMetricsServiceInputTest`, `InputChecksTest`,
 `StatsServiceMonthlyTest` and `LeftoversIntegrationTest`. The frontend halves of P4-14 and
 P4-19 pass their syntax and unit checks but have **not been driven in a browser**.
+
+---
+
+## Phase 16 — Access tokens can be retired (2026-10-08)
+
+The one real security gap left after P4 (it was recorded as "still open" under P4-3).
+Revoking refresh tokens stops a device renewing its session, but an access token it already
+held was a signed JWT that nothing checked against the account, so it worked for up to 48 hours
+after a password change or reset.
+
+* **A per-account `tokenVersion`** (V9 migration, `fitness_user.token_version`, default 0). Each
+  access token carries it as the `tv` claim, `JwtAuthenticationFilter` compares the two on every
+  request, and a mismatch is a `401` (the code the frontend answers by refreshing; the refresh
+  token is gone too, so it ends at the login screen).
+* **A password change or reset adds one.** The change hands the caller a fresh pair at the new
+  version, so that device stays signed in. A reset hands nothing back: the person logs in.
+* **Nobody is signed out by the upgrade.** A token with no claim counts as 0, and every account
+  starts at 0.
+* **A deleted account is not refused in the filter**, so it still reaches the 409 that the
+  frontend recovers from (Phase 14's dead-session work). A 401 there would loop through refresh.
+* **Cost:** one small query per authenticated request (just the integer, not the user row).
+* **Not changed:** logout still revokes refresh tokens only, so a logged-out access token lives
+  out its 48 hours. Documented in `API.md`, `ARCHITECTURE.md` and `AGENT.md`.
+
+### Verification
+
+Backend suite, re-run clean on 2026-10-11: **563 passing**, 0 failing (554 before). New: 6 filter
+tests (match, stale, newer, no claim, deleted account, and the chain running once), 2 `JwtUtils`
+tests, an end-to-end case in `SessionRevocationIntegrationTest` (old tokens die, the fresh one and
+one minted by a later refresh work, a second change retires the first), and the reset test now
+checks that a token issued before the reset dies with it. A mutation check, with the version bump
+disabled, makes both the change test and the reset test fail with `expected: 401` (the old token
+still got a 200).
+
+Found in review before commit: the filter's refusal originally continued the chain from inside
+its `try` block, so an exception from further down was caught and the chain ran a second time.
+The refusal now just leaves the request unauthenticated, and the chain runs once, after the
+`try`. The sixth filter test fails on the old structure.
 
