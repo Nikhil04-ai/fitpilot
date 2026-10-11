@@ -190,6 +190,30 @@ class SessionRevocationIntegrationTest {
         assertThat(getProfile(userId, me.get("accessToken").asText()).statusCode()).isEqualTo(401);
     }
 
+    /**
+     * Logout ends every session, so the refresh token offered as proof must be live. A
+     * spent one used to be accepted until the daily purge deleted it, letting whoever
+     * still held it sign the account out at will.
+     */
+    @Test
+    @DisplayName("A refresh token that has been rotated away can no longer sign the account out")
+    void logoutWithSpentRefreshToken_endsNothing() throws Exception {
+        String email = register("logout-spent");
+        JsonNode me = login(email, PASSWORD);
+        String userId = me.get("user").get("id").asText();
+        String spent = me.get("refreshToken").asText();
+
+        JsonNode renewed = json(refresh(spent));   // rotation revokes the original
+
+        HttpResponse<String> out = send(post("/api/auth/logout", Map.of("refreshToken", spent)));
+        assertThat(out.statusCode()).isEqualTo(200);   // logging out is never an error
+        assertThat(out.body()).contains("No active session to revoke");
+
+        // The live session is untouched.
+        assertThat(getProfile(userId, renewed.get("accessToken").asText()).statusCode()).isEqualTo(200);
+        assertThat(refresh(renewed.get("refreshToken").asText()).statusCode()).isEqualTo(200);
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────
 
     private HttpResponse<String> getProfile(String userId, String accessToken) throws Exception {

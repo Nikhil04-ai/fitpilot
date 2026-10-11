@@ -289,7 +289,7 @@ Exchanges a valid refresh token for a new access token and a new refresh token. 
   Any other failure during a refresh is a real fault and returns the generic `500`. It used to come back as a `401` showing the internal error message.
 
 ### `POST /api/auth/logout`
-Ends **every** session for the caller: all refresh tokens are revoked, and every access token already issued stops working. The caller is identified by the Bearer token if one is sent, otherwise by owning the refresh token in the body.
+Ends **every** session for the caller: all refresh tokens are revoked, and every access token already issued stops working. The caller is identified by the Bearer token if one is sent, otherwise by owning the refresh token in the body. That refresh token must be live: one already revoked (by rotation or an earlier logout) or expired identifies nobody.
 - **Auth:** `Public`, with an optional `Bearer` header. At least one of the Bearer token or `refreshToken` is needed for anything to be revoked on the server.
 - **Rate limit:** auth tier
 - **Body (optional):**
@@ -303,7 +303,7 @@ Ends **every** session for the caller: all refresh tokens are revoked, and every
   ```json
   { "message": "Logged out successfully. All sessions revoked." }
   ```
-  If no caller could be identified, the response is `{"message":"Logged out locally. No active session to revoke."}`.
+  If no caller could be identified, including when the only proof is a spent refresh token, the response is `{"message":"Logged out locally. No active session to revoke."}` and nothing is revoked.
   - Logout adds one to the account's token version, as a password change or reset does, so every access token issued before it, on every device, is a `401` from then on. Nobody is handed a new pair: signing back in is a fresh login.
 - **Errors:** none specific.
 

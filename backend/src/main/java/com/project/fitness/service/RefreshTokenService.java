@@ -83,14 +83,20 @@ public class RefreshTokenService {
     }
 
     /**
-     * Resolves the owner of a refresh token, or null if the token is unknown.
-     * Used by logout so a caller with no (or an expired) access token can still
-     * end their own session by proving possession of their refresh token.
+     * Resolves the owner of a live refresh token, or null if the token is unknown,
+     * revoked or expired. Used by logout so a caller with no (or an expired) access
+     * token can still end their own session by proving possession of their refresh token.
+     *
+     * <p>Only a live token counts as proof. Logout ends every session on the account,
+     * access tokens included, so a spent token (rotated away, revoked by an earlier
+     * logout, or past its 30 days) must not let whoever still holds it sign the
+     * account out again and again until the daily purge deletes it.
      */
     @Transactional(readOnly = true)
     public String resolveUserId(String rawRefreshToken) {
         if (rawRefreshToken == null || rawRefreshToken.isBlank()) return null;
         return refreshTokenRepository.findByToken(rawRefreshToken)
+                .filter(t -> !t.getRevoked() && !t.isExpired())
                 .map(t -> t.getUser().getId())
                 .orElse(null);
     }

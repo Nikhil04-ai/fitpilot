@@ -649,9 +649,9 @@ only true of renewal. Phase 16's token version is the mechanism; logout just did
   token, or the refresh token in the body), same `200` in every case, same messages. The frontend
   needed no change: it already clears its storage on logout, and another device's next call is a
   `401`, then a failed refresh, then the login screen.
-* **One consequence, documented in `AGENT.md`:** logout can be proved with a refresh token that
-  is already revoked or expired, until the daily purge deletes it. Whoever holds one could
-  already revoke the account's refresh tokens with it; now that ends the access tokens too.
+* **One consequence, closed the same day (below):** logout could be proved with a refresh token
+  that was already revoked or expired, until the daily purge deleted it. Whoever held one could
+  already revoke the account's refresh tokens with it; now that ended the access tokens too.
 
 ### Verification
 
@@ -660,4 +660,18 @@ Backend suite: **566 passing**, 0 failing (563 before). New: two end-to-end case
 and the other device's refresh, and logging back in works; logout with only a refresh token kills
 the access token too) and one in `RefreshTokenServiceTest`. A mutation check, with the bump
 removed from `endAllSessions`, makes both end-to-end cases fail with `expected: 401`.
+
+### Logout needs a live refresh token
+
+`RefreshTokenService.resolveUserId` now identifies the owner only of a refresh token that is
+neither revoked nor expired. A spent one (rotated away, revoked by an earlier logout, or past its
+30 days) gets the existing `200` "Logged out locally. No active session to revoke." and ends
+nothing. The access-token proof is unchanged, so a device whose refresh token was rotated by
+someone else can still log everyone out while its access token lasts; a password change is the
+remedy beyond that.
+
+Backend suite: **570 passing**, 0 failing (566 before). New: three `RefreshTokenServiceTest` cases
+(live, revoked, expired) and one end-to-end case in `SessionRevocationIntegrationTest` (a rotated
+token's logout ends nothing; the live session still works and still refreshes). With the filter
+removed, all three that cover a spent token fail.
 
