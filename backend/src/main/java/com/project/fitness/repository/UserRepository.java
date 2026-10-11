@@ -2,6 +2,7 @@ package com.project.fitness.repository;
 
 import com.project.fitness.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -20,4 +21,14 @@ public interface UserRepository extends JpaRepository<User, String> {
      */
     @Query("select u.tokenVersion from User u where u.id = :id")
     Optional<Integer> findTokenVersionById(@Param("id") String id);
+
+    /**
+     * Adds one to the token version without loading the user, which retires every access
+     * token issued so far. For logout, which has only an id; a password change or reset
+     * already holds the entity and uses {@link User#retireIssuedTokens()}. Atomic, so two
+     * racing calls both count.
+     */
+    @Modifying
+    @Query("update User u set u.tokenVersion = u.tokenVersion + 1 where u.id = :id")
+    int retireIssuedTokens(@Param("id") String id);
 }

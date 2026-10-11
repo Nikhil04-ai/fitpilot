@@ -615,8 +615,8 @@ after a password change or reset.
 * **A deleted account is not refused in the filter**, so it still reaches the 409 that the
   frontend recovers from (Phase 14's dead-session work). A 401 there would loop through refresh.
 * **Cost:** one small query per authenticated request (just the integer, not the user row).
-* **Not changed:** logout still revokes refresh tokens only, so a logged-out access token lives
-  out its 48 hours. Documented in `API.md`, `ARCHITECTURE.md` and `AGENT.md`.
+* **Not changed here:** logout still revoked refresh tokens only, so a logged-out access token
+  lived out its 48 hours. Fixed in Phase 17.
 
 ### Verification
 
@@ -632,4 +632,32 @@ Found in review before commit: the filter's refusal originally continued the cha
 its `try` block, so an exception from further down was caught and the chain ran a second time.
 The refusal now just leaves the request unauthenticated, and the chain runs once, after the
 `try`. The sixth filter test fails on the old structure.
+
+---
+
+## Phase 17 — Logout ends access tokens too (2026-10-11)
+
+Logout already revoked every refresh token the account had, on every device, and answered "All
+sessions revoked". But each device's access token kept working for up to 48 hours, so that was
+only true of renewal. Phase 16's token version is the mechanism; logout just didn't use it.
+
+* **`RefreshTokenService.endAllSessions()`** revokes the refresh tokens and adds one to the token
+  version, in one transaction. Logout calls it instead of `revokeAll()`.
+* **The bump is an atomic `UPDATE`** (`UserRepository.retireIssuedTokens`), not a load-and-save:
+  logout has only an id, and two racing calls both count.
+* **The behaviour of the endpoint is otherwise unchanged:** same proofs of identity (access
+  token, or the refresh token in the body), same `200` in every case, same messages. The frontend
+  needed no change: it already clears its storage on logout, and another device's next call is a
+  `401`, then a failed refresh, then the login screen.
+* **One consequence, documented in `AGENT.md`:** logout can be proved with a refresh token that
+  is already revoked or expired, until the daily purge deletes it. Whoever holds one could
+  already revoke the account's refresh tokens with it; now that ends the access tokens too.
+
+### Verification
+
+Backend suite: **566 passing**, 0 failing (563 before). New: two end-to-end cases in
+`SessionRevocationIntegrationTest` (logout with an access token kills both devices' access tokens
+and the other device's refresh, and logging back in works; logout with only a refresh token kills
+the access token too) and one in `RefreshTokenServiceTest`. A mutation check, with the bump
+removed from `endAllSessions`, makes both end-to-end cases fail with `expected: 401`.
 
