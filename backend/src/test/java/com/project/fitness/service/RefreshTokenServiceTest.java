@@ -59,7 +59,7 @@ class RefreshTokenServiceTest {
         when(refreshTokenRepository.findByToken("raw-1")).thenReturn(Optional.of(live()));
         when(refreshTokenRepository.revokeIfActive("rt-1")).thenReturn(1);
         when(refreshTokenRepository.save(any(RefreshToken.class))).thenAnswer(i -> i.getArgument(0));
-        when(jwtUtils.generateToken(any(), any())).thenReturn("access");
+        when(jwtUtils.generateToken(any(), any(), anyInt())).thenReturn("access");
 
         assertThat(refreshTokenService.refreshAccessToken("raw-1")).containsKey("refreshToken");
 

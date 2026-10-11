@@ -28,14 +28,38 @@ public class JwtUtils {
     @Value("${jwt.expiration.ms}")
     private int jwtExpirationMs;
 
-    public String generateToken(String userId, String role) {
+    /** Short, because it rides in every token. */
+    private static final String TOKEN_VERSION_CLAIM = "tv";
+
+    /**
+     * Issues an access token that is good for as long as the account's token version
+     * is still {@code tokenVersion} (PLAN P4-3). Production code passes
+     * {@code user.getTokenVersion()}.
+     */
+    public String generateToken(String userId, String role, int tokenVersion) {
         return Jwts.builder()
                 .subject(userId)
                 .claim("roles", List.of(role))
+                .claim(TOKEN_VERSION_CLAIM, tokenVersion)
                 .issuedAt(new Date())
                 .expiration(new Date(new Date().getTime() + jwtExpirationMs))
                 .signWith(key())
                 .compact();
+    }
+
+    /**
+     * A token at version 0, which is where every new account starts. For tests and for
+     * nothing else: a real token must carry the user's current version, or it dies the
+     * first time the password changes.
+     */
+    public String generateToken(String userId, String role) {
+        return generateToken(userId, role, 0);
+    }
+
+    /** The version a token was issued at. Tokens from before versions existed have none: 0. */
+    public int tokenVersionOf(Claims claims) {
+        Integer version = claims.get(TOKEN_VERSION_CLAIM, Integer.class);
+        return version == null ? 0 : version;
     }
 
     // FIX 1: return true is now INSIDE the try block; all catch paths return false

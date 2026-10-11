@@ -45,6 +45,21 @@ public class User {
     private Integer longestStreak = 0;
     private LocalDate lastActivityDate;
 
+    /**
+     * Added to by a password change or reset. Every access token carries the value this
+     * had when it was issued, and one that no longer matches is refused, which is how a
+     * token already in someone's hands is retired (PLAN P4-3). Not exposed to clients.
+     */
+    @Builder.Default
+    @JsonIgnore
+    @Column(nullable = false)
+    private Integer tokenVersion = 0;
+
+    /** Retires every access token issued so far. Call before issuing the next one. */
+    public void retireIssuedTokens() {
+        tokenVersion = (tokenVersion == null ? 0 : tokenVersion) + 1;
+    }
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 

@@ -109,7 +109,57 @@ class SessionRevocationIntegrationTest {
         assertThat(refresh(body.get("refreshToken").asText()).statusCode()).isEqualTo(200);
     }
 
+    /**
+     * Revoking refresh tokens stops a device renewing, but an access token it already
+     * holds is a signed JWT that nothing checked against the account, so it kept working
+     * for up to 48 hours after the password changed (PLAN P4-3, left open). The token
+     * now carries the account's tokenVersion, and a password change bumps it.
+     */
+    @Test
+    @DisplayName("Changing the password kills every access token already issued, but not the fresh one")
+    void passwordChange_invalidatesOldAccessTokens() throws Exception {
+        String email = register("token-version");
+        JsonNode stolen = login(email, PASSWORD);
+        JsonNode me = login(email, PASSWORD);
+        String userId = me.get("user").get("id").asText();
+
+        assertThat(getProfile(userId, stolen.get("accessToken").asText()).statusCode()).isEqualTo(200);
+        assertThat(getProfile(userId, me.get("accessToken").asText()).statusCode()).isEqualTo(200);
+
+        JsonNode changed = changePassword(userId, me.get("accessToken").asText(), PASSWORD, "brandNewPass456");
+
+        // 401, not 403: that is the code the frontend answers by refreshing or signing out.
+        assertThat(getProfile(userId, stolen.get("accessToken").asText()).statusCode()).isEqualTo(401);
+        assertThat(getProfile(userId, me.get("accessToken").asText()).statusCode()).isEqualTo(401);
+
+        // The pair handed back keeps the changing device signed in...
+        assertThat(getProfile(userId, changed.get("accessToken").asText()).statusCode()).isEqualTo(200);
+        // ...and an access token minted later by a refresh carries the new version too.
+        HttpResponse<String> renewed = refresh(changed.get("refreshToken").asText());
+        assertThat(getProfile(userId, json(renewed).get("accessToken").asText()).statusCode()).isEqualTo(200);
+
+        // A second change retires the first fresh token in turn.
+        changePassword(userId, changed.get("accessToken").asText(), "brandNewPass456", "anotherPass789");
+        assertThat(getProfile(userId, changed.get("accessToken").asText()).statusCode()).isEqualTo(401);
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────
+
+    private HttpResponse<String> getProfile(String userId, String accessToken) throws Exception {
+        return send(HttpRequest.newBuilder().uri(URI.create(url("/api/profile/" + userId)))
+                .header("Authorization", "Bearer " + accessToken).GET());
+    }
+
+    private JsonNode changePassword(String userId, String accessToken, String current, String next) throws Exception {
+        HttpResponse<String> response = send(HttpRequest.newBuilder()
+                .uri(URI.create(url("/api/profile/" + userId + "/password")))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + accessToken)
+                .PUT(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(
+                        Map.of("currentPassword", current, "newPassword", next)))));
+        assertThat(response.statusCode()).as(response.body()).isEqualTo(200);
+        return json(response);
+    }
 
     private String register(String tag) throws Exception {
         String email = "session-" + tag + "@test.com";
@@ -124,6 +174,10 @@ class SessionRevocationIntegrationTest {
                 Map.of("email", email, "password", password)));
         assertThat(resp.statusCode()).isEqualTo(200);
         return objectMapper.readTree(resp.body());
+    }
+
+    private JsonNode json(HttpResponse<String> response) throws Exception {
+        return objectMapper.readTree(response.body());
     }
 
     private HttpResponse<String> refresh(String refreshToken) throws Exception {

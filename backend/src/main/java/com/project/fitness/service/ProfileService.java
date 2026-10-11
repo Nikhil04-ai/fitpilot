@@ -51,7 +51,7 @@ public class ProfileService {
      * <p>Every session ends, as on a password reset: a device signed in with the old
      * password, perhaps by whoever learned it, must not stay signed in (PLAN P4-3). The
      * caller proved the current password, so it gets a fresh pair back and stays in.
-     * Access tokens already issued are not revocable and live out their 48 hours.
+     * Access tokens already issued stop working too, through the account's token version.
      */
     public Map<String, String> changePassword(String userId, String currentPassword, String newPassword) {
         User user = userRepository.findById(userId)
@@ -70,12 +70,16 @@ public class ProfileService {
         PasswordPolicy.requireHashable(newPassword);
 
         user.setPassword(passwordEncoder.encode(newPassword));
+        // Access tokens too, not only refresh tokens: one already issued stays valid until
+        // it expires otherwise. Bumped before the new token below is minted, so the
+        // caller's own fresh token carries the new version and stays good.
+        user.retireIssuedTokens();
         userRepository.save(user);
 
         refreshTokenService.revokeAll(userId);
         return Map.of(
                 "message", "Password changed successfully. Other devices have been signed out.",
-                "accessToken", jwtUtils.generateToken(user.getId(), user.getRole().name()),
+                "accessToken", jwtUtils.generateToken(user.getId(), user.getRole().name(), user.getTokenVersion()),
                 "refreshToken", refreshTokenService.createRefreshToken(user).getToken());
     }
 
