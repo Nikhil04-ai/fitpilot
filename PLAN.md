@@ -37,8 +37,8 @@ priority order, so priorities aren't re-derived from scratch every session.
 > since 2026-10-07 (`main`, on GitHub).
 >
 > **Status, 2026-10-11:** access tokens can now be retired (`PROGRESS.md` Phase 16), which
-> closes the last open half of P4-3. Logout now retires them as well (Phase 17). Backend
-> suite: **566 passing**, 0 failing.
+> closes the last open half of P4-3. Logout now retires them as well, and accepts only a live
+> refresh token as proof (Phase 17). Backend suite: **570 passing**, 0 failing.
 
 ## Priority key
 
@@ -485,7 +485,8 @@ didn't list, in the order I'd do it:
      password change or reset retires every token issued before it.
    - ~~Logout leaves access tokens alive until expiry~~ **Fixed 2026-10-11** (`PROGRESS.md`
      Phase 17). Logout bumps the token version too, so it ends every device's access token
-     as it already ended every refresh token.
+     as it already ended every refresh token. A refresh token offered as proof must now be
+     live, so a spent one can't be used to sign the account out.
    - P4-1's dead-session export path has not been driven in a browser.
    - **Deployment.** `frontend/js/config.js` still holds the placeholder Render URL. Render
      also needs `FRONTEND_URL` and the `MAIL_*` variables.

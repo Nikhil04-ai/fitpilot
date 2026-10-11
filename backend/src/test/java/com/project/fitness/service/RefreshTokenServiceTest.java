@@ -88,6 +88,33 @@ class RefreshTokenServiceTest {
         verify(userRepository).retireIssuedTokens("user-1");
     }
 
+    // ── resolveUserId: what proves identity at logout ──────────────────────────
+
+    @Test
+    @DisplayName("a live refresh token identifies its owner")
+    void resolveUserId_liveToken() {
+        when(refreshTokenRepository.findByToken("raw-1")).thenReturn(Optional.of(live()));
+        assertThat(refreshTokenService.resolveUserId("raw-1")).isEqualTo("user-1");
+    }
+
+    @Test
+    @DisplayName("a revoked refresh token identifies nobody")
+    void resolveUserId_revokedToken() {
+        RefreshToken revoked = live();
+        revoked.setRevoked(true);
+        when(refreshTokenRepository.findByToken("raw-1")).thenReturn(Optional.of(revoked));
+        assertThat(refreshTokenService.resolveUserId("raw-1")).isNull();
+    }
+
+    @Test
+    @DisplayName("an expired refresh token identifies nobody")
+    void resolveUserId_expiredToken() {
+        RefreshToken expired = live();
+        expired.setExpiresAt(LocalDateTime.now().minusMinutes(1));
+        when(refreshTokenRepository.findByToken("raw-1")).thenReturn(Optional.of(expired));
+        assertThat(refreshTokenService.resolveUserId("raw-1")).isNull();
+    }
+
     @Test
     @DisplayName("the daily purge removes spent tokens as of now")
     void purge_deletesSpentTokens() {

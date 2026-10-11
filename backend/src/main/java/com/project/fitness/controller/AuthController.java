@@ -90,8 +90,8 @@ public class AuthController {
      * This route sits under the permitAll /api/auth/** prefix, so it used to accept
      * a userId from the body and revoke that user's sessions — meaning anyone could
      * log any account out, repeatedly, without credentials. The caller now has to
-     * prove who they are: either a valid access token, or possession of the refresh
-     * token being revoked. A userId in the body is ignored.
+     * prove who they are: either a valid access token, or possession of a live refresh
+     * token (not revoked, not expired). A userId in the body is ignored.
      */
     @PostMapping("/logout")
     public ResponseEntity<Map<String, String>> logout(@RequestBody(required = false) LogoutRequest request) {
