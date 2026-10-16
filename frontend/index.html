@@ -869,7 +869,7 @@ body.modal-open{overflow:hidden}
         </div>
         <div class="grid g2">
           <div class="card"><h3 class="clbl">Hydration Today</h3><div id="water-content"><div class="loading-state"><div class="spinner"></div></div></div></div>
-          <div class="card"><h3 class="clbl">Sleep — Last 7 Nights</h3><div id="sleep-content"><div class="loading-state"><div class="spinner"></div></div></div></div>
+          <div class="card"><div class="card-head"><h3 class="clbl" style="margin-bottom:0">Sleep — Last 7 Nights</h3><button class="btn btn-prim btn-sm" data-action="open-log-sleep">+ Log Sleep</button></div><div id="sleep-content"><div class="loading-state"><div class="spinner"></div></div></div></div>
         </div>
         <div class="card" style="margin-top:18px">
           <h3 class="clbl">Weight &amp; BMI Trend</h3>
@@ -1085,6 +1085,43 @@ body.modal-open{overflow:hidden}
       <div class="modal-actions">
         <button type="button" class="btn btn-sec" style="flex:1" data-action="close-modal" data-modal="modal-log-pain">Cancel</button>
         <button type="submit" class="btn btn-prim" style="flex:1" id="log-pain-btn">Log It</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-log-sleep">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-log-sleep-title">
+    <div class="modal-head"><h2 class="modal-ttl" id="modal-log-sleep-title">Log Sleep</h2><button class="modal-close" data-action="close-modal" data-modal="modal-log-sleep">✕</button></div>
+    <form id="form-log-sleep" data-submit="log-sleep">
+      <div class="field">
+        <label for="sleep-date">Night of</label>
+        <input type="date" id="sleep-date" required>
+        <div class="field-hint">The evening you went to bed. Logging a night again replaces it.</div>
+      </div>
+      <div class="field-row" style="margin-bottom:14px">
+        <div class="field"><label for="sleep-bedtime">Bedtime (optional)</label><input type="time" id="sleep-bedtime" data-change="sleep-times"></div>
+        <div class="field"><label for="sleep-waketime">Woke up (optional)</label><input type="time" id="sleep-waketime" data-change="sleep-times"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label for="sleep-hours">Hours slept</label><input type="number" id="sleep-hours" min="0.1" max="24" step="any" required placeholder="7.5"></div>
+        <div class="field">
+          <label for="sleep-quality">Quality</label>
+          <select id="sleep-quality" required>
+            <option value="" selected disabled>Choose…</option>
+            <option value="1">1 — Awful</option>
+            <option value="2">2 — Poor</option>
+            <option value="3">3 — OK</option>
+            <option value="4">4 — Good</option>
+            <option value="5">5 — Great</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-hint" style="margin-bottom:14px">Fill in both times and the hours are worked out for you.</div>
+      <div class="field"><label for="sleep-notes">Notes (optional)</label><input type="text" id="sleep-notes" maxlength="255" placeholder="Woke once around 3am"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-sec" style="flex:1" data-action="close-modal" data-modal="modal-log-sleep">Cancel</button>
+        <button type="submit" class="btn btn-prim" style="flex:1" id="log-sleep-btn">Log It</button>
       </div>
     </form>
   </div>

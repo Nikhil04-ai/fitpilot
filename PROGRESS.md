@@ -771,3 +771,47 @@ Decisions worth knowing:
   * real email delivery, since email was off;
   * the deployed environment itself.
 
+---
+
+## Phase 19 — A Log Sleep form (2026-10-16)
+
+Fixes P5-11, the one feature the QA audit found a user could not reach. Sleep could only be
+written through the API, so the Health panel's sleep card and the sleep-vs-next-day chart were
+always empty in the app.
+
+* **Where:** a "+ Log Sleep" button on the "Sleep — Last 7 Nights" card opens a modal, built
+  like Log Pain. Saving reloads the card and the chart.
+* **Fields:**
+  * **Night of:** defaults to yesterday, as the server does, and stops at today.
+  * **Bedtime and wake time:** optional clock times.
+  * **Hours slept:** required, and filled in when both times are given.
+  * **Quality:** a required 1–5 choice with no preselected value. A silent default is what
+    the API stopped allowing in P4-17.
+  * **Notes:** at most 255 characters, matching the column.
+* **Times:** the API takes `LocalDateTime`s. `sleepTimes()` places the clock times on the right
+  days: the night is the evening of `sleepDate`, so a bedtime from noon on is that evening and
+  an earlier one is past midnight. Waking is the first time the clock shows the wake time
+  after bed.
+* **Logging the same night again replaces it**, as `POST /api/health/sleep/{userId}` always
+  has. The form says so.
+* **No API change.** The endpoint and its rules were already in place.
+
+### Verification
+
+* **Frontend suite:** **104 passing** (95 before). The new `tests/sleep.test.mjs` (9) covers:
+  * placing times before and after midnight, and across a year end;
+  * either time left out;
+  * the hours fill-in;
+  * the defaults when the form opens;
+  * the exact body posted;
+  * nulls for omitted fields.
+* **In Chrome against MySQL:** 19 of 19 checks passed. The scenario:
+  * open the form from a new account's empty card;
+  * check the defaults;
+  * fill in the hours from 23:10 and 06:40;
+  * confirm that a missing quality is blocked in the browser;
+  * save, and check the stored row (`2026-10-15T23:10` to `2026-10-16T06:40`), the card, and the chart reload;
+  * log a second night with no times (stored as nulls);
+  * check that the server's refusal of a future night shows as a toast and leaves the form open;
+  * check 390 px width with no horizontal scroll and no console errors.
+* **Backend:** unchanged, at 587.

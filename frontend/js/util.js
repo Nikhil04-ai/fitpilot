@@ -47,6 +47,14 @@ export function today() {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+/** Yesterday's local date: the night a sleep entry is for unless told otherwise, as on the server. */
+export function yesterday() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 /** "60" not "60.0"; "62.5" stays "62.5". */
 export function trimNumber(value) {
   if (value == null) return '';
