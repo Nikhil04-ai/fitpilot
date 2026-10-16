@@ -639,6 +639,7 @@ Parses a plain-English description with Gemini and logs the result exactly as `P
   { "description": "Bench 3x8 at 60kg then squats 5x5 at 80kg, about 50 minutes", "userId": "ignored" }
   ```
   - `description` is the only field the server reads. It is required: a missing or blank one is refused before the model is called.
+  - `description` is at most 1000 characters, also checked before the model is called. Until 2026-10-16 there was no limit, so one call could send a prompt of any size.
   - `userId` is accepted so that older clients keep working, but it is ignored.
   - Nothing is saved unless the model found something workout-shaped: a duration, a distance, a movement, or a numeric metric. Until 2026-10-11 a blank or nonsense description was saved as an empty `OTHER` workout, which counted towards streaks, goals and `WORKOUT_COUNT` challenges.
 - **Response:** `200`, an `ActivityResponse` (the same shape as `POST /api/activities`, including the save-event fields).
@@ -647,6 +648,7 @@ Parses a plain-English description with Gemini and logs the result exactly as `P
   - `additionalMetrics` holds whatever the model returned, typically `{"distance_km": null, "notes": "..."}`. The top-level `notes` is not filled in.
 - **Errors:**
   - `400` "Describe the workout you did." The description was missing or blank.
+  - `400` "A description can be at most 1000 characters."
   - `400` "Couldn't find a workout in that description. Say what you did and for how long, e.g. "ran 5 km in 30 minutes"."
   - `400` naming a limit, when the model's numbers break one of the limits on `POST /api/activities`.
   - `400` "Natural language logging isn't set up on this server (no GEMINI_API_KEY). Log it with the form instead."
@@ -983,6 +985,7 @@ Sends a description like "two eggs, toast and a coffee" to Gemini and logs the e
   { "description": "two scrambled eggs, a slice of toast and a flat white" }
   ```
   - `description` is required. It is the only field read; any other field, including `loggedAt`, is ignored.
+  - `description` is at most 1000 characters, checked before the model is called. The meal stores the first 500 of them, the column's length.
   - The meal is always logged at the current time and cannot be backdated here. To change the time afterwards, use `PUT`.
   - Gemini picks `mealType` and falls back to `OTHER` when unsure.
 - **Response:** `200`, the same `MealResponse` shape as `POST /meals`, with:
@@ -990,6 +993,7 @@ Sends a description like "two eggs, toast and a coffee" to Gemini and logs the e
   - `parseNote: "Estimated from your description — tap to correct it."`
 - **Errors:**
   - `400` `"Describe what you ate."` when `description` is blank or missing.
+  - `400` `"A description can be at most 1000 characters."`
   - `400` `"Meal parsing isn't set up on this server (no GEMINI_API_KEY) — enter the meal manually."`
   - `400` `"Couldn't estimate that meal — the AI service didn't respond. Try again in a moment, or enter it manually."` when a key is set but the call failed.
   - `400` `"Couldn't work out the calories for that. Try naming the quantity, or enter the meal manually."`

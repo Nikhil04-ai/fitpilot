@@ -32,6 +32,7 @@ public class NaturalLanguageActivityService {
         if (description == null || description.isBlank()) {
             throw new RuntimeException("Describe the workout you did.");
         }
+        InputChecks.aiDescription(description);
 
         Map<String, Object> parsed = geminiService.parseNaturalLanguageActivity(description);
 

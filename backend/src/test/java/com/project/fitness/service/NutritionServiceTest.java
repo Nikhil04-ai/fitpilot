@@ -201,6 +201,25 @@ class NutritionServiceTest {
         }
 
         @Test
+        @DisplayName("a description over 1000 characters is refused before the model is asked (P5-17)")
+        void overlongDescriptionIsRefused() {
+            assertThatThrownBy(() -> nutritionService.parseAndLog("user-1", "x".repeat(1001)))
+                    .hasMessageContaining("at most 1000 characters");
+            verifyNoInteractions(geminiService);
+            verify(mealLogRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("exactly 1000 characters still reaches the model")
+        void descriptionAtTheLimitIsAllowed() {
+            when(geminiService.parseMeal(anyString())).thenReturn(null);
+
+            assertThatThrownBy(() -> nutritionService.parseAndLog("user-1", "x".repeat(1000)))
+                    .hasMessageContaining("enter the meal manually");
+            verify(geminiService).parseMeal(anyString());
+        }
+
+        @Test
         @DisplayName("with no API key, reports that manual entry is the way forward")
         void noKeyReportsUnavailable() {
             when(geminiService.parseMeal(anyString())).thenReturn(null);

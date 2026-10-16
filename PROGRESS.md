@@ -859,3 +859,33 @@ working. Each check was driven in Chrome against the local backend on the throwa
   * **Test-script note:** deleting the row before the page's first calls had finished made
     those calls hit the 409 instead. That is the same self-heal, reached from a different
     request.
+
+---
+
+## Phase 21 — A length limit on text sent to Gemini (2026-10-16)
+
+Fixes P5-17. The two routes that send a person's own words to the model,
+`POST /api/activities/natural` and `POST /api/nutrition/meals/natural`, had no length limit. One
+call could carry a prompt of any size and spend quota on it, limited only by the AI tier's
+10 calls a minute.
+
+* **The limit:** 1000 characters on both routes, the same as workout notes. A whole gym session or
+  a day's meals written out is well under it.
+* **Where it is checked:** `InputChecks.aiDescription()`, right after the existing blank check.
+  So it runs before the model is called, and a refused description costs nothing.
+* **What the client gets:** a `400` "A description can be at most 1000 characters."
+* **The UI:** both "Describe it" text boxes carry `maxlength="1000"`, so the browser stops at the
+  limit.
+* **Not changed:** the other Gemini calls (per-workout insights and the weekly digest) build
+  their prompts from stored data, whose fields already have limits.
+
+### Verification
+
+* **New tests:**
+  * `NaturalLanguageActivityServiceTest` (1) and `NutritionServiceTest` (2): over the limit is
+    refused and the model is never called; exactly 1000 still reaches it.
+  * `InputValidationIntegrationTest` (1): both routes over HTTP.
+* **The tests catch the bug:** with the check disabled, the three over-the-limit tests fail and
+  the description goes on to the model. They pass with it restored.
+* **Backend suite:** **591 passing**, 0 failing (587 before).
+
