@@ -31,7 +31,7 @@ import { handleLogPain } from './panels/pain.js';
 import { completeTodayPlan, enrollInPlan } from './panels/plans.js';
 import { checkPlateau } from './panels/insights.js';
 import { acceptFriend, cancelChallenge, handleAddFriend, handleCreateChallenge, leaveChallenge, openChallengeDetail, removeFriend, respondChallenge } from './panels/social.js';
-import { logWater } from './panels/health.js';
+import { fillSleepHours, handleLogSleep, logWater, openLogSleep } from './panels/health.js';
 import { markAllNotificationsRead, markNotificationRead, openNotification } from './panels/notifications.js';
 import { downloadExport, handleChangePassword, handleUpdateProfile } from './panels/profile.js';
 
@@ -114,6 +114,7 @@ registerActions('click', {
   'challenge-detail':  el => openChallengeDetail(el.dataset.id),
   // panels/health
   'log-water':      () => logWater(),
+  'open-log-sleep': () => openLogSleep(),
   // panels/notifications
   'open-notification':      el => openNotification(el.dataset.id),
   'mark-notification-read': el => markNotificationRead(el.dataset.id),
@@ -132,6 +133,7 @@ registerActions('submit', {
   'log-natural':     (_, e) => handleLogNatural(e),
   'edit-activity':   (_, e) => handleEditActivity(e),
   'log-pain':        (_, e) => handleLogPain(e),
+  'log-sleep':       (_, e) => handleLogSleep(e),
   'create-goal':     (_, e) => handleCreateGoal(e),
   'edit-goal':       (_, e) => handleEditGoal(e),
   'log-meal':        (_, e) => handleLogMeal(e),
@@ -144,7 +146,8 @@ registerActions('submit', {
 });
 
 registerActions('change', {
-  'goal-target-hint': () => goalTargetHint()
+  'goal-target-hint': () => goalTargetHint(),
+  'sleep-times':      () => fillSleepHours()
 });
 
 installActionDelegation(document);

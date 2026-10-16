@@ -46,6 +46,9 @@ priority order, so priorities aren't re-derived from scratch every session.
 > observations recorded as decisions rather than bugs. Suites after the
 > fixes: backend **587 passing**, frontend **95 passing**, the Selenium suite **31 of 31**. See
 > `PROGRESS.md` Phase 18.
+>
+> **Status, 2026-10-16:** P5-11 is fixed. The Health panel has a Log Sleep form (`PROGRESS.md`
+> Phase 19). Frontend suite: **104 passing**; backend unchanged at 587.
 
 ## Priority key
 
@@ -499,7 +502,7 @@ has a test that fails on the code before the fix. A struck-through row is fixed.
 | ~~**P5-8**~~ | ~~A meal of 10,000,000 kcal was saved; a night in 2099 and waking before bedtime were accepted.~~ **Fixed.** Meal calories ≤ 20000 and macros 0–2000 g (the AI path too); a sleep date at most a day ahead; wake after bed. | Low | `NutritionService`, `SleepService` |
 | ~~**P5-9**~~ | ~~Login answered an unknown email in ~8 ms and a real one in ~135 ms, which says which addresses have accounts.~~ **Fixed.** An unknown address costs one BCrypt comparison too (live: 148 vs 159 ms). Registration still says "already exists", by design. | Low | `UserService` |
 | ~~**P5-10**~~ | ~~A reset link's token stayed in the address bar and history until a reset succeeded, so an abandoned link left it there until expiry.~~ **Fixed.** Removed as soon as it is read. | Low | `frontend/js/auth.js` |
-| **P5-11** | **Open.** There is no way to log sleep in the UI. The Health panel's "Sleep — last 7 nights" card and the sleep-vs-performance chart can only ever be empty for someone using the app; only the API writes sleep. Needs a small form (date, hours, quality, notes) — new UI, so not done in the audit. | Medium | `index.html`, `js/panels/health.js` |
+| ~~**P5-11**~~ | ~~There is no way to log sleep in the UI. The Health panel's "Sleep — last 7 nights" card and the sleep-vs-performance chart can only ever be empty for someone using the app; only the API writes sleep.~~ **Fixed 2026-10-16.** A "+ Log Sleep" button on the card opens a form: night (defaults to yesterday, as the server does), optional bedtime and wake time, hours (filled in from the two times), a required quality choice, notes. Driven in Chrome against MySQL. | Medium | `index.html`, `js/panels/health.js` |
 | **P5-12** | **Open, risk.** `forgot-password` answers ~7 ms slower for a real account (it writes a token and sends mail before replying). Small, but measurable; fixing it means answering before doing the work. | Low | `PasswordResetService` |
 | **P5-13** | **Open, risk.** Refresh tokens are stored unhashed (reset tokens are hashed), so a read-only database leak yields 30-day sessions. | Low | `RefreshToken` |
 | **P5-14** | **Open, risk (deployment).** Production also allows CORS from `http://localhost:*` and from `Origin: null` with credentials (`SecurityConfig.java:82-95`; `null` is for `file://`, which the frontend refuses to run from anyway), exposes Swagger and `/v3/api-docs`, and logs SQL text (`show-sql=true`). None leaks data on its own, since auth is a bearer header rather than a cookie; worth tightening when deploying. | Low | `SecurityConfig`, `application.properties` |
@@ -522,8 +525,8 @@ has a test that fails on the code before the fix. A struck-through row is fixed.
 
 # Suggested order
 
-**P0 to P4 are all done, and P5-1 to P5-10 (the QA audit) are fixed.** What remains, in
-the order I'd do it:
+**P0 to P4 are all done, and P5-1 to P5-11 are fixed.** What remains, in the order I'd do
+it:
 
 1. **Not in the table, but open:**
    - ~~Access tokens are never checked server-side~~ **Fixed 2026-10-08.** A per-account
@@ -533,8 +536,8 @@ the order I'd do it:
      Phase 17). Logout bumps the token version too, so it ends every device's access token
      as it already ended every refresh token. A refresh token offered as proof must now be
      live, so a spent one can't be used to sign the account out.
-   - **P5-11: a sleep form in the Health panel.** The one user-facing feature the QA audit
-     found unreachable.
+   - ~~**P5-11: a sleep form in the Health panel.**~~ **Fixed 2026-10-16** (`PROGRESS.md`
+     Phase 19).
    - P4-1's dead-session export path has not been driven in a browser (it needs the account
      row deleted underneath a live session; `DeadSessionRecoveryIntegrationTest` covers it
      over HTTP). The frontend halves of P4-14 (a cancelled challenge's message on the card)

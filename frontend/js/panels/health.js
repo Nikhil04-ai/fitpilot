@@ -1,6 +1,6 @@
 import { session } from '../state.js';
-import { emptyState, escapeHtml, skeletonLines, skeletonStats } from '../util.js';
-import { toast } from '../ui.js';
+import { emptyState, escapeHtml, numberOrNull, skeletonLines, skeletonStats, today, yesterday } from '../util.js';
+import { closeModal, openModal, toast } from '../ui.js';
 import { api } from '../api.js';
 import { chartColor, chartPlaceholder, chartTheme, renderChart, setChartNote, shortAxisDate, showChartBox, timestampAxisLabels } from '../charts.js';
 
@@ -85,7 +85,7 @@ async function loadSleep() {
     const analysis = await api(`/api/health/sleep/${session.currentUser.id}/analysis`);
     const history = analysis.history || [];
     if (!history.length) {
-      el.innerHTML = emptyState('😴', 'No sleep data logged yet.');
+      el.innerHTML = emptyState('😴', 'No sleep logged in the last 7 nights.');
       return;
     }
     const rows = history.slice(-7).map(h => {
@@ -107,6 +107,87 @@ async function loadSleep() {
     `;
   } catch (err) {
     el.innerHTML = `<div class="error-state">Couldn't load sleep data: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+// ── Logging a night ────────────────────────────────────────────────────
+// Until this form only the API could write sleep, so the card above and the
+// sleep-vs-performance chart were always empty for someone using the app (PLAN P5-11).
+
+export function openLogSleep() {
+  const date = document.getElementById('sleep-date');
+  date.max = today();
+  if (!date.value) date.value = yesterday();
+  openModal('modal-log-sleep');
+}
+
+/** "2026-09-24" plus n days. UTC throughout, so a DST change can't move the date. */
+function addDays(isoDate, n) {
+  const d = new Date(`${isoDate}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * The form asks for clock times; the API wants LocalDateTimes. `sleepDate` is the
+ * evening the person went to bed, so a bedtime from noon on is that evening and an
+ * earlier one is past midnight. Waking is the first time the clock reads `wake` after
+ * going to bed (or the morning after `sleepDate`, with no bedtime). Either time may be
+ * blank, and comes back null.
+ */
+export function sleepTimes(sleepDate, bed, wake) {
+  const bedDay = bed ? (bed >= '12:00' ? sleepDate : addDays(sleepDate, 1)) : null;
+  const wakeDay = !wake ? null
+    : !bed ? addDays(sleepDate, 1)
+    : wake > bed ? bedDay : addDays(bedDay, 1);
+  return {
+    bedtime:  bed  ? `${bedDay}T${bed}:00`   : null,
+    wakeTime: wake ? `${wakeDay}T${wake}:00` : null
+  };
+}
+
+/** Hours between two LocalDateTimes to one decimal place, read as wall-clock time. */
+export function hoursBetween(from, to) {
+  const ms = Date.parse(`${to}Z`) - Date.parse(`${from}Z`);
+  return Math.round(ms / 360000) / 10;
+}
+
+/** Bedtime or wake time changed: fill in the hours they add up to. */
+export function fillSleepHours() {
+  const { bedtime, wakeTime } = sleepTimes(
+    document.getElementById('sleep-date').value || yesterday(),
+    document.getElementById('sleep-bedtime').value,
+    document.getElementById('sleep-waketime').value);
+  if (bedtime && wakeTime) document.getElementById('sleep-hours').value = String(hoursBetween(bedtime, wakeTime));
+}
+
+export async function handleLogSleep(e) {
+  e.preventDefault();
+  const btn = document.getElementById('log-sleep-btn');
+  const sleepDate = document.getElementById('sleep-date').value || yesterday();
+  const { bedtime, wakeTime } = sleepTimes(sleepDate,
+    document.getElementById('sleep-bedtime').value,
+    document.getElementById('sleep-waketime').value);
+  const payload = {
+    sleepDate,
+    hoursSlept: numberOrNull('sleep-hours'),
+    qualityRating: parseInt(document.getElementById('sleep-quality').value) || null,
+    bedtime,
+    wakeTime,
+    notes: document.getElementById('sleep-notes').value.trim() || null
+  };
+  btn.disabled = true; btn.textContent = 'Logging…';
+  try {
+    await api(`/api/health/sleep/${session.currentUser.id}`, { method: 'POST', body: JSON.stringify(payload) });
+    closeModal('modal-log-sleep');
+    document.getElementById('form-log-sleep').reset();
+    toast('😴 Sleep logged!');
+    loadSleep();
+    loadSleepPerformanceChart();
+  } catch (err) {
+    toast('❌ ' + err.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Log It';
   }
 }
 
