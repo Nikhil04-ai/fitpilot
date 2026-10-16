@@ -96,6 +96,56 @@ class ListOrderingIntegrationTest {
         assertThat(huge.get("page").get("size").asInt()).isEqualTo(100);
     }
 
+    // ── Activities ──────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("Activities default to the date they happened, newest first: a backdated workout entered last goes below today's")
+    void activitiesAreOrderedByWhenTheyHappened() throws Exception {
+        String email = "ordering-activities@test.com";
+        send(request("POST", "/api/auth/register", Map.of(
+                "email", email, "password", "testPass123", "firstName", "Act", "lastName", "Order"), null));
+        String token = json(send(request("POST", "/api/auth/login",
+                Map.of("email", email, "password", "testPass123"), null))).get("accessToken").asText();
+
+        LocalDateTime now = LocalDateTime.now().withNano(0);
+        // Entered in this order; happened in a different one.
+        String[][] entries = {
+                {"yesterday", now.minusDays(1).toString()},
+                {"today",     now.toString()},
+                {"last week", now.minusDays(7).toString()},
+                {"two days",  now.minusDays(2).toString()}};
+        for (String[] e : entries) {
+            assertThat(send(request("POST", "/api/activities", Map.of("type", "RUNNING", "duration", 30,
+                    "startTime", e[1], "notes", e[0]), token)).statusCode()).isEqualTo(200);
+        }
+
+        // The default, across a page boundary.
+        List<String> notes = new ArrayList<>();
+        for (int page = 0; page < 2; page++) {
+            HttpResponse<String> r = send(HttpRequest.newBuilder()
+                    .uri(URI.create(url("/api/activities?page=" + page + "&size=3")))
+                    .header("Authorization", "Bearer " + token).GET().build());
+            for (JsonNode a : json(r).get("content")) notes.add(a.get("notes").asText());
+        }
+        assertThat(notes).containsExactly("today", "yesterday", "two days", "last week");
+
+        // An unknown sort column falls back to the same order rather than to entry order.
+        List<String> fallback = new ArrayList<>();
+        HttpResponse<String> r = send(HttpRequest.newBuilder()
+                .uri(URI.create(url("/api/activities?sort=password,desc")))
+                .header("Authorization", "Bearer " + token).GET().build());
+        for (JsonNode a : json(r).get("content")) fallback.add(a.get("notes").asText());
+        assertThat(fallback).containsExactly("today", "yesterday", "two days", "last week");
+
+        // Entry order is still available when asked for.
+        List<String> entered = new ArrayList<>();
+        r = send(HttpRequest.newBuilder()
+                .uri(URI.create(url("/api/activities?sort=createdAt,asc")))
+                .header("Authorization", "Bearer " + token).GET().build());
+        for (JsonNode a : json(r).get("content")) entered.add(a.get("notes").asText());
+        assertThat(entered).containsExactly("yesterday", "today", "last week", "two days");
+    }
+
     // ── Challenges ──────────────────────────────────────────────────────────
 
     @Test

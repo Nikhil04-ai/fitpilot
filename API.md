@@ -462,10 +462,13 @@ Lists the caller's workouts, one page at a time.
 - **Params:**
   - `page` (int, default `0`). A negative value is treated as `0`.
   - `size` (int, default `20`). It is clamped to between 1 and 100.
-  - `sort` (string, default `createdAt,desc`), in the form `<property>[,asc|desc]`.
-    - The allowed properties are `createdAt`, `updatedAt`, `startTime`, `duration`, `caloriesBurned` and `difficultyRating`.
-    - Any other property silently falls back to `createdAt`.
+  - `sort` (string, default `startTime,desc`), in the form `<property>[,asc|desc]`.
+    - The default lists workouts by when they happened, newest first, so a backdated
+      workout takes its place by date rather than going to the top.
+    - The allowed properties are `createdAt` (when it was entered), `updatedAt`, `startTime`, `duration`, `caloriesBurned` and `difficultyRating`.
+    - Any other property silently falls back to `startTime`.
     - Any direction other than `asc` means descending.
+    - Ties are broken by `createdAt` and then `id`, in the same direction, so paging never repeats or skips a row.
 - **Response:** `200`. The response is paged (see Pagination), and each item in `content` is an `ActivityResponse` (full shape under `POST /api/activities`).
   - On this endpoint `isPersonalBest` is **worked out per row**. It is `true` when the activity currently holds its type's duration, calorie or distance record.
   - Each `exercises[].isPersonalBest` is also filled in.

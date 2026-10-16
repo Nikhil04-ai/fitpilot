@@ -514,12 +514,13 @@ has a test that fails on the code before the fix. A struck-through row is fixed.
 | ~~**P5-15**~~ | ~~With no `MAIL_API_KEY`, every reset link is written to the log at WARN with the address it belongs to (`PasswordResetService.java:119`; seen in this run's log). That is the intended local behaviour, but `render.yaml` makes the key optional, so a deploy without it puts live password-equivalent links in Render's logs. Refuse to start without a mail key outside local, or log only that a reset was requested.~~ **Fixed 2026-10-17.** Under the `prod` profile the app refuses to start without `MAIL_API_KEY` and a valid `MAIL_FROM` (`ProductionSettingsCheck`), so the log path can't run there. Locally it still logs the link, as intended. | Medium | `ProductionSettingsCheck`, `render.yaml` |
 | ~~**P5-16**~~ | ~~With `FRONTEND_URL` unset, reset links point at `http://localhost:5500` (`PasswordResetService.java:184`), so the emailed link is dead in production. Not a security issue: the host never comes from the request.~~ **Fixed 2026-10-17.** Under `prod` the app refuses to start without an `https` `FRONTEND_URL`. Found on the way: CORS compared the whole `FRONTEND_URL` with the browser's `Origin`, so a GitHub Pages project address (with a path) would never have matched. CORS now uses its origin only. | Low | `ProductionSettingsCheck`, `SecurityConfig` |
 | ~~**P5-17**~~ | ~~Natural-language descriptions have no length limit before they go to Gemini (`NaturalLanguageController`; only a meal's *stored* description is cut to 500). A very long prompt costs quota on every call, capped only by the AI tier's 10/min.~~ **Fixed 2026-10-16.** Both routes refuse a description over 1000 characters with a `400`, before the model is called (`InputChecks.aiDescription`). Both text boxes carry `maxlength="1000"`. | Low | `NaturalLanguageActivityService`, `NutritionService` |
+| **P5-18** | **Open.** A workout's `startTime` has no upper limit (`ActivityService.trackActivity` and `updateActivity`), so one dated in 2099 is accepted. Since O-1 it would sit at the top of the Activities list until that date, and it already counts towards a streak day that hasn't happened. Sleep refuses a date more than a day ahead (P5-8); the same rule would fit here. Found while changing O-1. | Low | `ActivityService` |
 
 **Observations — not bugs, recorded so they are a decision rather than a surprise:**
 
 | | Observation | Evidence |
 |---|---|---|
-| O-1 | The Activities list is ordered by when a workout was *entered* (`sort=createdAt,desc`, sent explicitly by the frontend), so a backdated workout appears above today's. `API.md`'s endpoint index calls it "newest first". Ordering by `startTime` would read more naturally. | Live: a workout dated two days ago, entered last, listed first |
+| ~~O-1~~ | ~~The Activities list is ordered by when a workout was *entered* (`sort=createdAt,desc`, sent explicitly by the frontend), so a backdated workout appears above today's. `API.md`'s endpoint index calls it "newest first". Ordering by `startTime` would read more naturally.~~ **Changed 2026-10-17** (`PROGRESS.md` Phase 25). Workouts are listed by when they happened, newest first, on the Activities panel, the Overview and the API default. | Live: a workout dated two days ago, entered last, listed first |
 | O-2 | At phone width the header's "0 day streak" pill wraps onto two lines. Cosmetic; no horizontal scroll. | Screenshot at 390 px |
 | O-3 | For someone with no workouts last week, the Weekly Digest button answers with an error-styled toast ("⚠️ ❌ Nothing was logged in the week of …"), though that is the normal state for a new user. The UI can only build last week's digest; the API also accepts the current week (`weekStart`). | Live, in Chrome and over HTTP |
 | O-4 | A natural-language workout with no stated duration ("ran 5k", "bench 3x8 at 60kg") is saved with no duration and no calories, so it adds nothing to duration or calorie goals and challenges. | Live, with Gemini |
@@ -551,9 +552,9 @@ it:
      `render.yaml` turns on refuses to start without them (P5-14 to P5-16, `PROGRESS.md`
      Phase 24). After the first deploy, confirm per-client rate limiting behind Render's
      proxy (P5-1).
-   - ~~The smaller open items P5-12, P5-13 and P5-17~~ **All fixed 2026-10-16.** What is
-     left besides deployment is a decision on the observations O-1 to O-6, if any of them
-     should change.
+   - ~~The smaller open items P5-12, P5-13 and P5-17~~ **All fixed 2026-10-16.**
+   - **P5-18:** refuse a workout dated in the future.
+   - **Observations:** ~~O-1~~ changed 2026-10-17. O-2 to O-6 still want a decision.
 
 Done earlier:
 
