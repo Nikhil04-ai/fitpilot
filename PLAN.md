@@ -508,7 +508,7 @@ has a test that fails on the code before the fix. A struck-through row is fixed.
 | ~~**P5-9**~~ | ~~Login answered an unknown email in ~8 ms and a real one in ~135 ms, which says which addresses have accounts.~~ **Fixed.** An unknown address costs one BCrypt comparison too (live: 148 vs 159 ms). Registration still says "already exists", by design. | Low | `UserService` |
 | ~~**P5-10**~~ | ~~A reset link's token stayed in the address bar and history until a reset succeeded, so an abandoned link left it there until expiry.~~ **Fixed.** Removed as soon as it is read. | Low | `frontend/js/auth.js` |
 | ~~**P5-11**~~ | ~~There is no way to log sleep in the UI. The Health panel's "Sleep — last 7 nights" card and the sleep-vs-performance chart can only ever be empty for someone using the app; only the API writes sleep.~~ **Fixed 2026-10-16.** A "+ Log Sleep" button on the card opens a form: night (defaults to yesterday, as the server does), optional bedtime and wake time, hours (filled in from the two times), a required quality choice, notes. Driven in Chrome against MySQL. | Medium | `index.html`, `js/panels/health.js` |
-| **P5-12** | **Open, risk.** `forgot-password` answers ~7 ms slower for a real account (it writes a token and sends mail before replying). Small, but measurable; fixing it means answering before doing the work. | Low | `PasswordResetService` |
+| ~~**P5-12**~~ | ~~`forgot-password` answers ~7 ms slower for a real account (it writes a token and sends mail before replying). Small, but measurable; fixing it means answering before doing the work.~~ **Fixed 2026-10-16.** The controller hands the address to `PasswordResetQueue` (one thread, in order, bounded at 1000) and replies at once. Live, 100 interleaved pairs: real 3.38 ms vs unknown 3.36 ms median. With mail on, the old gap would have been the provider's whole round trip. | Low | `AuthController`, `PasswordResetQueue` |
 | ~~**P5-13**~~ | ~~Refresh tokens are stored unhashed (reset tokens are hashed), so a read-only database leak yields 30-day sessions.~~ **Fixed 2026-10-16.** Only the SHA-256 is stored (`token_hash`); the raw token goes to the client once. V10, a Java migration, hashed the tokens already stored, so nobody was signed out by the upgrade. Run on real MySQL as well as H2. | Low | `RefreshToken`, `RefreshTokenService`, `V10__hash_refresh_tokens` |
 | **P5-14** | **Open, risk (deployment).** Production also allows CORS from `http://localhost:*` and from `Origin: null` with credentials (`SecurityConfig.java:82-95`; `null` is for `file://`, which the frontend refuses to run from anyway), exposes Swagger and `/v3/api-docs`, and logs SQL text (`show-sql=true`). None leaks data on its own, since auth is a bearer header rather than a cookie; worth tightening when deploying. | Low | `SecurityConfig`, `application.properties` |
 | **P5-15** | **Open, risk (deployment).** With no `MAIL_API_KEY`, every reset link is written to the log at WARN with the address it belongs to (`PasswordResetService.java:119`; seen in this run's log). That is the intended local behaviour, but `render.yaml` makes the key optional, so a deploy without it puts live password-equivalent links in Render's logs. Refuse to start without a mail key outside local, or log only that a reset was requested. | Medium | `PasswordResetService`, `render.yaml` |
@@ -530,7 +530,7 @@ has a test that fails on the code before the fix. A struck-through row is fixed.
 
 # Suggested order
 
-**P0 to P4 are all done, and P5-1 to P5-11 are fixed.** What remains, in the order I'd do
+**P0 to P4 are all done, and P5-1 to P5-13 and P5-17 are fixed.** P5-14 to P5-16 are deployment configuration. What remains, in the order I'd do
 it:
 
 1. **Not in the table, but open:**
@@ -550,8 +550,9 @@ it:
      also needs `FRONTEND_URL` and the `MAIL_*` variables; without them reset links point
      at localhost (P5-16) and are written to the log (P5-15). After the first deploy, confirm
      per-client rate limiting behind Render's proxy (P5-1), and consider P5-14.
-   - The one smaller open item, P5-12 (P5-13 and P5-17 fixed 2026-10-16), and the
-     observations O-1 to O-6 if any of them should change.
+   - ~~The smaller open items P5-12, P5-13 and P5-17~~ **All fixed 2026-10-16.** What is
+     left besides deployment is a decision on the observations O-1 to O-6, if any of them
+     should change.
 
 Done earlier:
 

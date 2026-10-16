@@ -6,6 +6,7 @@ import com.project.fitness.dto.UserResponse;
 import com.project.fitness.model.User;
 import com.project.fitness.security.CurrentUser;
 import com.project.fitness.security.JwtUtils;
+import com.project.fitness.service.PasswordResetQueue;
 import com.project.fitness.service.PasswordResetService;
 import com.project.fitness.service.RefreshTokenService;
 import com.project.fitness.service.UserService;
@@ -27,6 +28,7 @@ public class AuthController {
     private final JwtUtils jwtUtils;
     private final RefreshTokenService refreshTokenService;
     private final PasswordResetService passwordResetService;
+    private final PasswordResetQueue passwordResetQueue;
 
     @PostMapping("/register")
     public ResponseEntity<UserResponse> register(@Valid @RequestBody RegisterRequest request) {
@@ -114,7 +116,9 @@ public class AuthController {
      *
      * <p>Always 200 with the same body, whether or not the address has an account.
      * Answering differently would turn this into a free "does this person have an
-     * account here" lookup for anyone with a list of email addresses.
+     * account here" lookup for anyone with a list of email addresses. Answering at a
+     * different speed would too, so the work runs after the reply (PLAN P5-12): see
+     * {@link PasswordResetQueue}.
      *
      * <p>Sits under the permitAll /api/auth/** prefix by necessity — someone who has
      * forgotten their password cannot authenticate first — and is covered by the
@@ -122,7 +126,7 @@ public class AuthController {
      */
     @PostMapping("/forgot-password")
     public ResponseEntity<Map<String, String>> forgotPassword(@RequestBody ForgotPasswordRequest request) {
-        passwordResetService.requestReset(request.getEmail());
+        passwordResetQueue.submit(request.getEmail());
         return ResponseEntity.ok(Map.of(
                 "message", "If an account exists for that address, a reset link is on its way."));
     }
