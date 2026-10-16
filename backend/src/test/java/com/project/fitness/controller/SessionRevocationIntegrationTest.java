@@ -2,11 +2,13 @@ package com.project.fitness.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.project.fitness.security.TokenHash;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.net.URI;
@@ -37,8 +39,29 @@ class SessionRevocationIntegrationTest {
 
     @LocalServerPort private int port;
     @Autowired private ObjectMapper objectMapper;
+    @Autowired private JdbcTemplate jdbc;
 
     private final HttpClient http = HttpClient.newHttpClient();
+
+    /** Refresh tokens used to be stored as issued, so a read of the table was every account's session (P5-13). */
+    @Test
+    @DisplayName("The database holds a refresh token's hash, never the token, and the token still works")
+    void refreshTokenIsStoredHashed() throws Exception {
+        String email = register("hashed");
+        String issued = login(email, PASSWORD).get("refreshToken").asText();
+
+        Integer raw = jdbc.queryForObject("select count(*) from refresh_token where token_hash = ?", Integer.class, issued);
+        Integer hashed = jdbc.queryForObject("select count(*) from refresh_token where token_hash = ?", Integer.class,
+                TokenHash.of(issued));
+        assertThat(raw).isZero();
+        assertThat(hashed).isEqualTo(1);
+
+        HttpResponse<String> renewed = refresh(issued);
+        assertThat(renewed.statusCode()).isEqualTo(200);
+        String next = json(renewed).get("refreshToken").asText();
+        assertThat(jdbc.queryForObject("select count(*) from refresh_token where token_hash = ?", Integer.class, next))
+                .as("the rotated token is stored hashed too").isZero();
+    }
 
     @Test
     @DisplayName("Signing in on a second device leaves the first device's session alone")

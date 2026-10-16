@@ -889,3 +889,55 @@ call could carry a prompt of any size and spend quota on it, limited only by the
   the description goes on to the model. They pass with it restored.
 * **Backend suite:** **591 passing**, 0 failing (587 before).
 
+---
+
+## Phase 22 — Refresh tokens stored hashed (2026-10-16)
+
+Fixes P5-13. Refresh tokens were stored exactly as issued, so anyone who could read the
+`refresh_token` table, through a backup or a leaked dump, held a 30-day session for every
+account. Password-reset tokens were already stored as a SHA-256.
+
+* **What is stored:** `RefreshToken.tokenHash` (column `token_hash`), the SHA-256 of the token as
+  64 hex characters.
+  * `createRefreshToken()` now returns the raw token. That return value is its only copy, and it
+    goes to the client.
+  * `/refresh` and `/logout` hash what the client sends and look that up.
+  * A missing or blank token is refused before any lookup, exactly as before.
+* **SHA-256, not BCrypt:** the token is random, so there is nothing to guess. BCrypt's slowness
+  would only let garbage tokens tie up threads.
+* **One helper:** `security/TokenHash`, which password reset now uses too, in place of its own
+  copy. Its output is identical, so outstanding reset links still work.
+* **Migration V10 is a Java migration** (`src/main/java/db/migration/`). It renames `token` to
+  `token_hash` and replaces each stored token with its hash.
+  * **Why Java:** SHA-256 is `SHA2()` on MySQL and `HASH()` on H2. In Java it runs the same on
+    both, including the H2 the tests migrate.
+  * **Nobody is signed out by the upgrade:** a session from before it is found by its hash
+    afterwards.
+  * **Safe to re-run after a partial failure:** the rename is skipped once done, and a value
+    that is already a hash is left alone.
+  * `AGENT.md` §11 now says when to write a Java migration.
+* **No API change:** the client sends and receives the same tokens.
+
+### Verification
+
+* **New and changed tests:**
+  * `RefreshTokenServiceTest`: lookups are by hash; new cases cover what is stored, and that a
+    missing token is refused with no lookup.
+  * `RefreshTokenHashMigrationTest` (new): migrates H2 to V9, stores one raw token and one
+    already-hashed token, then runs V10. The raw one becomes its hash; the hashed one is unchanged.
+  * `SessionRevocationIntegrationTest`: over HTTP, the database holds the hash, never the token,
+    after login and after rotation, and the token still works.
+* **The tests catch the bug:**
+  * Storing the raw token again fails 6 tests across the service and HTTP classes.
+  * Skipping the migration's hashing fails the migration test.
+* **On real MySQL** (local `fitpilot_qa`, at V9 with 95 stored tokens and one seeded the old way):
+  * V10 applied in 0.3 s. All 95 rows became hashes, and the seeded row equals MySQL's own
+    `SHA2(token, 256)`.
+  * The unique index moved with the renamed column, and Hibernate's schema validation passed.
+  * Over HTTP, 8 of 8 checks passed:
+    * the session issued before the upgrade still refreshed, and was then rotated;
+    * a fresh login stored only the hash;
+    * refresh, logout by refresh token, and refusal afterwards all worked;
+    * unknown and missing tokens got a `401`, not a `500`;
+    * no plain token was left in the table.
+* **Backend suite:** **595 passing**, 0 failing (591 before).

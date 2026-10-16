@@ -5,9 +5,11 @@ import com.project.fitness.model.User;
 import com.project.fitness.repository.RefreshTokenRepository;
 import com.project.fitness.repository.UserRepository;
 import com.project.fitness.security.JwtUtils;
+import com.project.fitness.security.TokenHash;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -38,8 +40,11 @@ class RefreshTokenServiceTest {
 
     private final User user = User.builder().id("user-1").build();
 
+    /** What the database holds for the token the client knows as "raw-1". */
+    private static final String HASH_1 = TokenHash.of("raw-1");
+
     private RefreshToken live() {
-        return RefreshToken.builder().id("rt-1").user(user).token("raw-1")
+        return RefreshToken.builder().id("rt-1").user(user).tokenHash(HASH_1)
                 .expiresAt(LocalDateTime.now().plusDays(1)).build();
     }
 
@@ -54,9 +59,34 @@ class RefreshTokenServiceTest {
     }
 
     @Test
+    @DisplayName("only the token's hash is stored; the raw value is returned once, for the client (P5-13)")
+    void createRefreshToken_storesOnlyTheHash() {
+        ArgumentCaptor<RefreshToken> saved = ArgumentCaptor.forClass(RefreshToken.class);
+        when(refreshTokenRepository.save(saved.capture())).thenAnswer(i -> i.getArgument(0));
+
+        String raw = refreshTokenService.createRefreshToken(user);
+
+        assertThat(saved.getValue().getTokenHash())
+                .isEqualTo(TokenHash.of(raw))
+                .isNotEqualTo(raw)
+                .matches("[0-9a-f]{64}");
+    }
+
+    @Test
+    @DisplayName("a missing or blank refresh token is invalid without a lookup")
+    void refresh_missingToken_isInvalid() {
+        for (String missing : new String[] {null, "", "  "}) {
+            assertThatThrownBy(() -> refreshTokenService.refreshAccessToken(missing))
+                    .hasMessageContaining("Invalid refresh token");
+            assertThat(refreshTokenService.resolveUserId(missing)).isNull();
+        }
+        verifyNoInteractions(refreshTokenRepository);
+    }
+
+    @Test
     @DisplayName("a refresh retires only the token it was given")
     void refresh_revokesOnlyThePresentedToken() {
-        when(refreshTokenRepository.findByToken("raw-1")).thenReturn(Optional.of(live()));
+        when(refreshTokenRepository.findByTokenHash(HASH_1)).thenReturn(Optional.of(live()));
         when(refreshTokenRepository.revokeIfActive("rt-1")).thenReturn(1);
         when(refreshTokenRepository.save(any(RefreshToken.class))).thenAnswer(i -> i.getArgument(0));
         when(jwtUtils.generateToken(any(), any(), anyInt())).thenReturn("access");
@@ -70,7 +100,7 @@ class RefreshTokenServiceTest {
     @Test
     @DisplayName("losing a race on the same token is a revoked token, and issues nothing")
     void refresh_lostRace_isRejected() {
-        when(refreshTokenRepository.findByToken("raw-1")).thenReturn(Optional.of(live()));
+        when(refreshTokenRepository.findByTokenHash(HASH_1)).thenReturn(Optional.of(live()));
         when(refreshTokenRepository.revokeIfActive("rt-1")).thenReturn(0);   // the other request won
 
         assertThatThrownBy(() -> refreshTokenService.refreshAccessToken("raw-1"))
@@ -93,7 +123,7 @@ class RefreshTokenServiceTest {
     @Test
     @DisplayName("a live refresh token identifies its owner")
     void resolveUserId_liveToken() {
-        when(refreshTokenRepository.findByToken("raw-1")).thenReturn(Optional.of(live()));
+        when(refreshTokenRepository.findByTokenHash(HASH_1)).thenReturn(Optional.of(live()));
         assertThat(refreshTokenService.resolveUserId("raw-1")).isEqualTo("user-1");
     }
 
@@ -102,7 +132,7 @@ class RefreshTokenServiceTest {
     void resolveUserId_revokedToken() {
         RefreshToken revoked = live();
         revoked.setRevoked(true);
-        when(refreshTokenRepository.findByToken("raw-1")).thenReturn(Optional.of(revoked));
+        when(refreshTokenRepository.findByTokenHash(HASH_1)).thenReturn(Optional.of(revoked));
         assertThat(refreshTokenService.resolveUserId("raw-1")).isNull();
     }
 
@@ -111,7 +141,7 @@ class RefreshTokenServiceTest {
     void resolveUserId_expiredToken() {
         RefreshToken expired = live();
         expired.setExpiresAt(LocalDateTime.now().minusMinutes(1));
-        when(refreshTokenRepository.findByToken("raw-1")).thenReturn(Optional.of(expired));
+        when(refreshTokenRepository.findByTokenHash(HASH_1)).thenReturn(Optional.of(expired));
         assertThat(refreshTokenService.resolveUserId("raw-1")).isNull();
     }
 

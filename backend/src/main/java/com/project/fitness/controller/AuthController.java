@@ -3,7 +3,6 @@ package com.project.fitness.controller;
 import com.project.fitness.dto.LoginRequest;
 import com.project.fitness.dto.RegisterRequest;
 import com.project.fitness.dto.UserResponse;
-import com.project.fitness.model.RefreshToken;
 import com.project.fitness.model.User;
 import com.project.fitness.security.CurrentUser;
 import com.project.fitness.security.JwtUtils;
@@ -44,11 +43,10 @@ public class AuthController {
         try {
             User user = userService.authenticate(loginRequest);
             String accessToken   = jwtUtils.generateToken(user.getId(), user.getRole().name(), user.getTokenVersion());
-            RefreshToken refresh = refreshTokenService.createRefreshToken(user);
 
             Map<String, Object> response = new LinkedHashMap<>();
             response.put("accessToken",  accessToken);
-            response.put("refreshToken", refresh.getToken());
+            response.put("refreshToken", refreshTokenService.createRefreshToken(user));
             response.put("expiresIn",    "48 hours");
             response.put("user",         userService.mapToResponse(user));
             return ResponseEntity.ok(response);

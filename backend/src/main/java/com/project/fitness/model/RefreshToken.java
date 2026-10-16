@@ -12,6 +12,10 @@ import java.util.UUID;
  * Phase 4 — Refresh Token System
  * accessToken  → 48 hours
  * refreshToken → 30 days
+ *
+ * <p>Only the SHA-256 of the token is stored (PLAN P5-13). The raw value goes to the
+ * client once, when the token is issued, and is hashed again to be looked up. It used to
+ * be stored as issued, so a read of this table yielded 30-day sessions for every account.
  */
 @Entity
 @Data @NoArgsConstructor @AllArgsConstructor @Builder
@@ -27,8 +31,8 @@ public class RefreshToken {
     @JsonIgnore
     private User user;
 
-    @Column(unique = true, nullable = false)
-    private String token;       // UUID — stored here, client sends this to /api/auth/refresh
+    @Column(name = "token_hash", unique = true, nullable = false)
+    private String tokenHash;   // TokenHash.of(the UUID the client holds and sends to /api/auth/refresh)
 
     private LocalDateTime expiresAt;   // 30 days from creation
 

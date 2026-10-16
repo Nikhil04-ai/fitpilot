@@ -80,7 +80,7 @@ public class ProfileService {
         return Map.of(
                 "message", "Password changed successfully. Other devices have been signed out.",
                 "accessToken", jwtUtils.generateToken(user.getId(), user.getRole().name(), user.getTokenVersion()),
-                "refreshToken", refreshTokenService.createRefreshToken(user).getToken());
+                "refreshToken", refreshTokenService.createRefreshToken(user));
     }
 
     public UserResponse getProfile(String userId) {

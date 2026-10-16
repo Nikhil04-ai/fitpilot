@@ -5,6 +5,7 @@ import com.project.fitness.model.User;
 import com.project.fitness.repository.PasswordResetTokenRepository;
 import com.project.fitness.repository.UserRepository;
 import com.project.fitness.security.PasswordPolicy;
+import com.project.fitness.security.TokenHash;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -13,13 +14,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.Base64;
-import java.util.HexFormat;
 import java.util.Optional;
 
 /**
@@ -106,7 +103,7 @@ public class PasswordResetService {
         String rawToken = generateToken();
         tokenRepository.save(PasswordResetToken.builder()
                 .user(user)
-                .tokenHash(hash(rawToken))
+                .tokenHash(TokenHash.of(rawToken))
                 .expiresAt(LocalDateTime.now().plusMinutes(ttlMinutes))
                 .build());
 
@@ -143,7 +140,7 @@ public class PasswordResetService {
         // on a password that can't be hashed.
         PasswordPolicy.requireHashable(newPassword);
 
-        Optional<PasswordResetToken> found = tokenRepository.findByTokenHash(hash(rawToken));
+        Optional<PasswordResetToken> found = tokenRepository.findByTokenHash(TokenHash.of(rawToken));
 
         // One message for "never existed", "already used" and "expired". Telling them
         // apart tells an attacker which guessed tokens were once real.
@@ -190,24 +187,6 @@ public class PasswordResetService {
         byte[] bytes = new byte[32];
         RANDOM.nextBytes(bytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-    }
-
-    /**
-     * SHA-256, not BCrypt.
-     *
-     * <p>BCrypt is deliberately slow to make guessing a human-chosen password
-     * expensive. This value is 256 random bits, so there is nothing to guess and the
-     * slowness would only buy an attacker a way to tie up threads by submitting
-     * garbage tokens. A plain digest is the right tool for a high-entropy secret.
-     */
-    private String hash(String rawToken) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            return HexFormat.of().formatHex(digest.digest(rawToken.getBytes(StandardCharsets.UTF_8)));
-        } catch (NoSuchAlgorithmException e) {
-            // SHA-256 is required of every JVM; if it is missing, nothing here is safe.
-            throw new IllegalStateException("SHA-256 unavailable", e);
-        }
     }
 
     private String emailBody(String link) {
