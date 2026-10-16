@@ -4,8 +4,9 @@ Every endpoint the backend serves: **83 operations** across 18 route groups. Wri
 2026-09-25 by tracing each controller through its service to the objects Jackson actually
 serializes, and checked against the live OpenAPI spec so nothing is missing or invented.
 
-Swagger UI at `/swagger-ui/index.html` is still the place to *try* a call. It can't show
-most response shapes, though, because many endpoints return a `Map`. This file does.
+Swagger UI at `/swagger-ui/index.html` is still the place to *try* a call locally. It can't
+show most response shapes, though, because many endpoints return a `Map`. This file does.
+The deployed instance (the `prod` profile) serves neither Swagger nor `/v3/api-docs`.
 
 **When you change an endpoint, change its entry here in the same commit.** A reference
 that drifts from the code does more harm than having none.
@@ -51,7 +52,12 @@ Requests and responses are JSON (UTF-8), except the export downloads. Send
 | Refresh | 30 days | Stored server-side, one per signed-in device, and **rotated**: every refresh revokes the one it was given and no other. Logout, a password change and a password reset revoke all of them. Revoked and expired tokens are deleted daily at 03:45. |
 
 **Public routes** (no token needed): `/api/auth/**`, `/actuator/health`, `/swagger-ui/**`
-and `/v3/api-docs/**`. Everything else requires a valid access token.
+and `/v3/api-docs/**` (the last two are `404` under the `prod` profile). Everything else
+requires a valid access token.
+
+**Browser origins (CORS):** the origin of `FRONTEND_URL` (its scheme, host and port, so a
+GitHub Pages path is fine), plus `http://localhost:*`, `http://127.0.0.1:*` and `null`
+(`file://`) outside the `prod` profile. A preflight from any other origin is a `403`.
 
 ### Identity: whose data a call touches
 

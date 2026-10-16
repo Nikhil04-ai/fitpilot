@@ -93,5 +93,6 @@ Single-page app, but not built with a framework — deliberately, since the app 
 - **Backend** — Render, deployed from `backend/Dockerfile` via `render.yaml`. Free tier: spins down after 15 minutes of inactivity, ~30–60s cold start on the next request.
 - **Database** — Aiven MySQL, always-free tier (1GB storage/RAM).
 - **Frontend** — GitHub Pages, served directly from the `/frontend` folder on push to `main`.
-- **CORS** — the backend's `FRONTEND_URL` env var must be set to the exact GitHub Pages origin for the deployed frontend to be allowed to call the deployed backend (see `SecurityConfig`).
+- **Profile** — `render.yaml` sets `SPRING_PROFILES_ACTIVE=prod` (`application-prod.properties`): no SQL logging, no Swagger, CORS for `FRONTEND_URL` only, and `ProductionSettingsCheck` stops startup without an `https` `FRONTEND_URL`, `MAIL_API_KEY` and `MAIL_FROM`.
+- **CORS** — the backend's `FRONTEND_URL` env var must be set to the deployed frontend's address (e.g. `https://name.github.io/fitpilot`) for it to be allowed to call the deployed backend. `SecurityConfig` allows its origin, dropping any path; reset links use the whole address.
 - **CI** — GitHub Actions (`.github/workflows/ci.yml`) runs on every push touching `backend/**`: builds, runs the full test suite against H2, generates coverage, and (on `main` only) builds the Docker image and runs a real container smoke test against `/actuator/health`.

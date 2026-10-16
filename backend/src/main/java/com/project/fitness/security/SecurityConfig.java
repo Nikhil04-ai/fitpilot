@@ -21,6 +21,8 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -36,6 +38,11 @@ public class SecurityConfig {
     // Blank locally — only localhost origins are allowed then (see below).
     @Value("${app.frontend-url:}")
     private String frontendUrl;
+
+    // False under the prod profile (PLAN P5-14): the deployed API answers browsers
+    // on FRONTEND_URL only.
+    @Value("${app.cors.allow-local-origins:true}")
+    private boolean allowLocalOrigins;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -71,24 +78,15 @@ public class SecurityConfig {
 
     /**
      * CORS — lets the frontend call this API from the browser.
-     * Always allows localhost (for local dev) and file:// (Origin: null).
-     * Additionally allows whatever FRONTEND_URL is set to in production
-     * (e.g. your GitHub Pages URL), so the deployed frontend can reach the
-     * deployed backend without editing this file again.
+     * Allows whatever FRONTEND_URL is set to (e.g. your GitHub Pages URL), so the
+     * deployed frontend can reach the deployed backend without editing this file again.
+     * Outside the prod profile it also allows localhost (for local dev) and file://
+     * (Origin: null).
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
-        List<String> origins = new ArrayList<>(List.of(
-                "http://localhost:*",
-                "http://127.0.0.1:*",
-                "null" // browsers send Origin: null when an HTML file is opened directly (file://)
-        ));
-        if (frontendUrl != null && !frontendUrl.isBlank()) {
-            origins.add(frontendUrl.trim());
-        }
-
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(origins);
+        config.setAllowedOriginPatterns(allowedOrigins(frontendUrl, allowLocalOrigins));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("Authorization", "X-RateLimit-Remaining", "Retry-After"));
@@ -97,6 +95,37 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
+    }
+
+    static List<String> allowedOrigins(String frontendUrl, boolean allowLocal) {
+        List<String> origins = new ArrayList<>();
+        if (allowLocal) {
+            origins.add("http://localhost:*");
+            origins.add("http://127.0.0.1:*");
+            origins.add("null"); // browsers send Origin: null when an HTML file is opened directly (file://)
+        }
+        if (frontendUrl != null && !frontendUrl.isBlank()) {
+            origins.add(originOf(frontendUrl.trim()));
+        }
+        return origins;
+    }
+
+    /**
+     * The scheme, host and port of a URL: what a browser sends as {@code Origin}.
+     *
+     * <p>FRONTEND_URL is also where reset links point, so it can carry a path. A GitHub
+     * Pages project site lives at {@code https://name.github.io/repo}, but its pages send
+     * {@code Origin: https://name.github.io}, which the whole URL would never match.
+     * Anything that doesn't parse as a URL is passed through as written.
+     */
+    static String originOf(String url) {
+        try {
+            URI uri = new URI(url);
+            if (uri.getScheme() == null || uri.getHost() == null) return url;
+            return uri.getScheme() + "://" + uri.getHost() + (uri.getPort() == -1 ? "" : ":" + uri.getPort());
+        } catch (URISyntaxException e) {
+            return url;
+        }
     }
 
     /** 401 — no token, expired token, or invalid token. Frontend refreshes and retries. */

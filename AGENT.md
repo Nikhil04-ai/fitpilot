@@ -77,7 +77,7 @@ When adding a new service method, ask: *does this method, or anything it calls, 
 
 ## 4. Security, CORS, and status codes
 
-- All CORS config lives in one place: `SecurityConfig.corsConfigurationSource()`. It allows `localhost:*`, `127.0.0.1:*`, `null` (file:// origin), and whatever `FRONTEND_URL` env var is set to. Don't scatter `@CrossOrigin` annotations on individual controllers — it'll conflict with this and cause confusing partial-CORS failures.
+- All CORS config lives in one place: `SecurityConfig.corsConfigurationSource()`. It allows the origin of whatever `FRONTEND_URL` env var is set to (a path is dropped, since a browser's `Origin` never has one), plus `localhost:*`, `127.0.0.1:*` and `null` (file:// origin) everywhere except the `prod` profile (`app.cors.allow-local-origins=false`). Don't scatter `@CrossOrigin` annotations on individual controllers — it'll conflict with this and cause confusing partial-CORS failures.
 - **`OPTIONS` preflight requests must never require auth or hit the rate limiter.** Both `SecurityConfig` (`.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()`) and `RateLimitingFilter` (early-return on `OPTIONS`) have this guard. If a future filter is added to the chain, it needs the same guard, or every cross-origin POST/PUT/DELETE from the browser will silently fail preflight.
 - `server.port=${PORT:8080}` must stay dynamic — Render/Railway/Heroku-style platforms inject their own `PORT` env var at runtime. Hardcoding `8080` breaks deployment silently (app starts, binds to the wrong port, platform's health check never finds it).
 

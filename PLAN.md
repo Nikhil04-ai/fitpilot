@@ -510,9 +510,9 @@ has a test that fails on the code before the fix. A struck-through row is fixed.
 | ~~**P5-11**~~ | ~~There is no way to log sleep in the UI. The Health panel's "Sleep — last 7 nights" card and the sleep-vs-performance chart can only ever be empty for someone using the app; only the API writes sleep.~~ **Fixed 2026-10-16.** A "+ Log Sleep" button on the card opens a form: night (defaults to yesterday, as the server does), optional bedtime and wake time, hours (filled in from the two times), a required quality choice, notes. Driven in Chrome against MySQL. | Medium | `index.html`, `js/panels/health.js` |
 | ~~**P5-12**~~ | ~~`forgot-password` answers ~7 ms slower for a real account (it writes a token and sends mail before replying). Small, but measurable; fixing it means answering before doing the work.~~ **Fixed 2026-10-16.** The controller hands the address to `PasswordResetQueue` (one thread, in order, bounded at 1000) and replies at once. Live, 100 interleaved pairs: real 3.38 ms vs unknown 3.36 ms median. With mail on, the old gap would have been the provider's whole round trip. | Low | `AuthController`, `PasswordResetQueue` |
 | ~~**P5-13**~~ | ~~Refresh tokens are stored unhashed (reset tokens are hashed), so a read-only database leak yields 30-day sessions.~~ **Fixed 2026-10-16.** Only the SHA-256 is stored (`token_hash`); the raw token goes to the client once. V10, a Java migration, hashed the tokens already stored, so nobody was signed out by the upgrade. Run on real MySQL as well as H2. | Low | `RefreshToken`, `RefreshTokenService`, `V10__hash_refresh_tokens` |
-| **P5-14** | **Open, risk (deployment).** Production also allows CORS from `http://localhost:*` and from `Origin: null` with credentials (`SecurityConfig.java:82-95`; `null` is for `file://`, which the frontend refuses to run from anyway), exposes Swagger and `/v3/api-docs`, and logs SQL text (`show-sql=true`). None leaks data on its own, since auth is a bearer header rather than a cookie; worth tightening when deploying. | Low | `SecurityConfig`, `application.properties` |
-| **P5-15** | **Open, risk (deployment).** With no `MAIL_API_KEY`, every reset link is written to the log at WARN with the address it belongs to (`PasswordResetService.java:119`; seen in this run's log). That is the intended local behaviour, but `render.yaml` makes the key optional, so a deploy without it puts live password-equivalent links in Render's logs. Refuse to start without a mail key outside local, or log only that a reset was requested. | Medium | `PasswordResetService`, `render.yaml` |
-| **P5-16** | **Open (deployment).** With `FRONTEND_URL` unset, reset links point at `http://localhost:5500` (`PasswordResetService.java:184`), so the emailed link is dead in production. Not a security issue: the host never comes from the request. | Low | `PasswordResetService` |
+| ~~**P5-14**~~ | ~~Production also allows CORS from `http://localhost:*` and from `Origin: null` with credentials (`SecurityConfig.java:82-95`; `null` is for `file://`, which the frontend refuses to run from anyway), exposes Swagger and `/v3/api-docs`, and logs SQL text (`show-sql=true`). None leaks data on its own, since auth is a bearer header rather than a cookie; worth tightening when deploying.~~ **Fixed 2026-10-17** by the `prod` profile, which `render.yaml` turns on: CORS allows `FRONTEND_URL`'s origin only, Swagger and `/v3/api-docs` are `404`, and SQL is never logged. Locally SQL logging is now off unless `SHOW_SQL=true`, as the README always said. | Low | `SecurityConfig`, `application-prod.properties`, `render.yaml` |
+| ~~**P5-15**~~ | ~~With no `MAIL_API_KEY`, every reset link is written to the log at WARN with the address it belongs to (`PasswordResetService.java:119`; seen in this run's log). That is the intended local behaviour, but `render.yaml` makes the key optional, so a deploy without it puts live password-equivalent links in Render's logs. Refuse to start without a mail key outside local, or log only that a reset was requested.~~ **Fixed 2026-10-17.** Under the `prod` profile the app refuses to start without `MAIL_API_KEY` and a valid `MAIL_FROM` (`ProductionSettingsCheck`), so the log path can't run there. Locally it still logs the link, as intended. | Medium | `ProductionSettingsCheck`, `render.yaml` |
+| ~~**P5-16**~~ | ~~With `FRONTEND_URL` unset, reset links point at `http://localhost:5500` (`PasswordResetService.java:184`), so the emailed link is dead in production. Not a security issue: the host never comes from the request.~~ **Fixed 2026-10-17.** Under `prod` the app refuses to start without an `https` `FRONTEND_URL`. Found on the way: CORS compared the whole `FRONTEND_URL` with the browser's `Origin`, so a GitHub Pages project address (with a path) would never have matched. CORS now uses its origin only. | Low | `ProductionSettingsCheck`, `SecurityConfig` |
 | ~~**P5-17**~~ | ~~Natural-language descriptions have no length limit before they go to Gemini (`NaturalLanguageController`; only a meal's *stored* description is cut to 500). A very long prompt costs quota on every call, capped only by the AI tier's 10/min.~~ **Fixed 2026-10-16.** Both routes refuse a description over 1000 characters with a `400`, before the model is called (`InputChecks.aiDescription`). Both text boxes carry `maxlength="1000"`. | Low | `NaturalLanguageActivityService`, `NutritionService` |
 
 **Observations — not bugs, recorded so they are a decision rather than a surprise:**
@@ -530,7 +530,7 @@ has a test that fails on the code before the fix. A struck-through row is fixed.
 
 # Suggested order
 
-**P0 to P4 are all done, and P5-1 to P5-13 and P5-17 are fixed.** P5-14 to P5-16 are deployment configuration. What remains, in the order I'd do
+**P0 to P4 are all done, and P5-1 to P5-17 are fixed.** What remains, in the order I'd do
 it:
 
 1. **Not in the table, but open:**
@@ -547,9 +547,10 @@ it:
      been driven in a browser.~~ **Done 2026-10-16** (`PROGRESS.md` Phase 20). All three
      work as fixed.
    - **Deployment.** `frontend/js/config.js` still holds the placeholder Render URL. Render
-     also needs `FRONTEND_URL` and the `MAIL_*` variables; without them reset links point
-     at localhost (P5-16) and are written to the log (P5-15). After the first deploy, confirm
-     per-client rate limiting behind Render's proxy (P5-1), and consider P5-14.
+     also needs `FRONTEND_URL`, `MAIL_API_KEY` and `MAIL_FROM`: the `prod` profile that
+     `render.yaml` turns on refuses to start without them (P5-14 to P5-16, `PROGRESS.md`
+     Phase 24). After the first deploy, confirm per-client rate limiting behind Render's
+     proxy (P5-1).
    - ~~The smaller open items P5-12, P5-13 and P5-17~~ **All fixed 2026-10-16.** What is
      left besides deployment is a decision on the observations O-1 to O-6, if any of them
      should change.
