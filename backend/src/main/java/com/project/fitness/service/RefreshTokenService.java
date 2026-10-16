@@ -5,6 +5,7 @@ import com.project.fitness.model.User;
 import com.project.fitness.repository.RefreshTokenRepository;
 import com.project.fitness.repository.UserRepository;
 import com.project.fitness.security.JwtUtils;
+import com.project.fitness.security.TokenHash;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Refresh tokens, one per signed-in device.
@@ -35,16 +37,26 @@ public class RefreshTokenService {
 
     private static final int REFRESH_TOKEN_DAYS = 30;
 
-    /** Creates and persists a new refresh token for a user. Other sessions are untouched. */
+    /**
+     * Issues a new refresh token for a user and returns it. Other sessions are untouched.
+     *
+     * <p>The return value is the only copy of the raw token: what is saved is its hash.
+     */
     @Transactional
-    public RefreshToken createRefreshToken(User user) {
-        RefreshToken token = RefreshToken.builder()
+    public String createRefreshToken(User user) {
+        String raw = RefreshToken.generate();
+        refreshTokenRepository.save(RefreshToken.builder()
                 .user(user)
-                .token(RefreshToken.generate())
+                .tokenHash(TokenHash.of(raw))
                 .expiresAt(LocalDateTime.now().plusDays(REFRESH_TOKEN_DAYS))
-                .build();
+                .build());
+        return raw;
+    }
 
-        return refreshTokenRepository.save(token);
+    /** The stored row for a token the client presented, if there is one. */
+    private Optional<RefreshToken> find(String rawRefreshToken) {
+        if (rawRefreshToken == null || rawRefreshToken.isBlank()) return Optional.empty();
+        return refreshTokenRepository.findByTokenHash(TokenHash.of(rawRefreshToken));
     }
 
     /**
@@ -53,7 +65,7 @@ public class RefreshTokenService {
      */
     @Transactional
     public Map<String, Object> refreshAccessToken(String rawRefreshToken) {
-        RefreshToken stored = refreshTokenRepository.findByToken(rawRefreshToken)
+        RefreshToken stored = find(rawRefreshToken)
                 .orElseThrow(() -> new RuntimeException("Invalid refresh token."));
 
         if (stored.getRevoked()) {
@@ -72,11 +84,10 @@ public class RefreshTokenService {
         // Issue new access token
         String newAccessToken = jwtUtils.generateToken(user.getId(), user.getRole().name(), user.getTokenVersion());
 
-        RefreshToken newRefreshToken = createRefreshToken(user);
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("accessToken", newAccessToken);
-        response.put("refreshToken", newRefreshToken.getToken());
+        response.put("refreshToken", createRefreshToken(user));
         response.put("expiresIn", "48 hours");
         response.put("refreshTokenExpiresIn", "30 days");
         return response;
@@ -94,8 +105,7 @@ public class RefreshTokenService {
      */
     @Transactional(readOnly = true)
     public String resolveUserId(String rawRefreshToken) {
-        if (rawRefreshToken == null || rawRefreshToken.isBlank()) return null;
-        return refreshTokenRepository.findByToken(rawRefreshToken)
+        return find(rawRefreshToken)
                 .filter(t -> !t.getRevoked() && !t.isExpired())
                 .map(t -> t.getUser().getId())
                 .orElse(null);

@@ -509,7 +509,7 @@ has a test that fails on the code before the fix. A struck-through row is fixed.
 | ~~**P5-10**~~ | ~~A reset link's token stayed in the address bar and history until a reset succeeded, so an abandoned link left it there until expiry.~~ **Fixed.** Removed as soon as it is read. | Low | `frontend/js/auth.js` |
 | ~~**P5-11**~~ | ~~There is no way to log sleep in the UI. The Health panel's "Sleep — last 7 nights" card and the sleep-vs-performance chart can only ever be empty for someone using the app; only the API writes sleep.~~ **Fixed 2026-10-16.** A "+ Log Sleep" button on the card opens a form: night (defaults to yesterday, as the server does), optional bedtime and wake time, hours (filled in from the two times), a required quality choice, notes. Driven in Chrome against MySQL. | Medium | `index.html`, `js/panels/health.js` |
 | **P5-12** | **Open, risk.** `forgot-password` answers ~7 ms slower for a real account (it writes a token and sends mail before replying). Small, but measurable; fixing it means answering before doing the work. | Low | `PasswordResetService` |
-| **P5-13** | **Open, risk.** Refresh tokens are stored unhashed (reset tokens are hashed), so a read-only database leak yields 30-day sessions. | Low | `RefreshToken` |
+| ~~**P5-13**~~ | ~~Refresh tokens are stored unhashed (reset tokens are hashed), so a read-only database leak yields 30-day sessions.~~ **Fixed 2026-10-16.** Only the SHA-256 is stored (`token_hash`); the raw token goes to the client once. V10, a Java migration, hashed the tokens already stored, so nobody was signed out by the upgrade. Run on real MySQL as well as H2. | Low | `RefreshToken`, `RefreshTokenService`, `V10__hash_refresh_tokens` |
 | **P5-14** | **Open, risk (deployment).** Production also allows CORS from `http://localhost:*` and from `Origin: null` with credentials (`SecurityConfig.java:82-95`; `null` is for `file://`, which the frontend refuses to run from anyway), exposes Swagger and `/v3/api-docs`, and logs SQL text (`show-sql=true`). None leaks data on its own, since auth is a bearer header rather than a cookie; worth tightening when deploying. | Low | `SecurityConfig`, `application.properties` |
 | **P5-15** | **Open, risk (deployment).** With no `MAIL_API_KEY`, every reset link is written to the log at WARN with the address it belongs to (`PasswordResetService.java:119`; seen in this run's log). That is the intended local behaviour, but `render.yaml` makes the key optional, so a deploy without it puts live password-equivalent links in Render's logs. Refuse to start without a mail key outside local, or log only that a reset was requested. | Medium | `PasswordResetService`, `render.yaml` |
 | **P5-16** | **Open (deployment).** With `FRONTEND_URL` unset, reset links point at `http://localhost:5500` (`PasswordResetService.java:184`), so the emailed link is dead in production. Not a security issue: the host never comes from the request. | Low | `PasswordResetService` |
@@ -550,8 +550,8 @@ it:
      also needs `FRONTEND_URL` and the `MAIL_*` variables; without them reset links point
      at localhost (P5-16) and are written to the log (P5-15). After the first deploy, confirm
      per-client rate limiting behind Render's proxy (P5-1), and consider P5-14.
-   - The smaller open items: P5-12 and P5-13 (P5-17 fixed 2026-10-16), and the observations
-     O-1 to O-6 if any of them should change.
+   - The one smaller open item, P5-12 (P5-13 and P5-17 fixed 2026-10-16), and the
+     observations O-1 to O-6 if any of them should change.
 
 Done earlier:
 
