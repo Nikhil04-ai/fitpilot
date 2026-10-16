@@ -92,14 +92,28 @@ Uses H2 in-memory database — no MySQL needed for tests.
 | `DB_URL` / `DB_USER` / `DB_PWD` | — | Required. MySQL connection. |
 | `JWT_SECRET` | — | Required. Long random Base64 string. |
 | `PORT` | `8080` | Injected by Render; never hardcode. |
-| `FRONTEND_URL` | _(blank)_ | Deployed frontend origin, added to the CORS allow-list. |
+| `SPRING_PROFILES_ACTIVE` | _(blank)_ | `prod` when deployed (`render.yaml` sets it). See [Production profile](#production-profile). |
+| `FRONTEND_URL` | _(blank)_ | The deployed frontend's address, e.g. `https://name.github.io/fitpilot`. Its origin is allowed by CORS, and reset links point to it. Required under `prod`. |
 | `GEMINI_API_KEY` | _(blank)_ | Optional — AI features degrade gracefully without it. |
 | `GEMINI_MODEL` | `gemini-flash-lite-latest` | Swap without a code change when a model is retired. |
 | `GEMINI_TIMEOUT_SECONDS` | `20` | Read timeout on the AI call (connect timeout is half this). |
-| `SHOW_SQL` | `false` | Set `true` locally to log every SQL statement. |
+| `SHOW_SQL` | `false` | Set `true` locally to log every SQL statement. Ignored under `prod`. |
 | `MAIL_PROVIDER` | `brevo` | `brevo` or `resend`. See [Password reset email](#password-reset-email). |
-| `MAIL_API_KEY` | _(blank)_ | Without it, reset links are written to the backend log instead of emailed. |
+| `MAIL_API_KEY` | _(blank)_ | Without it, reset links are written to the backend log instead of emailed. Required under `prod`. |
 | `MAIL_FROM` | _(blank)_ | The verified sender, e.g. `FitPilot <you@gmail.com>`. Required once a key is set. |
+
+## Production profile
+
+`render.yaml` sets `SPRING_PROFILES_ACTIVE=prod`, which loads
+`backend/src/main/resources/application-prod.properties`. Local runs and the tests never use it.
+Under it the backend:
+
+- **refuses to start** without an `https` `FRONTEND_URL`, a `MAIL_API_KEY` and a valid
+  `MAIL_FROM`. The deploy log names whatever is missing. So reset links can't point at
+  localhost or be written to the log;
+- accepts browser calls from `FRONTEND_URL`'s origin only, not localhost or `file://`;
+- doesn't serve Swagger or `/v3/api-docs` (`API.md` is the reference);
+- never logs SQL.
 
 ## Password reset email
 
@@ -128,7 +142,8 @@ Email is ON via Brevo from you@gmail.com
    ```
 
 **When deployed, also set `FRONTEND_URL`** to the frontend's address, because the emailed
-link points there. Left blank, it points to `http://localhost:5500`.
+link points there. Left blank, it points to `http://localhost:5500`, which is why the
+`prod` profile won't start without it.
 
 **If a reset email doesn't arrive**, the backend log has the provider's own reason, on a
 line starting `Email provider Brevo returned`. The usual causes are:

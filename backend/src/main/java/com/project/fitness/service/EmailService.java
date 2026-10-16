@@ -169,7 +169,7 @@ public class EmailService {
      * every send as well as at startup, because both failures below are silent at
      * the provider end — the request is refused and nothing is ever delivered.
      */
-    String configurationProblem() {
+    public String configurationProblem() {
         String p = provider == null ? "" : provider.trim().toLowerCase(Locale.ROOT);
         if (!p.equals("brevo") && !p.equals("resend")) {
             return "MAIL_PROVIDER must be 'brevo' or 'resend', not '" + provider + "'.";

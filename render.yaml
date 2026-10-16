@@ -7,6 +7,11 @@ services:
     plan: free
     healthCheckPath: /actuator/health
     envVars:
+      # application-prod.properties (PLAN P5-14 to P5-16): no SQL logging, no Swagger,
+      # browsers allowed from FRONTEND_URL only. The app refuses to start under it without
+      # an https FRONTEND_URL, MAIL_API_KEY and MAIL_FROM, and the deploy log says which.
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
       - key: DB_URL
         sync: false
       - key: DB_USER
@@ -17,11 +22,13 @@ services:
         sync: false
       - key: GEMINI_API_KEY
         sync: false
+      # The deployed frontend's address, e.g. https://name.github.io/fitpilot. Reset
+      # links point here; its origin is the one CORS allows. Required.
       - key: FRONTEND_URL
         sync: false
-      # Password reset email (PLAN P1-4). Optional: with no MAIL_API_KEY the backend
-      # logs the reset link instead of sending it, which is fine locally and useless
-      # in production - set it before telling anyone the feature exists.
+      # Password reset email (PLAN P1-4). Required here: without a key the backend
+      # would write reset links to its log instead of sending them, so the prod
+      # profile won't start without one. See README > Password reset email.
       - key: MAIL_PROVIDER
         value: brevo
       - key: MAIL_API_KEY

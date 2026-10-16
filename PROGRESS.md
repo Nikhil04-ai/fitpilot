@@ -976,3 +976,55 @@ round trip. How long the reply took said whether the address had an account.
   * 100 interleaved real/unknown pairs after a warm-up: median 3.38 ms vs 3.36 ms.
   * All 120 real-account requests were processed, with no drops and no failures.
 * **Backend suite:** **596 passing**, 0 failing (595 before).
+
+---
+
+## Phase 24 — A production profile (2026-10-17)
+
+Fixes P5-14, P5-15 and P5-16. Each was a setting that is right for local development and wrong
+for the deployed app. `render.yaml` now sets `SPRING_PROFILES_ACTIVE=prod`, which loads
+`application-prod.properties`. Local runs and the test suite don't load it.
+
+* **Refuses to start without its settings** (`config/ProductionSettingsCheck`, prod only):
+  * `FRONTEND_URL` must be an `https` address. Unset, reset links pointed at
+    `http://localhost:5500` (P5-16).
+  * `MAIL_API_KEY` must be set, and `MAIL_FROM` must pass `EmailService`'s own check. Without a
+    key, reset links went to the log (P5-15), which can't happen now.
+  * The deploy fails with one message naming everything missing. The reset form says "a link is
+    on its way" either way, so a silent failure would never be noticed from the page.
+* **CORS** (`SecurityConfig`, P5-14): under `prod`, `app.cors.allow-local-origins=false`, so
+  only `FRONTEND_URL`'s origin is allowed: no `localhost:*`, `127.0.0.1:*` or `null`.
+* **Found on the way:** CORS compared the whole `FRONTEND_URL` with the browser's `Origin`. A
+  GitHub Pages project site lives at `https://name.github.io/repo` but sends
+  `Origin: https://name.github.io`, so the deployed frontend would have been refused. CORS now
+  uses only the scheme, host and port; reset links still use the whole address.
+* **Swagger and `/v3/api-docs`** are off under `prod`; `API.md` is the reference.
+* **SQL logging:** off under `prod`. Locally `show-sql` was hardcoded `true`, although the README
+  and Phase 1's table said `SHOW_SQL=true` was opt-in. It is now `${SHOW_SQL:false}`, as
+  documented. Set `SHOW_SQL=true` to see statements locally again.
+* **Docs:** `README.md` (new "Production profile" section and the variables table), `API.md`
+  (public routes, CORS origins), `ARCHITECTURE.md`, `AGENT.md` §4 and `render.yaml`'s comments.
+
+### Verification
+
+* **New tests:**
+  * `ProductionSettingsCheckTest` (5): a real, minimal context. It starts when everything is
+    set; it fails to start with nothing set (naming both variables), with an `http`
+    `FRONTEND_URL`, and with a key but no sender. Without the profile the check isn't there.
+  * `SecurityConfigCorsTest` (5): the origin list with and without local origins, and a path
+    dropped from `FRONTEND_URL`.
+  * `ProductionProfileIntegrationTest` (5): the app over HTTP with `test` + `prod`. The
+    frontend's origin passes preflight; localhost, 127.0.0.1 and `null` get `403`;
+    `/v3/api-docs` is `404`; the prod file sets the four properties.
+* **Live, local MySQL (`fitpilot_qa`):**
+  * Under `prod` with nothing set, startup stopped before Tomcat, naming `FRONTEND_URL` and
+    `MAIL_API_KEY`.
+  * With the settings (mail pointed at a closed local port):
+    * preflight from the frontend origin was `200`; from localhost, 127.0.0.1, `null` and an
+      unrelated origin, `403`;
+    * both Swagger paths and `/v3/api-docs` were `404`; health `200`; an unauthenticated API
+      call `401`;
+    * register, login and forgot-password worked. The log held no SQL text, and the failed
+      reset email was logged without its link.
+  * Without the profile, localhost still passed preflight and Swagger was served.
+* **Backend suite:** **611 passing**, 0 failing (596 before).
