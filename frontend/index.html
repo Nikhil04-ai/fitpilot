@@ -85,8 +85,9 @@ a{color:inherit}
 .export-row input::placeholder{color:var(--muted)}
 .field input:focus,.field select:focus,
 .export-row input:focus,.export-row select:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(14,165,255,.1)}
-.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
 .field-row .field{margin-bottom:0}
+.field-row + .field-hint{margin-top:-8px}
 
 .auth-error{background:rgba(255,59,92,.1);border:1px solid rgba(255,59,92,.3);color:var(--red);
   font-size:13px;padding:10px 14px;border-radius:9px;margin-bottom:14px;display:none}
@@ -1099,7 +1100,7 @@ body.modal-open{overflow:hidden}
         <input type="date" id="sleep-date" required>
         <div class="field-hint">The evening you went to bed. Logging a night again replaces it.</div>
       </div>
-      <div class="field-row" style="margin-bottom:14px">
+      <div class="field-row">
         <div class="field"><label for="sleep-bedtime">Bedtime (optional)</label><input type="time" id="sleep-bedtime" data-change="sleep-times"></div>
         <div class="field"><label for="sleep-waketime">Woke up (optional)</label><input type="time" id="sleep-waketime" data-change="sleep-times"></div>
       </div>

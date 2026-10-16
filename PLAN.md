@@ -49,6 +49,11 @@ priority order, so priorities aren't re-derived from scratch every session.
 >
 > **Status, 2026-10-16:** P5-11 is fixed. The Health panel has a Log Sleep form (`PROGRESS.md`
 > Phase 19). Frontend suite: **104 passing**; backend unchanged at 587.
+>
+> **Status, 2026-10-16 (later):** the three frontend halves never driven in a browser (P4-1's
+> dead-session export, P4-14's cancelled-challenge card, P4-19's AI pager) were driven in
+> Chrome and all work; no bugs found. Every two-column form row also had no gap below it;
+> fixed in one CSS rule (`PROGRESS.md` Phase 20).
 
 ## Priority key
 
@@ -538,10 +543,9 @@ it:
      live, so a spent one can't be used to sign the account out.
    - ~~**P5-11: a sleep form in the Health panel.**~~ **Fixed 2026-10-16** (`PROGRESS.md`
      Phase 19).
-   - P4-1's dead-session export path has not been driven in a browser (it needs the account
-     row deleted underneath a live session; `DeadSessionRecoveryIntegrationTest` covers it
-     over HTTP). The frontend halves of P4-14 (a cancelled challenge's message on the card)
-     and P4-19 (the AI panel pager) were not singled out in the audit either.
+   - ~~P4-1's dead-session export path, and the frontend halves of P4-14 and P4-19, have not
+     been driven in a browser.~~ **Done 2026-10-16** (`PROGRESS.md` Phase 20). All three
+     work as fixed.
    - **Deployment.** `frontend/js/config.js` still holds the placeholder Render URL. Render
      also needs `FRONTEND_URL` and the `MAIL_*` variables; without them reset links point
      at localhost (P5-16) and are written to the log (P5-15). After the first deploy, confirm
