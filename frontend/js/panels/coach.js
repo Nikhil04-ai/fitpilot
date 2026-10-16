@@ -201,7 +201,7 @@ export async function generateRecommendationNow() {
   const btn = document.getElementById('gen-insight-btn');
   btn.disabled = true; btn.textContent = 'Thinking…';
   try {
-    const latestPage = await api('/api/activities?page=0&size=1&sort=createdAt,desc');
+    const latestPage = await api('/api/activities?page=0&size=1&sort=startTime,desc');
     const latestActivity = (latestPage.content || [])[0];
     if (!latestActivity) {
       toast('Log a workout first — insights are based on your activity history.', true);

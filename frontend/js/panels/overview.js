@@ -83,7 +83,7 @@ async function loadOverviewActivities() {
   const el = document.getElementById('overview-activities');
   el.innerHTML = skeletonRows(4);
   try {
-    const page = await api('/api/activities?page=0&size=5&sort=createdAt,desc');
+    const page = await api('/api/activities?page=0&size=5&sort=startTime,desc');
     const items = page.content || [];
     if (!items.length) {
       el.innerHTML = emptyState('🏃', 'No workouts yet — log your first one!');

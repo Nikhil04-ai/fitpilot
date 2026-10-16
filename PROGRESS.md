@@ -1028,3 +1028,35 @@ for the deployed app. `render.yaml` now sets `SPRING_PROFILES_ACTIVE=prod`, whic
       reset email was logged without its link.
   * Without the profile, localhost still passed preflight and Swagger was served.
 * **Backend suite:** **611 passing**, 0 failing (596 before).
+
+---
+
+## Phase 25 — Workouts listed by when they happened (2026-10-17)
+
+Changes O-1. The Activities panel and the Overview's recent list asked for
+`sort=createdAt,desc`, so a workout backdated to last week went above today's. Each row shows
+the workout's own date, so the dates on screen were out of order. `API.md` already called the
+list "newest first".
+
+* **API:** `GET /api/activities` now defaults to `startTime,desc`, and an unknown sort property
+  falls back to `startTime` rather than `createdAt`. Entry order is still there as
+  `sort=createdAt`.
+* **Ties:** every sort is followed by `createdAt` and then `id`, in the same direction, so two
+  workouts with the same start time page in a fixed order and paging never repeats or skips one.
+* **Frontend:** the Activities panel, the Overview, and the AI Coach's "latest workout" all ask
+  for `startTime,desc`. The coach now builds an insight on the most recent workout done, not the
+  one entered last.
+* **Found on the way (P5-18, open):** a workout's start time has no upper limit, so one dated in
+  2099 would now sit at the top of the list. Sleep already refuses a date more than a day ahead.
+
+### Verification
+
+* **New test:** `ListOrderingIntegrationTest.activitiesAreOrderedByWhenTheyHappened`. Four
+  workouts are entered out of date order. Over HTTP, across a page boundary, the default lists
+  them by date, newest first; an unknown property gives the same order; `createdAt,asc` gives
+  entry order.
+  * Against the old controller it fails, listing them in entry order.
+* **Live, local MySQL, headless Chrome:** four workouts entered as yesterday, today, last week,
+  two days ago. Both the Overview and the Activities panel showed today, yesterday, two days ago,
+  last week, with no console errors.
+* **Backend suite:** **612 passing**, 0 failing (611 before). **Frontend:** 104 passing.

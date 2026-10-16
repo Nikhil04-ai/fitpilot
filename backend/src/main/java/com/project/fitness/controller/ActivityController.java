@@ -38,8 +38,14 @@ public class ActivityController {
     }
 
     /**
-     * GET /api/activities?page=0&size=20&sort=createdAt,desc
-     * Paginated — default page=0, size=20, sorted newest first.
+     * GET /api/activities?page=0&size=20&sort=startTime,desc
+     * Paginated — default page=0, size=20, newest workout first.
+     *
+     * <p>"Newest" is when the workout happened, not when it was entered: sorted by
+     * createdAt, a workout backdated to last week was listed above today's, under a date
+     * that was out of order with the rows around it. Ties (and every row of an
+     * unordered sort column) fall back to entry order and then id, so paging never
+     * shows a row twice or skips one.
      *
      * <p>Returns ActivityResponse, not the Activity entity. Handing back the entity
      * meant the list was a different shape from every other activity response, and the
@@ -49,14 +55,16 @@ public class ActivityController {
     public ResponseEntity<Page<ActivityResponse>> getUserActivities(
             @RequestParam(defaultValue = "0")  int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(defaultValue = "createdAt,desc") String sort) {
+            @RequestParam(defaultValue = "startTime,desc") String sort) {
 
         String[] sortParts = sort.split(",");
-        String property = SORTABLE.contains(sortParts[0]) ? sortParts[0] : "createdAt";
+        String property = SORTABLE.contains(sortParts[0]) ? sortParts[0] : "startTime";
         Sort.Direction direction = sortParts.length > 1 && sortParts[1].equalsIgnoreCase("asc")
                 ? Sort.Direction.ASC : Sort.Direction.DESC;
-        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100),
-                Sort.by(direction, property));
+        Sort order = Sort.by(direction, property);
+        if (!property.equals("createdAt")) order = order.and(Sort.by(direction, "createdAt"));
+        order = order.and(Sort.by(direction, "id"));
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100), order);
 
         return ResponseEntity.ok(activityService.getUserActivitiesPage(CurrentUser.id(), pageable));
     }

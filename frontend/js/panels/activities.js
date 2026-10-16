@@ -205,7 +205,7 @@ export async function loadActivities(page = 0) {
   const el = document.getElementById('activities-list');
   el.innerHTML = skeletonRows(5);
   try {
-    const data = await api(`/api/activities?page=${page}&size=10&sort=createdAt,desc`);
+    const data = await api(`/api/activities?page=${page}&size=10&sort=startTime,desc`);
     const items = data.content || [];
     activityCache = items;
     currentActivityPage = page;
