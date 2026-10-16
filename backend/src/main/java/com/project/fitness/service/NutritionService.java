@@ -107,6 +107,7 @@ public class NutritionService {
         if (description == null || description.isBlank()) {
             throw new RuntimeException("Describe what you ate.");
         }
+        InputChecks.aiDescription(description);
 
         Map<String, Object> parsed = geminiService.parseMeal(description);
         if (parsed == null) {

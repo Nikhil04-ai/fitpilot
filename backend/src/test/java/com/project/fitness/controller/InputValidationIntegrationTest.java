@@ -215,6 +215,19 @@ class InputValidationIntegrationTest {
                 "hoursSlept", 7, "qualityRating", 3, "sleepDate", "2026-01-10", "notes", tooLong)), "notes");
     }
 
+    /**
+     * Nothing limited what the natural-language routes sent to Gemini, so one call could
+     * carry a prompt of any size (PLAN P5-17). The check runs before the model is called,
+     * which is why it holds here, where no API key is configured.
+     */
+    @Test
+    @DisplayName("A description for the model is at most 1000 characters, on both natural-language routes")
+    void aiDescriptionLength() throws Exception {
+        String tooLong = "x".repeat(1001);
+        assertRejected(post("/api/activities/natural", Map.of("description", tooLong)), "1000 characters");
+        assertRejected(post("/api/nutrition/meals/natural", Map.of("description", tooLong)), "1000 characters");
+    }
+
     /** Found by the live QA pass: a 10,000,000 kcal meal was saved with a 200. */
     @Test
     @DisplayName("A meal's calories and macros must be believable")

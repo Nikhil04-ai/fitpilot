@@ -995,7 +995,7 @@ body.modal-open{overflow:hidden}
     <form id="form-log-natural" style="display:none" data-submit="log-natural">
       <div class="field">
         <label for="natural-description">Describe your workout</label>
-        <textarea id="natural-description" required rows="3" placeholder="I ran 5km in 30 minutes this morning"></textarea>
+        <textarea id="natural-description" required maxlength="1000" rows="3" placeholder="I ran 5km in 30 minutes this morning"></textarea>
       </div>
       <div style="font-size:11px;color:var(--muted);margin-bottom:14px">Powered by Gemini — needs GEMINI_API_KEY configured on the backend to work.</div>
       <div class="modal-actions">
@@ -1189,7 +1189,7 @@ body.modal-open{overflow:hidden}
     <form id="form-log-meal-natural" style="display:none" data-submit="log-meal-natural">
       <div class="field">
         <label for="meal-natural-description">Describe what you ate</label>
-        <textarea id="meal-natural-description" required rows="3" placeholder="two eggs, toast and a flat white"></textarea>
+        <textarea id="meal-natural-description" required maxlength="1000" rows="3" placeholder="two eggs, toast and a flat white"></textarea>
       </div>
       <div class="field-hint">Powered by Gemini &mdash; needs GEMINI_API_KEY on the backend. The numbers come back as an
         <strong>estimate</strong> from typical portion sizes, not from a food database, and every estimated meal is

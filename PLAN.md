@@ -513,7 +513,7 @@ has a test that fails on the code before the fix. A struck-through row is fixed.
 | **P5-14** | **Open, risk (deployment).** Production also allows CORS from `http://localhost:*` and from `Origin: null` with credentials (`SecurityConfig.java:82-95`; `null` is for `file://`, which the frontend refuses to run from anyway), exposes Swagger and `/v3/api-docs`, and logs SQL text (`show-sql=true`). None leaks data on its own, since auth is a bearer header rather than a cookie; worth tightening when deploying. | Low | `SecurityConfig`, `application.properties` |
 | **P5-15** | **Open, risk (deployment).** With no `MAIL_API_KEY`, every reset link is written to the log at WARN with the address it belongs to (`PasswordResetService.java:119`; seen in this run's log). That is the intended local behaviour, but `render.yaml` makes the key optional, so a deploy without it puts live password-equivalent links in Render's logs. Refuse to start without a mail key outside local, or log only that a reset was requested. | Medium | `PasswordResetService`, `render.yaml` |
 | **P5-16** | **Open (deployment).** With `FRONTEND_URL` unset, reset links point at `http://localhost:5500` (`PasswordResetService.java:184`), so the emailed link is dead in production. Not a security issue: the host never comes from the request. | Low | `PasswordResetService` |
-| **P5-17** | **Open, risk.** Natural-language descriptions have no length limit before they go to Gemini (`NaturalLanguageController`; only a meal's *stored* description is cut to 500). A very long prompt costs quota on every call, capped only by the AI tier's 10/min. | Low | `NaturalLanguageController`, `NutritionController` |
+| ~~**P5-17**~~ | ~~Natural-language descriptions have no length limit before they go to Gemini (`NaturalLanguageController`; only a meal's *stored* description is cut to 500). A very long prompt costs quota on every call, capped only by the AI tier's 10/min.~~ **Fixed 2026-10-16.** Both routes refuse a description over 1000 characters with a `400`, before the model is called (`InputChecks.aiDescription`). Both text boxes carry `maxlength="1000"`. | Low | `NaturalLanguageActivityService`, `NutritionService` |
 
 **Observations — not bugs, recorded so they are a decision rather than a surprise:**
 
@@ -550,8 +550,8 @@ it:
      also needs `FRONTEND_URL` and the `MAIL_*` variables; without them reset links point
      at localhost (P5-16) and are written to the log (P5-15). After the first deploy, confirm
      per-client rate limiting behind Render's proxy (P5-1), and consider P5-14.
-   - The smaller open items: P5-12, P5-13 and P5-17, and the observations O-1 to O-6 if any
-     of them should change.
+   - The smaller open items: P5-12 and P5-13 (P5-17 fixed 2026-10-16), and the observations
+     O-1 to O-6 if any of them should change.
 
 Done earlier:
 

@@ -44,6 +44,14 @@ class NaturalLanguageActivityServiceTest {
     }
 
     @Test
+    @DisplayName("a description over 1000 characters is refused before the model is asked (P5-17)")
+    void overlongDescriptionIsRefused() {
+        assertThatThrownBy(() -> service.parseAndSave("u-1", "ran ".repeat(251)))   // 1004 characters
+                .hasMessageContaining("at most 1000 characters");
+        verifyNoInteractions(geminiService, activityService);
+    }
+
+    @Test
     @DisplayName("text with no workout in it saves nothing")
     void nothingParsedSavesNothing() {
         when(geminiService.parseNaturalLanguageActivity(anyString()))

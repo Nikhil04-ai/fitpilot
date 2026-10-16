@@ -115,6 +115,23 @@ public final class InputChecks {
         }
     }
 
+    // ── Text for the model ────────────────────────────────────────────────────
+
+    /**
+     * The longest description the natural-language routes send to Gemini. There was no
+     * limit, so a single call could carry a prompt of any size, at the cost of quota and
+     * capped only by the AI tier's 10 a minute (PLAN P5-17). A whole gym session or a
+     * day's meals written out is well under it.
+     */
+    public static final int MAX_AI_DESCRIPTION_CHARS = 1_000;
+
+    /** A workout or meal described in words, checked before the model is called. {@code null} passes. */
+    public static void aiDescription(String description) {
+        if (description != null && description.length() > MAX_AI_DESCRIPTION_CHARS) {
+            throw new RuntimeException("A description can be at most " + MAX_AI_DESCRIPTION_CHARS + " characters.");
+        }
+    }
+
     private static void range(String what, double value, double min, double max, String unit) {
         // Written so NaN fails: every comparison with NaN is false.
         if (!(value >= min && value <= max)) {
