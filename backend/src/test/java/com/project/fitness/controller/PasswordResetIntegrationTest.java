@@ -22,6 +22,9 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mockingDetails;
+import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -78,6 +81,7 @@ class PasswordResetIntegrationTest {
         // whether any given address has an account here.
         assertThat(unknown.statusCode()).isEqualTo(known.statusCode()).isEqualTo(200);
         assertThat(unknown.body()).isEqualTo(known.body());
+        awaitEmails(1);   // queued after the reply; let it finish inside this test
     }
 
     // ── Completing ───────────────────────────────────────────────────────────
@@ -92,10 +96,7 @@ class PasswordResetIntegrationTest {
         String oldAccessToken = before.get("accessToken").asText();
         assertThat(profileStatus(userId, oldAccessToken)).isEqualTo(200);
 
-        assertThat(send(post("/api/auth/forgot-password", Map.of("email", EMAIL))).statusCode())
-                .isEqualTo(200);
-
-        usedToken = tokenFromLatestEmail();
+        usedToken = requestResetAndReadEmail();
         assertThat(usedToken).isNotBlank();
 
         HttpResponse<String> reset = send(post("/api/auth/reset-password",
@@ -139,8 +140,7 @@ class PasswordResetIntegrationTest {
     @Order(5)
     @DisplayName("A too-short password is rejected with a message that says so")
     void shortPasswordRejected() throws Exception {
-        send(post("/api/auth/forgot-password", Map.of("email", EMAIL)));
-        String fresh = tokenFromLatestEmail();
+        String fresh = requestResetAndReadEmail();
 
         HttpResponse<String> response = send(post("/api/auth/reset-password",
                 Map.of("token", fresh, "newPassword", "abc")));
@@ -153,11 +153,8 @@ class PasswordResetIntegrationTest {
     @Order(6)
     @DisplayName("Asking again invalidates the previous link")
     void requestingAgainInvalidatesTheOldLink() throws Exception {
-        send(post("/api/auth/forgot-password", Map.of("email", EMAIL)));
-        String first = tokenFromLatestEmail();
-
-        send(post("/api/auth/forgot-password", Map.of("email", EMAIL)));
-        String second = tokenFromLatestEmail();
+        String first = requestResetAndReadEmail();
+        String second = requestResetAndReadEmail();
         assertThat(second).isNotEqualTo(first);
 
         assertThat(send(post("/api/auth/reset-password",
@@ -180,7 +177,49 @@ class PasswordResetIntegrationTest {
                 .isEqualTo(200);
     }
 
+    /**
+     * The reply used to wait for the token to be written and the email sent, so a real
+     * address was answered later than an unknown one and the delay gave the account away
+     * (PLAN P5-12). With mail switched on, that delay is the provider's whole round trip.
+     */
+    @Test
+    @Order(8)
+    @DisplayName("A real account is answered without waiting for the email to be sent")
+    void replyDoesNotWaitForTheWork() throws Exception {
+        doAnswer(invocation -> { Thread.sleep(1500); return true; })
+                .when(emailService).send(anyString(), anyString(), anyString());
+
+        long start = System.nanoTime();
+        HttpResponse<String> response = send(post("/api/auth/forgot-password", Map.of("email", EMAIL)));
+        long millis = (System.nanoTime() - start) / 1_000_000;
+
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(millis).as("reply time with a 1.5 s mail provider").isLessThan(1000);
+        awaitEmails(1);   // the work still happens, just after the reply
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
+
+    /**
+     * Asks for a reset link for EMAIL and returns its token. The request is queued and
+     * answered at once, so this waits for that request's email to be handed over.
+     */
+    private String requestResetAndReadEmail() throws Exception {
+        long before = emailsSent();
+        assertThat(send(post("/api/auth/forgot-password", Map.of("email", EMAIL))).statusCode()).isEqualTo(200);
+        awaitEmails((int) before + 1);
+        return tokenFromLatestEmail();
+    }
+
+    /** Waits up to 5 s for exactly this many emails since the mock was last reset. */
+    private void awaitEmails(int count) {
+        verify(emailService, timeout(5000).times(count)).send(anyString(), anyString(), anyString());
+    }
+
+    private long emailsSent() {
+        return mockingDetails(emailService).getInvocations().stream()
+                .filter(i -> i.getMethod().getName().equals("send")).count();
+    }
 
     /** Pulls the raw token out of the most recent email body the service handed over. */
     private String tokenFromLatestEmail() {

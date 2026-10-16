@@ -941,3 +941,38 @@ account. Password-reset tokens were already stored as a SHA-256.
     * unknown and missing tokens got a `401`, not a `500`;
     * no plain token was left in the table.
 * **Backend suite:** **595 passing**, 0 failing (591 before).
+
+---
+
+## Phase 23 — Forgot-password answers before doing the work (2026-10-16)
+
+Fixes P5-12. `POST /api/auth/forgot-password` already gave the same words for every address, but
+for a real account it wrote a token and sent the email before replying. The audit measured that
+as about 7 ms with mail switched off. With mail on, the gap would be the mail provider's whole
+round trip. How long the reply took said whether the address had an account.
+
+* **The fix:** the controller hands the address to `PasswordResetQueue` and replies at once. The
+  lookup, the token and the email run afterwards, through the Spring proxy, so `requestReset`
+  keeps its transaction.
+* **One thread:** requests run strictly in order. Two requests for one account side by side
+  could each retire the outstanding link and each save a new one, leaving two live links.
+* **A bounded queue of 1000:** each entry is one address. A request that doesn't fit is dropped
+  and logged, and the person can ask again.
+  * The first bound, 100, overflowed in a deliberate local burst: 240 back-to-back requests from
+    one client with the rate limit lifted dropped 44.
+  * At 1000 the same burst dropped none. At the real limit of 10 a minute per client, filling
+    it takes a coordinated flood from many clients.
+* **A failure** after the reply has nobody to answer, so it is logged.
+* **API:** `API.md` now says the email can follow the reply by a moment.
+
+### Verification
+
+* **New test:** `PasswordResetIntegrationTest.replyDoesNotWaitForTheWork`. With the mail call
+  made to take 1.5 s, a real account must be answered in under 1 s.
+  * With the controller calling the service directly again, it fails at 1522 ms.
+* **Changed tests:** the other reset tests now wait (up to 5 s) for the queued email before
+  reading its link, so a late email can't spill into the next test.
+* **Live, local MySQL, mail off:**
+  * 100 interleaved real/unknown pairs after a warm-up: median 3.38 ms vs 3.36 ms.
+  * All 120 real-account requests were processed, with no drops and no failures.
+* **Backend suite:** **596 passing**, 0 failing (595 before).

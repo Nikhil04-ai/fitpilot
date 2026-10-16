@@ -331,6 +331,7 @@ Starts a password reset. If the address belongs to an account, the server emails
   ```json
   { "message": "If an account exists for that address, a reset link is on its way." }
   ```
+  - The reply comes **before** the work, and in the same time for every address. The lookup, the new token and the email happen afterwards on one background thread, in the order requests arrived, so the email can follow the reply by a moment. Until 2026-10-16 a real account was answered only after its token was written and its email sent, which made it measurably slower and gave it away.
   - The link has the form `<FRONTEND_URL>/index.html?reset=<token>`, and the token is 43 URL-safe Base64 characters.
   - The link lasts `app.password-reset.ttl-minutes`, which defaults to 30 minutes.
   - Requesting a new link cancels any link that is still outstanding.
