@@ -26,6 +26,13 @@ public class NaturalLanguageActivityService {
     private final ActivityService activityService;
 
     public ActivityResponse parseAndSave(String userId, String description) {
+        // A blank description used to go to Gemini anyway, and whatever came back was
+        // saved as an "OTHER" workout with nothing in it. That cost a model call and
+        // added a fake session to streaks, goals and WORKOUT_COUNT challenges.
+        if (description == null || description.isBlank()) {
+            throw new RuntimeException("Describe the workout you did.");
+        }
+
         Map<String, Object> parsed = geminiService.parseNaturalLanguageActivity(description);
 
         if (parsed == null) {
@@ -68,6 +75,16 @@ public class NaturalLanguageActivityService {
 
         request.setExercises(toExerciseRequests(parsed.get("exercises")));
 
+        // Text with no workout in it ("asdkjh qwe") comes back as an OTHER type with no
+        // duration, distance or movements; the model echoes the text into
+        // additionalMetrics.notes with a null distance_km. Saving that records a session
+        // that never happened, so it is refused. A metric only counts if it is a number.
+        if (request.getDuration() == null && request.getDistanceKm() == null
+                && request.getExercises() == null && !hasNumbers(request.getAdditionalMetrics())) {
+            throw new RuntimeException("Couldn't find a workout in that description. "
+                    + "Say what you did and for how long, e.g. \"ran 5 km in 30 minutes\".");
+        }
+
         // Calories will be auto-calculated by ActivityService (Feature 1)
         request.setCaloriesBurned(null);
         request.setStartTime(LocalDateTime.now());
@@ -102,6 +119,10 @@ public class NaturalLanguageActivityService {
             exercises.add(exercise);
         }
         return exercises.isEmpty() ? null : exercises;
+    }
+
+    private boolean hasNumbers(Map<String, Object> metrics) {
+        return metrics != null && metrics.values().stream().anyMatch(v -> v instanceof Number);
     }
 
     private Integer intOrNull(Object value) {

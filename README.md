@@ -70,9 +70,11 @@ Open `http://localhost:5500`. Double-clicking `index.html` no longer works: the 
 native ES modules, which browsers won't load from `file://`. It talks to the backend
 automatically at `localhost:8080` when running locally.
 
-When deployed, it calls `DEPLOYED_BACKEND_URL` from the top of `js/config.js`. You can point a
-deployed page at a different backend without editing the file by loading it with
-`?api=https://your-backend.onrender.com` — the URL is remembered in `localStorage`.
+When deployed, it calls `DEPLOYED_BACKEND_URL` from the top of `js/config.js`, and only
+that: to point the deployed site at a different backend, edit that line and redeploy.
+Locally you can still load the page with `?api=http://localhost:9090` to try another
+backend (it is remembered in `localStorage`). The deployed page ignores `?api=`, because a
+link carrying it used to send visitors' passwords and tokens to whatever host it named.
 
 ## Running Tests
 

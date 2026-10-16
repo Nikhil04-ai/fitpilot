@@ -123,6 +123,8 @@ public class RateLimitingFilter extends OncePerRequestFilter {
     private static final Duration IDLE_TTL = Duration.ofMinutes(10);
     /** Hard ceiling, so a flood of distinct keys can't exhaust heap. */
     private static final int MAX_BUCKETS = 50_000;
+    /** Where an over-full map is cut back to, leaving room before the next sweep. */
+    private static final int EVICT_TO = MAX_BUCKETS * 9 / 10;
     private static final long SWEEP_EVERY = 1_000;   // requests between sweeps
 
     private final AtomicLong requestsSinceSweep = new AtomicLong();
@@ -255,11 +257,19 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         return "ip:" + clientIp(request);
     }
 
+    /**
+     * The address the connection came from, as the servlet container resolved it.
+     *
+     * <p>This used to take the first {@code X-Forwarded-For} entry as given. That entry
+     * is whatever the client wrote, so sending a different value with each request got
+     * a fresh auth bucket every time: password guessing at any speed, and a 50,000-key
+     * flood of the bucket map. The header is now never read here. Behind Render's
+     * proxy, {@code server.forward-headers-strategy=native} has Tomcat's RemoteIpValve
+     * resolve {@link HttpServletRequest#getRemoteAddr()} from it, trusting only entries
+     * added by an internal proxy, so a client-written entry is skipped.
+     */
     private String clientIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        return forwarded != null && !forwarded.isBlank()
-                ? forwarded.split(",")[0].trim()
-                : request.getRemoteAddr();
+        return request.getRemoteAddr();
     }
 
     /**
@@ -278,12 +288,14 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         Instant cutoff = Instant.now().minus(IDLE_TTL);
         buckets.entrySet().removeIf(e -> e.getValue().lastSeen.isBefore(cutoff));
 
-        // Still over the ceiling after evicting idle entries (a burst of distinct
-        // keys inside the TTL): drop oldest-first until back under it.
-        if (buckets.size() > MAX_BUCKETS) {
+        // Still at the ceiling after evicting idle entries (a burst of distinct keys
+        // inside the TTL): drop oldest-first down to EVICT_TO. Evicting only down to
+        // the ceiling itself, as this used to, left the map full, so the size check
+        // above sent every following request through this whole sweep again.
+        if (buckets.size() >= MAX_BUCKETS) {
             buckets.entrySet().stream()
                     .sorted((a, b) -> a.getValue().lastSeen.compareTo(b.getValue().lastSeen))
-                    .limit(buckets.size() - MAX_BUCKETS)
+                    .limit(buckets.size() - EVICT_TO)
                     .map(Map.Entry::getKey)
                     .toList()
                     .forEach(buckets::remove);

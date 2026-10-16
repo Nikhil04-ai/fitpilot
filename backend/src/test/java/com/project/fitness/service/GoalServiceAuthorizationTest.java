@@ -3,6 +3,7 @@ package com.project.fitness.service;
 import com.project.fitness.model.Goal;
 import com.project.fitness.model.GoalType;
 import com.project.fitness.model.User;
+import com.project.fitness.repository.ActivityRepository;
 import com.project.fitness.repository.BodyMetricsLogRepository;
 import com.project.fitness.repository.GoalRepository;
 import com.project.fitness.repository.MealLogRepository;
@@ -31,6 +32,7 @@ class GoalServiceAuthorizationTest {
     @Mock private UserRepository userRepository;
     @Mock private MealLogRepository mealLogRepository;
     @Mock private BodyMetricsLogRepository bodyMetricsLogRepository;
+    @Mock private ActivityRepository activityRepository;
     @InjectMocks private GoalService goalService;
 
     private Goal othersGoal;

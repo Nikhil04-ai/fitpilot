@@ -38,7 +38,14 @@ priority order, so priorities aren't re-derived from scratch every session.
 >
 > **Status, 2026-10-11:** access tokens can now be retired (`PROGRESS.md` Phase 16), which
 > closes the last open half of P4-3. Logout now retires them as well, and accepts only a live
-> refresh token as proof (Phase 17). Backend suite: **570 passing**, 0 failing.
+> refresh token as proof (Phase 17). Backend suite: 570 passing, 0 failing.
+>
+> **Status, 2026-10-11 (later): end-to-end QA audit.** The app was run against real MySQL and
+> real Gemini and driven over HTTP (104 checks) and in real Chrome. That found the 17 items
+> under **P5**: 10 fixed (two High security issues among them), 7 left open, plus 6
+> observations recorded as decisions rather than bugs. Suites after the
+> fixes: backend **587 passing**, frontend **95 passing**, the Selenium suite **31 of 31**. See
+> `PROGRESS.md` Phase 18.
 
 ## Priority key
 
@@ -474,10 +481,49 @@ struck-through row is fixed; its note says how.
 
 ---
 
+# P5 — Found by the end-to-end QA audit (2026-10-11)
+
+Found by driving the running app (real MySQL, real Gemini, real Chrome) rather than by
+reading code; see `PROGRESS.md` Phase 18 for the method and the evidence. Each fixed row
+has a test that fails on the code before the fix. A struck-through row is fixed.
+
+| | Problem | Severity | Where |
+|---|---|---|---|
+| ~~**P5-1**~~ | ~~The login rate limit trusts a client-written `X-Forwarded-For`: 25 password guesses in a row went through from one client by changing the header each time.~~ **Fixed.** The filter keys on `getRemoteAddr()`; `server.forward-headers-strategy=native` resolves it behind a proxy, trusting only entries an internal proxy added. Live: a forged entry no longer resets the bucket (429 after 10), and a second real client behind the same proxy keeps its own bucket. The over-full bucket map now evicts to 90%, so it can't re-sweep on every request. **Deploy check:** confirm on Render that two clients get separate buckets. | High | `RateLimitingFilter`, `application.properties` |
+| ~~**P5-2**~~ | ~~A link to the deployed site with `?api=https://attacker` sent the visitor's email and password on login (and their access and refresh tokens if signed in) to that host, and was remembered for every later visit.~~ **Fixed.** A deployed origin uses `DEPLOYED_BACKEND_URL`, erases any remembered override, and honours `?api=` only for a loopback address, for that load, unremembered (which keeps the Selenium wake-notice check working). Shown in Chrome both ways: the original code posted the password to a remote HTTPS attacker; the fixed code sent nothing. | High | `frontend/js/config.js` |
+| ~~**P5-3**~~ | ~~No limits on a workout's numbers: `-30` minutes, `-500` kcal and `2000000000` kcal were saved, and calories decide `CALORIES_BURNED` challenges.~~ **Fixed.** Duration 1–1440 min, calories 0–20000, distance 0–1000 km, sets 1–100, reps 1–1000, load 0–1000 kg, on create, edit and `/natural`. A refused edit saves nothing. | Medium | `ActivityService`, `InputChecks` |
+| ~~**P5-4**~~ | ~~Activity goals disagreed with themselves: a weekly goal started at 0 despite that week's workouts, each save added a workout whatever its date (a run five weeks old counted), and the rebuild after an edit or delete counted by date, so deleting a workout raised a goal from 2 to 3.~~ **Fixed.** One definition everywhere: the workouts dated in the goal's current period. A goal is filled in on creation unless its deadline has already passed. | Medium | `GoalService` |
+| ~~**P5-5**~~ | ~~Text longer than its column (activity notes over 1000; names, pain and sleep notes over 255) came back as `409` "data conflict, please refresh", which no refresh fixes. The UI had no `maxlength` anywhere.~~ **Fixed.** Activity notes are a `400` naming the limit; any other over-long text is a `400` naming the field, from `GlobalExceptionHandler`. Free-text inputs carry `maxlength` matching their columns. | Low | `GlobalExceptionHandler`, `index.html` |
+| ~~**P5-6**~~ | ~~`/api/activities/natural` saved a blank, missing or nonsense description as an empty `OTHER` workout (counting towards streaks, goals and `WORKOUT_COUNT` challenges), after spending a Gemini call.~~ **Fixed.** Blank is refused before the model is called; a result with no duration, distance, movement or numeric metric is refused. Live with Gemini: nonsense and small talk are 400, "ran 5k" and "bench 3x8 at 60kg" still save. | Low | `NaturalLanguageActivityService` |
+| ~~**P5-7**~~ | ~~`durationDays` had no upper limit: 100,000 gave an end date in 2300, 2,000,000,000 a `409`.~~ **Fixed.** At most 365. | Low | `ChallengeService` |
+| ~~**P5-8**~~ | ~~A meal of 10,000,000 kcal was saved; a night in 2099 and waking before bedtime were accepted.~~ **Fixed.** Meal calories ≤ 20000 and macros 0–2000 g (the AI path too); a sleep date at most a day ahead; wake after bed. | Low | `NutritionService`, `SleepService` |
+| ~~**P5-9**~~ | ~~Login answered an unknown email in ~8 ms and a real one in ~135 ms, which says which addresses have accounts.~~ **Fixed.** An unknown address costs one BCrypt comparison too (live: 148 vs 159 ms). Registration still says "already exists", by design. | Low | `UserService` |
+| ~~**P5-10**~~ | ~~A reset link's token stayed in the address bar and history until a reset succeeded, so an abandoned link left it there until expiry.~~ **Fixed.** Removed as soon as it is read. | Low | `frontend/js/auth.js` |
+| **P5-11** | **Open.** There is no way to log sleep in the UI. The Health panel's "Sleep — last 7 nights" card and the sleep-vs-performance chart can only ever be empty for someone using the app; only the API writes sleep. Needs a small form (date, hours, quality, notes) — new UI, so not done in the audit. | Medium | `index.html`, `js/panels/health.js` |
+| **P5-12** | **Open, risk.** `forgot-password` answers ~7 ms slower for a real account (it writes a token and sends mail before replying). Small, but measurable; fixing it means answering before doing the work. | Low | `PasswordResetService` |
+| **P5-13** | **Open, risk.** Refresh tokens are stored unhashed (reset tokens are hashed), so a read-only database leak yields 30-day sessions. | Low | `RefreshToken` |
+| **P5-14** | **Open, risk (deployment).** Production also allows CORS from `http://localhost:*` and from `Origin: null` with credentials (`SecurityConfig.java:82-95`; `null` is for `file://`, which the frontend refuses to run from anyway), exposes Swagger and `/v3/api-docs`, and logs SQL text (`show-sql=true`). None leaks data on its own, since auth is a bearer header rather than a cookie; worth tightening when deploying. | Low | `SecurityConfig`, `application.properties` |
+| **P5-15** | **Open, risk (deployment).** With no `MAIL_API_KEY`, every reset link is written to the log at WARN with the address it belongs to (`PasswordResetService.java:119`; seen in this run's log). That is the intended local behaviour, but `render.yaml` makes the key optional, so a deploy without it puts live password-equivalent links in Render's logs. Refuse to start without a mail key outside local, or log only that a reset was requested. | Medium | `PasswordResetService`, `render.yaml` |
+| **P5-16** | **Open (deployment).** With `FRONTEND_URL` unset, reset links point at `http://localhost:5500` (`PasswordResetService.java:184`), so the emailed link is dead in production. Not a security issue: the host never comes from the request. | Low | `PasswordResetService` |
+| **P5-17** | **Open, risk.** Natural-language descriptions have no length limit before they go to Gemini (`NaturalLanguageController`; only a meal's *stored* description is cut to 500). A very long prompt costs quota on every call, capped only by the AI tier's 10/min. | Low | `NaturalLanguageController`, `NutritionController` |
+
+**Observations — not bugs, recorded so they are a decision rather than a surprise:**
+
+| | Observation | Evidence |
+|---|---|---|
+| O-1 | The Activities list is ordered by when a workout was *entered* (`sort=createdAt,desc`, sent explicitly by the frontend), so a backdated workout appears above today's. `API.md`'s endpoint index calls it "newest first". Ordering by `startTime` would read more naturally. | Live: a workout dated two days ago, entered last, listed first |
+| O-2 | At phone width the header's "0 day streak" pill wraps onto two lines. Cosmetic; no horizontal scroll. | Screenshot at 390 px |
+| O-3 | For someone with no workouts last week, the Weekly Digest button answers with an error-styled toast ("⚠️ ❌ Nothing was logged in the week of …"), though that is the normal state for a new user. The UI can only build last week's digest; the API also accepts the current week (`weekStart`). | Live, in Chrome and over HTTP |
+| O-4 | A natural-language workout with no stated duration ("ran 5k", "bench 3x8 at 60kg") is saved with no duration and no calories, so it adds nothing to duration or calorie goals and challenges. | Live, with Gemini |
+| O-5 | Reloading with an expired access token made two refresh calls, both 200, and the session survived. The cause was not investigated; no harm was seen. | Live, in Chrome |
+| O-6 | Access tokens last 48 hours and sit in `localStorage`. Acceptable only because the XSS defences hold (all HTML sinks escaped, CSP without `unsafe-inline` for scripts), which the audit confirmed. | Code review; HTML-in-a-name test in Chrome |
+
+---
+
 # Suggested order
 
-**P0 to P4 are all done.** Nothing in the audit is open. What remains is work the audit
-didn't list, in the order I'd do it:
+**P0 to P4 are all done, and P5-1 to P5-10 (the QA audit) are fixed.** What remains, in
+the order I'd do it:
 
 1. **Not in the table, but open:**
    - ~~Access tokens are never checked server-side~~ **Fixed 2026-10-08.** A per-account
@@ -487,9 +533,18 @@ didn't list, in the order I'd do it:
      Phase 17). Logout bumps the token version too, so it ends every device's access token
      as it already ended every refresh token. A refresh token offered as proof must now be
      live, so a spent one can't be used to sign the account out.
-   - P4-1's dead-session export path has not been driven in a browser.
+   - **P5-11: a sleep form in the Health panel.** The one user-facing feature the QA audit
+     found unreachable.
+   - P4-1's dead-session export path has not been driven in a browser (it needs the account
+     row deleted underneath a live session; `DeadSessionRecoveryIntegrationTest` covers it
+     over HTTP). The frontend halves of P4-14 (a cancelled challenge's message on the card)
+     and P4-19 (the AI panel pager) were not singled out in the audit either.
    - **Deployment.** `frontend/js/config.js` still holds the placeholder Render URL. Render
-     also needs `FRONTEND_URL` and the `MAIL_*` variables.
+     also needs `FRONTEND_URL` and the `MAIL_*` variables; without them reset links point
+     at localhost (P5-16) and are written to the log (P5-15). After the first deploy, confirm
+     per-client rate limiting behind Render's proxy (P5-1), and consider P5-14.
+   - The smaller open items: P5-12, P5-13 and P5-17, and the observations O-1 to O-6 if any
+     of them should change.
 
 Done earlier:
 

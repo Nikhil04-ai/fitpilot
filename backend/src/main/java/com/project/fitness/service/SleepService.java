@@ -42,6 +42,16 @@ public class SleepService {
 
         LocalDate date = sleepDate != null ? sleepDate : LocalDate.now().minusDays(1);
 
+        // A night that hasn't happened yet was accepted (2099 included), as was waking
+        // before going to bed. A day of slack, because the server's "today" can be the
+        // day before the person's own.
+        if (date.isAfter(LocalDate.now().plusDays(1))) {
+            throw new RuntimeException("Sleep can't be logged for a night that hasn't happened yet.");
+        }
+        if (bedtime != null && wakeTime != null && !wakeTime.isAfter(bedtime)) {
+            throw new RuntimeException("Wake time must be after bedtime.");
+        }
+
         // Upsert — one log per day
         SleepLog log = sleepLogRepository.findByUserIdAndSleepDate(userId, date)
                 .orElse(SleepLog.builder().user(user).sleepDate(date).build());

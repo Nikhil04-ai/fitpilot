@@ -617,8 +617,8 @@ body.modal-open{overflow:hidden}
 
     <form id="form-register" style="display:none" data-submit="register">
       <div class="field-row">
-        <div class="field"><label for="reg-first">First Name</label><input type="text" id="reg-first" required placeholder="Nikhil"></div>
-        <div class="field"><label for="reg-last">Last Name</label><input type="text" id="reg-last" placeholder="Mehta"></div>
+        <div class="field"><label for="reg-first">First Name</label><input type="text" id="reg-first" maxlength="255" required placeholder="Nikhil"></div>
+        <div class="field"><label for="reg-last">Last Name</label><input type="text" id="reg-last" maxlength="255" placeholder="Mehta"></div>
       </div>
       <div class="field">
         <label for="reg-email">Email</label>
@@ -901,8 +901,8 @@ body.modal-open{overflow:hidden}
             <h3 class="clbl">Edit Profile</h3>
             <form id="form-profile" data-submit="update-profile">
               <div class="field-row">
-                <div class="field"><label for="prof-first">First Name</label><input type="text" id="prof-first"></div>
-                <div class="field"><label for="prof-last">Last Name</label><input type="text" id="prof-last"></div>
+                <div class="field"><label for="prof-first">First Name</label><input type="text" id="prof-first" maxlength="255"></div>
+                <div class="field"><label for="prof-last">Last Name</label><input type="text" id="prof-last" maxlength="255"></div>
               </div>
               <div class="field-row">
                 <div class="field"><label for="prof-weight">Weight (kg)</label><input type="number" id="prof-weight" step="0.1"></div>
@@ -975,7 +975,7 @@ body.modal-open{overflow:hidden}
       </div>
       <div class="field-row">
         <div class="field"><label for="act-distance">Distance (km, optional)</label><input type="number" step="0.01" min="0" id="act-distance" placeholder="5.0"></div>
-        <div class="field"><label for="act-notes">Notes (optional)</label><input type="text" id="act-notes" placeholder="Felt great today!"></div>
+        <div class="field"><label for="act-notes">Notes (optional)</label><input type="text" id="act-notes" maxlength="1000" placeholder="Felt great today!"></div>
       </div>
 
       <div class="field">
@@ -1031,7 +1031,7 @@ body.modal-open{overflow:hidden}
       </div>
       <div class="field-row">
         <div class="field"><label for="edit-act-distance">Distance (km)</label><input type="number" step="0.01" min="0" id="edit-act-distance" placeholder="5.0"></div>
-        <div class="field"><label for="edit-act-notes">Notes</label><input type="text" id="edit-act-notes" placeholder="Felt great today!"></div>
+        <div class="field"><label for="edit-act-notes">Notes</label><input type="text" id="edit-act-notes" maxlength="1000" placeholder="Felt great today!"></div>
       </div>
 
       <div class="field">
@@ -1081,7 +1081,7 @@ body.modal-open{overflow:hidden}
           <option value="5">5 — Severe</option>
         </select>
       </div>
-      <div class="field"><label for="pain-description">Description (optional)</label><input type="text" id="pain-description" placeholder="Sharp pain after running downhill"></div>
+      <div class="field"><label for="pain-description">Description (optional)</label><input type="text" id="pain-description" maxlength="255" placeholder="Sharp pain after running downhill"></div>
       <div class="modal-actions">
         <button type="button" class="btn btn-sec" style="flex:1" data-action="close-modal" data-modal="modal-log-pain">Cancel</button>
         <button type="submit" class="btn btn-prim" style="flex:1" id="log-pain-btn">Log It</button>
@@ -1135,7 +1135,7 @@ body.modal-open{overflow:hidden}
         </div>
         <div class="field"><label for="meal-calories">Calories</label><input type="number" id="meal-calories" min="0" placeholder="Or fill the macros below"></div>
       </div>
-      <div class="field"><label for="meal-description">What was it?</label><input type="text" id="meal-description" placeholder="Porridge with berries"></div>
+      <div class="field"><label for="meal-description">What was it?</label><input type="text" id="meal-description" maxlength="500" placeholder="Porridge with berries"></div>
       <div class="field-row">
         <div class="field"><label for="meal-protein">Protein (g)</label><input type="number" id="meal-protein" min="0" step="any" placeholder="optional"></div>
         <div class="field"><label for="meal-carbs">Carbs (g)</label><input type="number" id="meal-carbs" min="0" step="any" placeholder="optional"></div>
@@ -1182,7 +1182,7 @@ body.modal-open{overflow:hidden}
         </div>
         <div class="field"><label for="edit-meal-calories">Calories</label><input type="number" id="edit-meal-calories" min="0"></div>
       </div>
-      <div class="field"><label for="edit-meal-description">What was it?</label><input type="text" id="edit-meal-description"></div>
+      <div class="field"><label for="edit-meal-description">What was it?</label><input type="text" id="edit-meal-description" maxlength="500"></div>
       <div class="field-row">
         <div class="field"><label for="edit-meal-protein">Protein (g)</label><input type="number" id="edit-meal-protein" min="0" step="any"></div>
         <div class="field"><label for="edit-meal-carbs">Carbs (g)</label><input type="number" id="edit-meal-carbs" min="0" step="any"></div>
@@ -1250,7 +1250,7 @@ body.modal-open{overflow:hidden}
           <option value="STREAK_LENGTH">⚡ Longest streak</option>
         </select>
       </div>
-      <div class="field"><label for="ch-title">Title (optional)</label><input type="text" id="ch-title" placeholder="Week Burn Off"></div>
+      <div class="field"><label for="ch-title">Title (optional)</label><input type="text" id="ch-title" maxlength="255" placeholder="Week Burn Off"></div>
       <div class="field"><label for="ch-days">Duration (days)</label><input type="number" id="ch-days" value="7" min="1" max="30"></div>
       <div class="modal-actions">
         <button type="button" class="btn btn-sec" style="flex:1" data-action="close-modal" data-modal="modal-create-challenge">Cancel</button>

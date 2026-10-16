@@ -208,6 +208,10 @@ export function consumeResetLink() {
   if (!token) return false;
 
   pendingResetToken = token;
+  // Out of the address bar straight away, not only after a successful reset: a link
+  // that was abandoned, or whose reset failed, used to leave a live token in the URL
+  // and in browser history until it expired. It is kept in memory for the form.
+  stripResetFromUrl();
   document.getElementById('app-shell').classList.remove('show');
   document.getElementById('auth-screen').style.display = 'flex';
   switchAuthTab('reset');
@@ -222,6 +226,10 @@ export function consumeResetLink() {
  */
 function clearResetTokenFromUrl() {
   pendingResetToken = null;
+  stripResetFromUrl();
+}
+
+function stripResetFromUrl() {
   try {
     const url = new URL(location.href);
     url.searchParams.delete('reset');

@@ -122,6 +122,12 @@ that doesn't exist, such as `"mealType":"BRUNCH"`) returns
 Messages from a `400` are written for people and are safe to show in the UI. Raw
 database and Hibernate messages never reach the client.
 
+Text longer than its database column (a name or a pain or sleep note over 255
+characters, a meal description over 500) is a `400` that names the field, for example
+`{"error":"The last name is too long. Shorten it and try again."}`. It used to be a `409`
+"data conflict, refresh and try again". Activity notes have their own limit and message
+(see `POST /api/activities`).
+
 ### Pagination
 
 Paged endpoints take `page` (0-based, default `0`) and `size` (default `20`, clamped to
@@ -165,7 +171,11 @@ own bucket, so a spent invite budget doesn't block reading or answering requests
 - Limited responses carry `X-RateLimit-Limit` and `X-RateLimit-Remaining` headers.
 - When a bucket is empty, the response is `429` with `Retry-After: 60` and a tier-specific
   message, for example `{"error":"Too many AI requests. Try again shortly."}`.
-- Behind a proxy, the client IP is read from the first `X-Forwarded-For` entry.
+- The client IP is the connection's address as the servlet container resolves it. Behind a
+  proxy (`server.forward-headers-strategy=native`), Tomcat takes it from `X-Forwarded-For`,
+  but only from entries an internal proxy added, so a value the client wrote itself is
+  ignored. It used to be the first `X-Forwarded-For` entry as given, so sending a new value
+  with each request got a fresh auth bucket every time.
 
 ### AI-backed endpoints
 
@@ -491,6 +501,12 @@ Logs a workout. The response also reports what the save triggered: streaks, reco
     - A `null` `weightKg` means a bodyweight movement.
   - `difficultyRating` is optional, and must be 1 to 5 when given (`400` "Rating must be between 1 and 5"), as on edit.
   - `userId` is ignored. The activity is always saved to the caller's account.
+  - **Limits** (each a `400` that names the field; the same on edit and on `/natural`, where they apply to the model's numbers). They refuse values that can't be true; until the 2026-10-11 QA pass every one of them was saved as sent, including `-30` minutes and `2000000000` kcal, which went straight onto challenge leaderboards:
+    - `duration` 1–1440 minutes.
+    - `caloriesBurned` 0–20000.
+    - `distanceKm` (from either field) 0–1000.
+    - each exercise: `sets` 1–100, `reps` 1–1000, `weightKg` 0–1000.
+    - `notes` at most 1000 characters: `400` "Notes can be at most 1000 characters." (it used to fail at the database as a `409`).
 - **Response:** `200`
   ```json
   {
@@ -560,6 +576,7 @@ Edits a workout. After the edit, the server rebuilds streaks, personal bests and
   - `distanceKm` is only updated when `distanceKm` or `additionalMetrics` is sent.
   - `completedAt` is always recalculated.
   - `difficultyRating` is range-checked here (1–5).
+  - The same limits as `POST` apply to every field sent (duration, calories, distance, exercises, notes). They are checked before anything changes, so a refused edit saves nothing.
 - **Response:** `200`, an `ActivityResponse`. On this endpoint `isPersonalBest` is always `false`, and all the save-event fields are `null`.
 - **Errors:**
   - `400` "Activity not found: <activityId>". A missing activity gets a 400, not a 404.
@@ -609,6 +626,7 @@ Replaces the workout's free-text notes.
   - Nothing is recalculated.
 - **Response:** `200`, an `ActivityResponse`. `isPersonalBest` is `false`, and the save-event fields are `null`.
 - **Errors:**
+  - `400` "Notes can be at most 1000 characters."
   - `400` "Activity not found: <activityId>"
   - `403` "You don't have access to this activity."
 
@@ -620,13 +638,17 @@ Parses a plain-English description with Gemini and logs the result exactly as `P
   ```json
   { "description": "Bench 3x8 at 60kg then squats 5x5 at 80kg, about 50 minutes", "userId": "ignored" }
   ```
-  - `description` is the only field the server reads. It is not checked for blank.
+  - `description` is the only field the server reads. It is required: a missing or blank one is refused before the model is called.
   - `userId` is accepted so that older clients keep working, but it is ignored.
+  - Nothing is saved unless the model found something workout-shaped: a duration, a distance, a movement, or a numeric metric. Until 2026-10-11 a blank or nonsense description was saved as an empty `OTHER` workout, which counted towards streaks, goals and `WORKOUT_COUNT` challenges.
 - **Response:** `200`, an `ActivityResponse` (the same shape as `POST /api/activities`, including the save-event fields).
   - `startTime` is always the time of the request, and calories are always estimated by the server.
   - The movements and distance come from what the model extracted. If the model returns an unknown activity type, `type` falls back to `OTHER`.
   - `additionalMetrics` holds whatever the model returned, typically `{"distance_km": null, "notes": "..."}`. The top-level `notes` is not filled in.
 - **Errors:**
+  - `400` "Describe the workout you did." The description was missing or blank.
+  - `400` "Couldn't find a workout in that description. Say what you did and for how long, e.g. "ran 5 km in 30 minutes"."
+  - `400` naming a limit, when the model's numbers break one of the limits on `POST /api/activities`.
   - `400` "Natural language logging isn't set up on this server (no GEMINI_API_KEY). Log it with the form instead."
   - `400` "Couldn't read that activity — the AI service didn't respond. Try again in a moment, or log it with the form." This covers a timeout or output that could not be parsed.
 
@@ -923,6 +945,7 @@ Logs a meal with numbers the user entered.
   }
   ```
   - Every field is optional, but the meal must have `calories > 0` or at least one macro.
+  - `calories` is at most 20000 and each macro is 0–2000 g, on create, edit and the AI-estimated path (`400` naming the field). There was no upper limit before 2026-10-11: a 10,000,000 kcal meal was saved.
   - `mealType` is one of `BREAKFAST`, `LUNCH`, `DINNER`, `SNACK`, `OTHER`. Defaults to `OTHER`.
   - `loggedAt` is when the meal was eaten, as a local ISO date-time with no zone. It defaults to now. Daily totals, the series and goal periods all group by this field, so a backdated meal counts on the day it was eaten.
   - If `calories` is omitted but all three macros are present, calories are derived at 4/4/9 kcal per gram. An explicit `calories` value is never overwritten.
@@ -949,7 +972,7 @@ Logs a meal with numbers the user entered.
   ```
   - `goalAchievements` lists the nutrition goals whose state this meal changed, and is `null` when there are none. An `AT_MOST` budget produces a warning instead of a congratulation, for example `"Over your CALORIE INTAKE PER DAY budget — 150 kcal above 2000."`.
   - `parseNote` is always `null` on this route.
-- **Errors:** `400` `"A meal needs at least a calorie figure or its macros."` · `400` `"Calories cannot be negative."`
+- **Errors:** `400` `"A meal needs at least a calorie figure or its macros."` · `400` `"Calories cannot be negative."` · `400` `"A meal's calories must be between 0 and 20000."` · `400` `"Protein must be between 0 and 2000 g."` (likewise Carbs, Fat)
 
 ### `POST /api/nutrition/meals/natural`
 Sends a description like "two eggs, toast and a coffee" to Gemini and logs the estimated meal.
@@ -1126,7 +1149,8 @@ Creates a goal for the caller.
   ```
   - `startValue` is `null` for every type except `TARGET_WEIGHT`.
   - `periodStart` is Monday for weekly goals, today for daily goals and `null` for `TARGET_WEIGHT`.
-  - Nutrition and weight goals are filled in immediately. An activity goal starts at `0.0`.
+  - Every goal is filled in immediately. An activity goal starts at what the current period's workouts already add up to, so a weekly goal set on Thursday counts Monday to Wednesday. A goal created with its deadline already past starts, and stays, at `0.0`.
+  - An activity goal counts the workouts **dated** inside its current period (by `startTime`), however the number is reached: on creation, as each workout is saved, and when an edit or delete rebuilds it. Until 2026-10-11 it started at `0.0`, each save added to it whatever its date, and the rebuild counted by date, so deleting a workout could raise a goal and a run backdated weeks counted towards this one.
   - This shape is **not** the progress map returned by `GET`: there is no `progressPercent`, `unit` and so on.
 - **Errors:**
   - `400` `"A goal needs a type."`
@@ -1351,7 +1375,8 @@ Logs one night's sleep. There is one entry per `sleepDate`: logging a date again
   - `sleepDate` is the evening the person went to bed. It defaults to yesterday.
   - `qualityRating` is required and must be 1 to 5: `400` "Sleep quality must be between 1 and 5." It used to be clamped, so an omitted value was saved as `1`.
   - `hoursSlept` is required, more than 0 and at most 24: `400` "Hours slept must be more than 0 and at most 24."
-  - `bedtime`, `wakeTime` and `notes` are optional.
+  - `bedtime`, `wakeTime` and `notes` are optional. When both times are sent, `wakeTime` must be after `bedtime`. `notes` is at most 255 characters.
+  - `sleepDate` can be at most one day after the server's today (a day of slack for time zones). Both rules date from 2026-10-11; a night in 2099 and waking before bed were accepted before.
   - When a date is logged again, **every** field is replaced. An omitted optional field becomes `null`; it does not keep the previous value.
 - **Response:** `200`, the `SleepLog` entity:
   ```json
@@ -1369,6 +1394,8 @@ Logs one night's sleep. There is one entry per `sleepDate`: logging a date again
 - **Errors:**
   - `400` "Hours slept must be more than 0 and at most 24."
   - `400` "Sleep quality must be between 1 and 5."
+  - `400` "Sleep can't be logged for a night that hasn't happened yet."
+  - `400` "Wake time must be after bedtime."
 
 ### `GET /api/health/sleep/{userId}/analysis`
 Returns averages, history and text insights for sleep dates in the last 7 days (today − 6 through today).
@@ -1827,7 +1854,7 @@ Creates a challenge and invites one or more people. The caller is the creator an
   - `opponentIds` and `opponentId`: at least one invitee is required across the two fields. `opponentId` is the older single-opponent field and is still honoured. The server merges both fields, trims each id, drops blanks and duplicates, and removes the caller's own id. The caller plus the invitees can be at most 10 people, so up to 9 invitees.
   - **Every invitee must be an accepted friend** of the caller. Friends are made through `/api/friends`.
   - `title` (optional): if blank, the server generates one. For one invitee it is `"<First> vs <First> — <TYPE WITH SPACES>"`. For more it is `"<First> + N others — <TYPE WITH SPACES>"`.
-  - `durationDays` (optional): defaults to `7` when it is omitted, `0` or negative. There is no upper limit.
+  - `durationDays` (optional): defaults to `7` when it is omitted, `0` or negative. At most `365`: longer is `400` "A challenge can last at most 365 days." There used to be no limit, so 100,000 days gave an end date in 2300 and 2,000,000,000 failed as a `409`.
   - `creatorId` is ignored. The creator is always the caller.
 - **Response:** `200`, a challenge object with `status: "PENDING"`.
   - `startDate` and `endDate` are placeholders (today, and today + `durationDays`). They are reset when the first invitee accepts.

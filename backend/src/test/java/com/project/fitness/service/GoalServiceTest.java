@@ -2,6 +2,7 @@ package com.project.fitness.service;
 
 import com.project.fitness.exceptions.AccountNotFoundException;
 import com.project.fitness.model.*;
+import com.project.fitness.repository.ActivityRepository;
 import com.project.fitness.repository.BodyMetricsLogRepository;
 import com.project.fitness.repository.GoalRepository;
 import com.project.fitness.repository.MealLogRepository;
@@ -36,6 +37,7 @@ class GoalServiceTest {
     // accumulating it (PLAN P2-1). The activity-goal tests below never reach them.
     @Mock private MealLogRepository mealLogRepository;
     @Mock private BodyMetricsLogRepository bodyMetricsLogRepository;
+    @Mock private ActivityRepository activityRepository;
     @InjectMocks private GoalService goalService;
 
     private User user;

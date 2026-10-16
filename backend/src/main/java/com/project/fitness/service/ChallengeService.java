@@ -59,6 +59,13 @@ public class ChallengeService {
     /** Enough for a training group; beyond this the standings stop being readable. */
     private static final int MAX_PARTICIPANTS = 10;
 
+    /**
+     * Longest a challenge can run. There was no limit: 100,000 days was accepted with an
+     * end date in the year 2300, and 2,000,000,000 overflowed the date at the database,
+     * which reached the client as a 409 "data conflict, refresh and try again".
+     */
+    static final int MAX_DURATION_DAYS = 365;
+
     /** Also the answer for an id that isn't an account, so it can't be used to probe. */
     static final String NOT_FRIENDS = "You can only challenge your friends.";
     static final String H2H_DENIED =
@@ -83,6 +90,9 @@ public class ChallengeService {
 
         if (type == null) {
             throw new RuntimeException("A challenge needs a type.");
+        }
+        if (durationDays > MAX_DURATION_DAYS) {
+            throw new RuntimeException("A challenge can last at most " + MAX_DURATION_DAYS + " days.");
         }
 
         // De-duplicated, and the creator removed if they listed themselves: inviting
