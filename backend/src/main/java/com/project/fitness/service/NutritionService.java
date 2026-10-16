@@ -144,6 +144,7 @@ public class NutritionService {
                     "Couldn't work out the calories for that. Try naming the quantity, "
                     + "or enter the meal manually.");
         }
+        requireBelievableNumbers(meal);
 
         MealLog saved = mealLogRepository.save(meal);
 
@@ -398,6 +399,30 @@ public class NutritionService {
         }
         if (meal.getCalories() != null && meal.getCalories() < 0) {
             throw new RuntimeException("Calories cannot be negative.");
+        }
+        requireBelievableNumbers(meal);
+    }
+
+    static final int MAX_MEAL_CALORIES = 20_000;
+    static final double MAX_MACRO_GRAMS = 2_000;
+
+    /**
+     * Refuses numbers no meal has. There was no upper limit, so one meal of 10,000,000
+     * kcal was saved and swamped the day's intake, the daily series and the calorie
+     * budget goal. Also applied to the AI-estimated path, whose numbers are model output.
+     */
+    private void requireBelievableNumbers(MealLog meal) {
+        if (meal.getCalories() != null && (meal.getCalories() < 0 || meal.getCalories() > MAX_MEAL_CALORIES)) {
+            throw new RuntimeException("A meal's calories must be between 0 and " + MAX_MEAL_CALORIES + ".");
+        }
+        requireMacro("Protein", meal.getProteinGrams());
+        requireMacro("Carbs", meal.getCarbsGrams());
+        requireMacro("Fat", meal.getFatGrams());
+    }
+
+    private void requireMacro(String what, Double grams) {
+        if (grams != null && !(grams >= 0 && grams <= MAX_MACRO_GRAMS)) {
+            throw new RuntimeException(what + " must be between 0 and 2000 g.");
         }
     }
 

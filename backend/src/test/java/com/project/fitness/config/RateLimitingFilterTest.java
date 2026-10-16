@@ -50,6 +50,32 @@ class RateLimitingFilterTest {
         return response;
     }
 
+    /**
+     * The auth bucket was keyed on the first X-Forwarded-For entry, which the client
+     * writes, so a new value per request meant a new bucket per request: 25 password
+     * guesses in a row all went through against the live app. The header is ignored
+     * now; behind a proxy the container resolves the address (forward-headers-strategy).
+     */
+    @Test
+    @DisplayName("A client-written X-Forwarded-For does not get a fresh auth bucket")
+    void spoofedForwardedForDoesNotResetTheAuthBucket() throws Exception {
+        for (int i = 0; i < AUTH_LIMIT; i++) {
+            assertThat(callForwardedFor("/api/auth/login", "203.0.113." + i).getStatus()).isEqualTo(200);
+        }
+        MockHttpServletResponse blocked = callForwardedFor("/api/auth/login", "198.51.100.77");
+        assertThat(blocked.getStatus()).isEqualTo(429);
+    }
+
+    private MockHttpServletResponse callForwardedFor(String uri, String forwardedFor) throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", uri);
+        request.setRequestURI(uri);
+        request.setRemoteAddr("10.0.0.9");
+        request.addHeader("X-Forwarded-For", forwardedFor);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        filter.doFilter(request, response, mock(FilterChain.class));
+        return response;
+    }
+
     @Test
     @DisplayName("CORS preflight is never rate-limited")
     void optionsRequestPassesThrough() throws Exception {

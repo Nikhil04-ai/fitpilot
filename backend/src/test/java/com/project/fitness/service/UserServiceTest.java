@@ -125,4 +125,22 @@ class UserServiceTest {
         assertThatThrownBy(() -> userService.authenticate(login))
                 .hasMessage("Invalid Credentials");
     }
+
+    /**
+     * An unknown address skipped BCrypt, so it answered in ~8 ms against ~135 ms for a
+     * real account (measured on the live app): the timing said which emails exist.
+     */
+    @Test
+    @DisplayName("an unknown email still costs a password comparison, so timing doesn't reveal accounts")
+    void authenticate_unknownEmailStillComparesAHash() {
+        when(userRepository.findByEmail(anyString())).thenReturn(null);
+        when(passwordEncoder.encode(anyString())).thenReturn("$2a$10$dummy");
+
+        LoginRequest login = new LoginRequest();
+        login.setEmail("nobody@test.com");
+        login.setPassword("whatever1");
+
+        assertThatThrownBy(() -> userService.authenticate(login)).hasMessage("Invalid Credentials");
+        verify(passwordEncoder).matches("whatever1", "$2a$10$dummy");
+    }
 }

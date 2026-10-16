@@ -165,6 +165,20 @@ class ChallengeServiceTest {
                     .hasMessageContaining("cannot challenge yourself");
         }
 
+        /** No limit used to mean an end date in 2300, or a 409 from a date overflow. */
+        @Test
+        @DisplayName("a challenge longer than a year is rejected before anything is saved")
+        void overlongChallengeRejected() {
+            when(userRepository.findById("creator-1")).thenReturn(Optional.of(creator));
+
+            for (int days : new int[] {366, 100_000, 2_000_000_000}) {
+                assertThatThrownBy(() -> challengeService.createChallenge(
+                        "creator-1", List.of("opponent-1"), ChallengeType.TOTAL_DURATION, "Forever", days))
+                        .hasMessageContaining("at most 365 days");
+            }
+            verify(challengeRepository, never()).save(any());
+        }
+
         @Test
         @DisplayName("a challenge with nobody invited is rejected")
         void emptyInviteListRejected() {

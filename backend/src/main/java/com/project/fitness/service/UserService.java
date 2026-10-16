@@ -75,13 +75,31 @@ public class UserService {
         // may be stored exactly as typed, so fall back to the raw form.
         User user = userRepository.findByEmail(raw.toLowerCase());
         if (user == null) user = userRepository.findByEmail(raw);
-        if (user == null)
+        if (user == null) {
+            // Same work as a wrong password, so the response time doesn't say whether
+            // the address has an account. Skipping BCrypt here answered in ~8 ms
+            // against ~135 ms for a real account.
+            passwordEncoder.matches(loginRequest.getPassword() != null ? loginRequest.getPassword() : "",
+                    timingDummyHash());
             throw new RuntimeException("Invalid Credentials");
+        }
 
         if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
             throw new RuntimeException("Invalid Credentials");
         }
 
         return user;
+    }
+
+    /** A hash at the encoder's own cost, made once, compared against for unknown addresses. */
+    private volatile String timingDummyHash;
+
+    private String timingDummyHash() {
+        String hash = timingDummyHash;
+        if (hash == null) {
+            hash = passwordEncoder.encode(java.util.UUID.randomUUID().toString());
+            timingDummyHash = hash;
+        }
+        return hash;
     }
 }

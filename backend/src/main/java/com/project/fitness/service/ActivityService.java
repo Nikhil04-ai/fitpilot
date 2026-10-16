@@ -60,6 +60,9 @@ public class ActivityService {
             throw new RuntimeException("An activity needs a type, such as RUNNING or WEIGHT_TRAINING.");
         }
         InputChecks.difficultyRating(request.getDifficultyRating());   // only update checked it (PLAN P4-17)
+        checkNumbers(request);
+        Double distanceKm = resolveDistance(request);
+        InputChecks.distanceKm(distanceKm);
 
         Map<String, Object> comebackPlan = comebackService.evaluateComeback(user);
 
@@ -80,7 +83,7 @@ public class ActivityService {
                 .startTime(startTime)
                 .completedAt(completionOf(startTime, request.getDuration()))
                 .additionalMetrics(request.getAdditionalMetrics())
-                .distanceKm(resolveDistance(request))
+                .distanceKm(distanceKm)
                 .difficultyRating(request.getDifficultyRating())
                 .notes(request.getNotes())
                 .build();
@@ -140,6 +143,7 @@ public class ActivityService {
     @Transactional
     public ActivityResponse addNotes(String requestingUserId, String activityId, String notes) {
         Activity activity = loadOwned(activityId, requestingUserId);
+        InputChecks.notes(notes);
         activity.setNotes(notes);
         activityRepository.save(activity);
         // User is LAZY — @Transactional keeps session open so getUser() works
@@ -164,6 +168,12 @@ public class ActivityService {
         ActivityType oldType = activity.getType();
         Integer oldDuration = activity.getDuration();
         Integer oldCalories = activity.getCaloriesBurned();
+
+        // Before anything changes, so a refused edit saves nothing.
+        checkNumbers(request);
+        if (request.getDistanceKm() != null || request.getAdditionalMetrics() != null) {
+            InputChecks.distanceKm(resolveDistance(request));
+        }
 
         if (request.getType() != null)      activity.setType(request.getType());
         if (request.getDuration() != null)  activity.setDuration(request.getDuration());
@@ -289,6 +299,24 @@ public class ActivityService {
             }
         }
         return null;
+    }
+
+    /**
+     * Refuses numbers a workout can't have: a negative or day-long duration, negative or
+     * absurd calories, impossible sets, reps or loads, and notes longer than the column.
+     * Each one used to be stored as sent, straight into stats, goals and challenge
+     * scores. Distance is checked by the callers, after it is resolved from either field.
+     */
+    private void checkNumbers(ActivityRequest request) {
+        InputChecks.durationMinutes(request.getDuration());
+        InputChecks.caloriesBurned(request.getCaloriesBurned());
+        InputChecks.notes(request.getNotes());
+        if (request.getExercises() != null) {
+            for (ExerciseRequest e : request.getExercises()) {
+                if (e == null || e.getName() == null || e.getName().isBlank()) continue;   // skipped anyway
+                InputChecks.exercise(e.getName(), e.getSets(), e.getReps(), e.getWeightKg());
+            }
+        }
     }
 
     /** Maps the request's movements, skipping entries with no name to hang them on. */

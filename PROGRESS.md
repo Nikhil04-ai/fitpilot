@@ -675,3 +675,99 @@ Backend suite: **570 passing**, 0 failing (566 before). New: three `RefreshToken
 token's logout ends nothing; the live session still works and still refreshes). With the filter
 removed, all three that cover a spent token fail.
 
+---
+
+## Phase 18 — End-to-end QA audit (2026-10-11)
+
+The first pass that tested the running product rather than the code. The backend ran on a fresh
+MySQL database (`fitpilot_qa`, built by Flyway from V1 to V9) with the real Gemini key and email
+switched off, and was driven three ways:
+
+* **Over HTTP:** a 104-check script covering every endpoint group with positive, negative,
+  boundary and cross-user (403) cases. It also checked token tampering and `alg=none`, CORS,
+  actuator exposure, all four rate-limit tiers at their production values, and password reset
+  through the logged link.
+* **In real Chrome** through the DevTools protocol, with no Playwright or npm:
+  * every panel, at desktop and phone width;
+  * registration, login, logout and reload through the forms;
+  * the write flows: workouts with exercises, rating, edit, delete via the confirm modal,
+    meals, goals, pain, water, plans, profile, password change and export;
+  * friends and challenges, and the AI features against Gemini;
+  * silent refresh, a session revoked elsewhere, the reset link, and HTML in a name (shown as
+    text, never run);
+  * console errors and failed requests captured throughout.
+* **The repo's Selenium suite**, `tests/e2e/regression_selenium.py`, run as documented.
+
+It found the 17 items listed as **P5** in `PLAN.md`, plus 6 observations (O-1 to O-6) that
+are recorded there as decisions rather than bugs. Ten items were fixed. Two are High security
+issues:
+
+* **The login rate limit could be bypassed** (P5-1). It trusted a client-written
+  `X-Forwarded-For`.
+* **A crafted `?api=` link hijacked the deployed frontend** (P5-2). It sent the visitor's
+  password and tokens to the link's host.
+
+The other eight fixes:
+
+* Workouts had no numeric limits (P5-3), and one fake entry could win any challenge.
+* Activity goals were counted three different ways (P5-4), so deleting a workout raised a goal.
+* Over-long text came back as a misleading 409 (P5-5), and the UI had no `maxlength`.
+* Nonsense descriptions were saved as workouts (P5-6).
+* Challenges had no length limit (P5-7).
+* Meals and sleep accepted impossible values (P5-8).
+* Login timing revealed which emails have accounts (P5-9).
+* A reset token lingered in the address bar (P5-10).
+
+Seven items stay open:
+
+* **No sleep form in the UI (P5-11).** This is the one feature a user cannot reach.
+* **Lower risks:**
+  * Forgot-password timing (P5-12).
+  * Refresh tokens stored unhashed (P5-13).
+  * Production allows localhost and `null` CORS origins, exposes Swagger and logs SQL (P5-14).
+  * Natural-language descriptions have no length limit before they go to Gemini (P5-17).
+* **Deployment configuration:**
+  * Without a mail key, live reset links go to the log (P5-15).
+  * Without `FRONTEND_URL`, reset links point at localhost (P5-16).
+
+The observations:
+
+* The Activities list is ordered by entry time, not workout time (O-1).
+* The streak pill wraps at phone width (O-2).
+* An error-styled toast appears for an empty digest week (O-3).
+* AI-logged workouts with no duration get no calories (O-4).
+* One reload made two refresh calls (O-5, not investigated).
+* Tokens live 48 hours in `localStorage` (O-6).
+
+Decisions worth knowing:
+
+* **The `?api=` override is not removed outright.** On a deployed origin it is ignored unless it
+  names a loopback address, and even then it lasts one page load and is never saved. The repo's
+  Selenium wake-notice check points a deployed-looking page at a slow local fake server this way,
+  and a remote attacker cannot receive what goes to the visitor's own machine.
+* **The rate-limit fix depends on the proxy setup.** It relies on Tomcat's RemoteIpValve
+  trusting Render's proxy, which connects from a private address, as in Tomcat's default list.
+  That holds locally (simulated) but has to be confirmed on the first deploy.
+* **Goal creation now fills activity goals.** `API.md` used to document "an activity goal starts
+  at 0.0" as intended, but the rebuild never agreed with it, so the documented behaviour was
+  itself the bug.
+
+### Verification
+
+* **Before:** backend 570, frontend 87.
+* **After:** backend **587 passing**, frontend **95 passing**, and the Selenium suite **31 of 31**.
+* **New tests:**
+  * `GoalProgressIntegrationTest` (3) and `NaturalLanguageActivityServiceTest` (5).
+  * Six cases in `InputValidationIntegrationTest`.
+  * One each in `RateLimitingFilterTest`, `ChallengeServiceTest` and `UserServiceTest`.
+  * Frontend: `config.test.mjs` (7) and `reset-link.test.mjs` (1).
+* **Each fix's tests fail on the code before it.** With the main sources reverted, 14 of the new
+  backend tests failed, and 3 of the 5 original config tests. The Chrome hijack test showed the
+  password reaching a remote HTTPS attacker on the old code and nothing on the new.
+* **Live re-test after the fixes:** all 104 HTTP checks pass, and the browser scenarios were
+  re-run.
+* **Not covered:**
+  * the dead-session paths in a browser, since they need a row deleted under a live session;
+  * real email delivery, since email was off;
+  * the deployed environment itself.
+

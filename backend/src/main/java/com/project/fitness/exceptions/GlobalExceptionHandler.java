@@ -19,6 +19,10 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    /** MySQL: "Data too long for column 'first_name' at row 1". H2: "Value too long for column \"FIRST_NAME ...". */
+    private static final java.util.regex.Pattern TEXT_TOO_LONG = java.util.regex.Pattern.compile(
+            "(?:Data|Value) too long for column\\s+['\"]?([A-Za-z_]+)", java.util.regex.Pattern.CASE_INSENSITIVE);
+
     // Handles @Valid failures (e.g. blank email on register)
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, String>> handleValidationErrors(MethodArgumentNotValidException ex) {
@@ -60,6 +64,18 @@ public class GlobalExceptionHandler {
         String rootMsg = ex.getMostSpecificCause().getMessage();
         log.warn("Data integrity violation: {}", rootMsg);
         String friendly;
+
+        // Text longer than its column: a 300-character name, pain note or sleep note.
+        // It used to fall through to the generic "data conflict, refresh and try again"
+        // 409 below, which no refresh could fix and which didn't say what was wrong. It
+        // is the client's input, so a 400 naming the field. Only the column name is
+        // passed on, never the database's own message.
+        java.util.regex.Matcher tooLong = TEXT_TOO_LONG.matcher(rootMsg != null ? rootMsg : "");
+        if (tooLong.find()) {
+            String field = tooLong.group(1).toLowerCase().replace('_', ' ');
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "The " + field + " is too long. Shorten it and try again."));
+        }
 
         if (rootMsg != null && rootMsg.contains("fk_activity_user")) {
             // Deliberately NOT the "account no longer exists" phrasing any more, and

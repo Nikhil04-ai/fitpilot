@@ -146,7 +146,107 @@ class InputValidationIntegrationTest {
         assertThat(send(post("/api/activities", unrated)).statusCode()).isEqualTo(200);   // it is optional
     }
 
+    /**
+     * Found by the live QA pass: -30 minutes, -500 kcal and 2,000,000,000 kcal were all
+     * saved with a 200, and the calorie figure feeds the CALORIES_BURNED leaderboard.
+     */
+    @Test
+    @DisplayName("An activity's duration, calories, distance and lifts must be believable")
+    void activityNumbers() throws Exception {
+        assertRejected(post("/api/activities", withField("duration", -30)), "duration");
+        assertRejected(post("/api/activities", withField("duration", 0)), "duration");
+        assertRejected(post("/api/activities", withField("duration", 100_000)), "duration");
+        assertRejected(post("/api/activities", withField("caloriesBurned", -500)), "calories");
+        assertRejected(post("/api/activities", withField("caloriesBurned", 2_000_000_000)), "calories");
+        assertRejected(post("/api/activities", withField("distanceKm", -5.0)), "distance");
+        assertRejected(post("/api/activities", withField("additionalMetrics", Map.of("distance_km", 99_999))), "distance");
+        assertRejected(post("/api/activities", withField("exercises",
+                java.util.List.of(Map.of("name", "Bench", "sets", 3, "reps", 8, "weightKg", -60.0)))), "weight");
+        assertRejected(post("/api/activities", withField("exercises",
+                java.util.List.of(Map.of("name", "Bench", "sets", 0, "reps", 8)))), "sets");
+
+        assertThat(send(post("/api/activities", withField("caloriesBurned", 650))).statusCode()).isEqualTo(200);
+    }
+
+    @Test
+    @DisplayName("An edit is held to the same limits, and a refused edit changes nothing")
+    void activityEditNumbers() throws Exception {
+        String id = json(send(post("/api/activities", activity(3)))).get("id").asText();
+        assertRejected(put("/api/activities/" + id, Map.of("duration", -10)), "duration");
+        assertRejected(put("/api/activities/" + id, Map.of("caloriesBurned", 5_000_000, "notes", "kept?")), "calories");
+
+        JsonNode list = json(send(get("/api/activities?size=100")));
+        for (JsonNode a : list.get("content")) {
+            if (a.get("id").asText().equals(id)) {
+                assertThat(a.get("duration").asInt()).isEqualTo(30);
+                assertThat(a.get("notes").isNull() || !a.get("notes").asText().equals("kept?")).isTrue();
+            }
+        }
+    }
+
+    /** Notes past the column length used to fail at the database, as a 409 "data conflict, refresh and try again". */
+    @Test
+    @DisplayName("Notes over 1000 characters are a 400 that says so, on every path that writes them")
+    void activityNotesLength() throws Exception {
+        String longNotes = "n".repeat(1001);
+        assertRejected(post("/api/activities", withField("notes", longNotes)), "1000 characters");
+        String id = json(send(post("/api/activities", activity(3)))).get("id").asText();
+        assertRejected(put("/api/activities/" + id, Map.of("notes", longNotes)), "1000 characters");
+        assertRejected(put("/api/activities/" + id + "/notes", Map.of("notes", longNotes)), "1000 characters");
+
+        assertThat(send(put("/api/activities/" + id + "/notes", Map.of("notes", "n".repeat(1000)))).statusCode())
+                .isEqualTo(200);
+    }
+
+    /**
+     * Text past a 255-character column (names, pain and sleep notes) reached the client
+     * as a 409 "data conflict, refresh and try again", which no refresh could fix.
+     */
+    @Test
+    @DisplayName("Text too long for its column is a 400 that names the field, not a 409 'data conflict'")
+    void overlongTextNamesTheField() throws Exception {
+        String tooLong = "x".repeat(300);
+        assertRejected(request("POST", "/api/auth/register", Map.of(
+                "email", "longname@test.com", "password", "testPass123", "firstName", tooLong), null), "first name");
+        assertRejected(put("/api/profile/" + userId, Map.of("lastName", tooLong)), "last name");
+        assertRejected(post("/api/pain-log", Map.of("bodyPart", "NECK", "severity", 2, "description", tooLong)),
+                "description");
+        assertRejected(post("/api/health/sleep/" + userId, Map.of(
+                "hoursSlept", 7, "qualityRating", 3, "sleepDate", "2026-01-10", "notes", tooLong)), "notes");
+    }
+
+    /** Found by the live QA pass: a 10,000,000 kcal meal was saved with a 200. */
+    @Test
+    @DisplayName("A meal's calories and macros must be believable")
+    void mealNumbers() throws Exception {
+        assertRejected(post("/api/nutrition/meals", Map.of("calories", 10_000_000)), "calories");
+        assertRejected(post("/api/nutrition/meals", Map.of("proteinGrams", 50_000.0)), "protein");
+        assertRejected(post("/api/nutrition/meals", Map.of("calories", 300, "fatGrams", -10.0)), "fat");
+        assertThat(send(post("/api/nutrition/meals", Map.of("calories", 650))).statusCode()).isEqualTo(200);
+    }
+
+    /** Found by the live QA pass: a night in 2099, and waking before bedtime, were both saved. */
+    @Test
+    @DisplayName("Sleep can't be in the future, and waking comes after going to bed")
+    void sleepDates() throws Exception {
+        assertRejected(post("/api/health/sleep/" + userId, Map.of(
+                "hoursSlept", 7, "qualityRating", 3, "sleepDate", "2099-01-01")), "hasn't happened");
+        assertRejected(post("/api/health/sleep/" + userId, Map.of(
+                "hoursSlept", 7, "qualityRating", 3, "sleepDate", "2026-01-12",
+                "bedtime", "2026-01-12T23:00:00", "wakeTime", "2026-01-12T06:00:00")), "wake time");
+        assertThat(send(post("/api/health/sleep/" + userId, Map.of(
+                "hoursSlept", 7, "qualityRating", 3, "sleepDate", "2026-01-12",
+                "bedtime", "2026-01-12T23:00:00", "wakeTime", "2026-01-13T06:00:00"))).statusCode()).isEqualTo(200);
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────
+
+    private Map<String, Object> withField(String key, Object value) {
+        Map<String, Object> body = activity(3);
+        body.remove("difficultyRating");
+        body.put(key, value);
+        return body;
+    }
 
     private Map<String, Object> sleep(double hours, int quality) {
         return Map.of("hoursSlept", hours, "qualityRating", quality, "sleepDate", "2026-01-15");

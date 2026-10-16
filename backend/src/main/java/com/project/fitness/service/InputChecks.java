@@ -70,6 +70,51 @@ public final class InputChecks {
         }
     }
 
+    // ── A logged workout ──────────────────────────────────────────────────────
+    //
+    // None of these were checked, so a workout could be -30 minutes long or burn two
+    // billion calories. Those numbers go straight into stats, goals, personal bests and
+    // the challenge leaderboard, where one fake entry wins outright. The model's output
+    // on the natural-language path passes through the same checks.
+
+    public static final int MAX_DURATION_MIN = 24 * 60;
+    public static final int MAX_CALORIES_BURNED = 20_000;
+    public static final double MAX_DISTANCE_KM = 1_000;
+    public static final int MAX_SETS = 100, MAX_REPS = 1_000;
+    public static final double MAX_LIFT_KG = 1_000;
+    /** The {@code activity.notes} column length. Longer used to fail at the database as a 409. */
+    public static final int MAX_NOTES_CHARS = 1_000;
+
+    /** Workout length in minutes, at most a day. {@code null} means "not given" and passes. */
+    public static void durationMinutes(Integer minutes) {
+        if (minutes != null) range("Duration", minutes, 1, MAX_DURATION_MIN, " minutes");
+    }
+
+    /** Calories burned by one workout. {@code null} passes (the server estimates it). */
+    public static void caloriesBurned(Integer calories) {
+        if (calories != null) range("Calories burned", calories, 0, MAX_CALORIES_BURNED, "");
+    }
+
+    /** Distance in km. {@code null} passes. */
+    public static void distanceKm(Double km) {
+        if (km != null) range("Distance", km, 0, MAX_DISTANCE_KM, " km");
+    }
+
+    /** One movement's sets, reps and load. Each {@code null} passes (a bodyweight move has no load). */
+    public static void exercise(String name, Integer sets, Integer reps, Double weightKg) {
+        String what = name == null || name.isBlank() ? "An exercise" : name.trim();
+        if (sets != null) range(what + ": sets", sets, 1, MAX_SETS, "");
+        if (reps != null) range(what + ": reps", reps, 1, MAX_REPS, "");
+        if (weightKg != null) range(what + ": weight", weightKg, 0, MAX_LIFT_KG, " kg");
+    }
+
+    /** Workout notes. {@code null} passes. */
+    public static void notes(String notes) {
+        if (notes != null && notes.length() > MAX_NOTES_CHARS) {
+            throw new RuntimeException("Notes can be at most " + MAX_NOTES_CHARS + " characters.");
+        }
+    }
+
     private static void range(String what, double value, double min, double max, String unit) {
         // Written so NaN fails: every comparison with NaN is false.
         if (!(value >= min && value <= max)) {

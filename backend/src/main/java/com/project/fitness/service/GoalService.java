@@ -8,6 +8,7 @@ import com.project.fitness.model.GoalDirection;
 import com.project.fitness.model.GoalPeriod;
 import com.project.fitness.model.GoalType;
 import com.project.fitness.model.User;
+import com.project.fitness.repository.ActivityRepository;
 import com.project.fitness.repository.BodyMetricsLogRepository;
 import com.project.fitness.repository.GoalRepository;
 import com.project.fitness.repository.MealLogRepository;
@@ -54,6 +55,7 @@ public class GoalService {
     private final UserRepository userRepository;
     private final MealLogRepository mealLogRepository;
     private final BodyMetricsLogRepository bodyMetricsLogRepository;
+    private final ActivityRepository activityRepository;
 
     public Goal createGoal(String userId, GoalType type, double targetValue, LocalDate deadline) {
         User user = userRepository.findById(userId)
@@ -84,6 +86,19 @@ public class GoalService {
         // A weight goal created today should already read "80.0 / 72.0", not "0 / 72".
         if (saved.getType().isStateGoal()) refreshStateGoal(saved, user);
         if (saved.getType().isNutritionGoal()) refreshNutritionGoal(saved, user);
+        // Likewise a weekly training goal set on Thursday counts Monday's to Wednesday's
+        // sessions. It used to start at 0, but the rebuild after an edit or delete counts
+        // the whole week, so deleting a workout could make the number go up. A goal
+        // created with its deadline already past stays at 0: an expired goal is frozen,
+        // and the rebuild leaves it alone too.
+        if (isActivityGoal(saved.getType()) && !isExpired(saved)) {
+            LocalDate start = saved.getPeriodStart();
+            List<Activity> inPeriod = activityRepository.findByUserIdAndStartTimeBetween(user.getId(),
+                    start.atStartOfDay(),
+                    periodEndExclusive(saved.getType(), start).atStartOfDay().minusNanos(1));
+            saved.setCurrentValue(periodTotal(saved, inPeriod));
+            saved.setIsCompleted(isSatisfied(saved));
+        }
         return goalRepository.save(saved);
     }
 
@@ -111,6 +126,12 @@ public class GoalService {
             // workout into either would be nonsense, and both are refreshed from their
             // own source instead.
             if (!isActivityGoal(goal.getType())) continue;
+
+            // Only a workout dated inside the goal's current period counts. A run
+            // backdated to last month used to be added to this week's total, then
+            // dropped again by the next rebuild, which counts by date. A workout being
+            // saved with no date is happening now (trackActivity defaults it to now).
+            if (activity.getStartTime() != null && !inPeriod(goal, activity)) continue;
 
             goal.setCurrentValue(goal.getCurrentValue() + contributionOf(goal, activity));
             collectAchievement(goal, achievements);
@@ -325,22 +346,31 @@ public class GoalService {
             rollOverIfNewPeriod(goal);
             if (isExpired(goal)) continue;
 
-            LocalDate periodStart = goal.getPeriodStart() != null
-                    ? goal.getPeriodStart() : periodStartFor(goal.getType());
-            LocalDate periodEnd = periodEndExclusive(goal.getType(), periodStart);
-
-            double total = 0;
-            for (Activity a : activities) {
-                if (a.getStartTime() == null) continue;
-                LocalDate day = a.getStartTime().toLocalDate();
-                if (day.isBefore(periodStart) || !day.isBefore(periodEnd)) continue;
-                total += contributionOf(goal, a);
-            }
-
-            goal.setCurrentValue(total);
+            goal.setCurrentValue(periodTotal(goal, activities));
             goal.setIsCompleted(isSatisfied(goal));
             goalRepository.save(goal);
         }
+    }
+
+    /**
+     * What the activities dated inside the goal's current period add up to. Goal
+     * creation, the rebuild after an edit, and (one activity at a time) the save path
+     * all count this way, so the three can no longer disagree.
+     */
+    private double periodTotal(Goal goal, List<Activity> activities) {
+        double total = 0;
+        for (Activity a : activities) {
+            if (inPeriod(goal, a)) total += contributionOf(goal, a);
+        }
+        return total;
+    }
+
+    private boolean inPeriod(Goal goal, Activity activity) {
+        if (activity.getStartTime() == null) return false;
+        LocalDate periodStart = goal.getPeriodStart() != null
+                ? goal.getPeriodStart() : periodStartFor(goal.getType());
+        LocalDate day = activity.getStartTime().toLocalDate();
+        return !day.isBefore(periodStart) && day.isBefore(periodEndExclusive(goal.getType(), periodStart));
     }
 
     // ── Periods ──────────────────────────────────────────────────────────────
