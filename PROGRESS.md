@@ -815,3 +815,47 @@ always empty in the app.
   * check that the server's refusal of a future night shows as a toast and leaves the form open;
   * check 390 px width with no horizontal scroll and no console errors.
 * **Backend:** unchanged, at 587.
+
+---
+
+## Phase 20 — Form spacing, and the last three browser checks (2026-10-16)
+
+### Form rows had no gap below them
+
+`.field-row .field{margin-bottom:0}` takes the spacing off the fields inside a two-column row,
+and nothing gave it back to the row. So every row sat flush against whatever came next. That
+affected Sign Up, Edit Profile, Log and Edit Workout, Log and Edit Meal, and the new Log Sleep
+form, which had patched it inline.
+
+* **The fix:** `.field-row` now carries the same 14px bottom margin as a `.field`.
+* **Hints stay attached:** `.field-row + .field-hint` pulls a hint under a row back to its
+  original 6px.
+* **Measured in Chrome:** every row-to-next gap in all seven forms is 14px, up from 0. Both
+  hints that follow a row are still 6px.
+
+### The three frontend halves never driven in a browser
+
+All three were fixed and covered over HTTP in P4, but their browser side had not been seen
+working. Each check was driven in Chrome against the local backend on the throwaway
+`fitpilot_qa` database. No bugs were found.
+
+* **P4-19, the AI Coach pager:**
+  * **Setup:** 10 insights from real Gemini calls.
+  * Page 1 shows 9 insights, with "1 of 2" and Prev disabled.
+  * Next shows the 10th, with Next disabled, and Prev returns to page 1.
+  * The overview teaser asks for `size=1` only.
+* **P4-14, a cancelled challenge's card:**
+  * **Setup:** a real challenge with a friend who never accepted.
+  * **Simulated step:** the nightly settlement runs at 00:05, so it was not run. Instead,
+    the three columns `declareWinner()` writes for "nobody else joined" were set directly.
+  * The API returns the message.
+  * The card shows CANCELLED and "Nobody else joined, so there was no contest."
+* **P4-1, export from a dead session:**
+  * **Setup:** for each of CSV, zip and JSON, a signed-in account whose `fitness_user` row
+    was deleted under the live page.
+  * The export request got the `409`. The page returned to login with the server's message,
+    and the saved session was cleared.
+  * No file was downloaded, and there were no console errors.
+  * **Test-script note:** deleting the row before the page's first calls had finished made
+    those calls hit the 409 instead. That is the same self-heal, reached from a different
+    request.
