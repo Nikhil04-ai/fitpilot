@@ -252,6 +252,32 @@ class InputValidationIntegrationTest {
                 "bedtime", "2026-01-12T23:00:00", "wakeTime", "2026-01-13T06:00:00"))).statusCode()).isEqualTo(200);
     }
 
+    /** Found while changing O-1: a workout dated in 2099 was saved, and topped the list until then. */
+    @Test
+    @DisplayName("A workout can't start in the future, on create or edit, and a refused edit changes nothing")
+    void activityStartTime() throws Exception {
+        assertRejected(post("/api/activities", withField("startTime", "2099-01-01T07:00:00")), "hasn't happened");
+        assertRejected(post("/api/activities",
+                withField("startTime", LocalDateTime.now().plusDays(2).toString())), "hasn't happened");
+
+        String id = json(send(post("/api/activities", activity(3)))).get("id").asText();
+        assertRejected(put("/api/activities/" + id,
+                Map.of("startTime", "2099-01-01T07:00:00", "notes", "kept?")), "hasn't happened");
+        JsonNode list = json(send(get("/api/activities?size=100")));
+        for (JsonNode a : list.get("content")) {
+            if (a.get("id").asText().equals(id)) {
+                assertThat(a.get("startTime").asText()).doesNotStartWith("2099");
+                assertThat(a.get("notes").isNull() || !a.get("notes").asText().equals("kept?")).isTrue();
+            }
+        }
+
+        // Within the day of slack, and in the past, are both fine.
+        assertThat(send(post("/api/activities",
+                withField("startTime", LocalDateTime.now().plusHours(12).toString()))).statusCode()).isEqualTo(200);
+        assertThat(send(put("/api/activities/" + id,
+                Map.of("startTime", LocalDateTime.now().minusDays(3).toString()))).statusCode()).isEqualTo(200);
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────
 
     private Map<String, Object> withField(String key, Object value) {

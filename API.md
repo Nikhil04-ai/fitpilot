@@ -517,6 +517,7 @@ Logs a workout. The response also reports what the save triggered: streaks, reco
     - `distanceKm` (from either field) 0–1000.
     - each exercise: `sets` 1–100, `reps` 1–1000, `weightKg` 0–1000.
     - `notes` at most 1000 characters: `400` "Notes can be at most 1000 characters." (it used to fail at the database as a `409`).
+    - `startTime` at most a day after the server's current time: `400` "A workout can't be logged for a time that hasn't happened yet." The day of slack is for a server clock behind the person's own, as for sleep. Until 2026-11-06 a workout dated in 2099 was saved, topped the Activities list and counted towards a streak day that hadn't happened.
 - **Response:** `200`
   ```json
   {
@@ -586,7 +587,7 @@ Edits a workout. After the edit, the server rebuilds streaks, personal bests and
   - `distanceKm` is only updated when `distanceKm` or `additionalMetrics` is sent.
   - `completedAt` is always recalculated.
   - `difficultyRating` is range-checked here (1–5).
-  - The same limits as `POST` apply to every field sent (duration, calories, distance, exercises, notes). They are checked before anything changes, so a refused edit saves nothing.
+  - The same limits as `POST` apply to every field sent (duration, calories, distance, exercises, notes, start time). They are checked before anything changes, so a refused edit saves nothing.
 - **Response:** `200`, an `ActivityResponse`. On this endpoint `isPersonalBest` is always `false`, and all the save-event fields are `null`.
 - **Errors:**
   - `400` "Activity not found: <activityId>". A missing activity gets a 400, not a 404.

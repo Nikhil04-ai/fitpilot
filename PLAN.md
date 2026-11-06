@@ -54,6 +54,9 @@ priority order, so priorities aren't re-derived from scratch every session.
 > dead-session export, P4-14's cancelled-challenge card, P4-19's AI pager) were driven in
 > Chrome and all work; no bugs found. Every two-column form row also had no gap below it;
 > fixed in one CSS rule (`PROGRESS.md` Phase 20).
+>
+> **Status, 2026-11-06:** P5-18 is fixed, so every P5 item is done. A workout can't start
+> more than a day in the future (`PROGRESS.md` Phase 26). Backend suite: **614 passing**.
 
 ## Priority key
 
@@ -514,7 +517,7 @@ has a test that fails on the code before the fix. A struck-through row is fixed.
 | ~~**P5-15**~~ | ~~With no `MAIL_API_KEY`, every reset link is written to the log at WARN with the address it belongs to (`PasswordResetService.java:119`; seen in this run's log). That is the intended local behaviour, but `render.yaml` makes the key optional, so a deploy without it puts live password-equivalent links in Render's logs. Refuse to start without a mail key outside local, or log only that a reset was requested.~~ **Fixed 2026-10-17.** Under the `prod` profile the app refuses to start without `MAIL_API_KEY` and a valid `MAIL_FROM` (`ProductionSettingsCheck`), so the log path can't run there. Locally it still logs the link, as intended. | Medium | `ProductionSettingsCheck`, `render.yaml` |
 | ~~**P5-16**~~ | ~~With `FRONTEND_URL` unset, reset links point at `http://localhost:5500` (`PasswordResetService.java:184`), so the emailed link is dead in production. Not a security issue: the host never comes from the request.~~ **Fixed 2026-10-17.** Under `prod` the app refuses to start without an `https` `FRONTEND_URL`. Found on the way: CORS compared the whole `FRONTEND_URL` with the browser's `Origin`, so a GitHub Pages project address (with a path) would never have matched. CORS now uses its origin only. | Low | `ProductionSettingsCheck`, `SecurityConfig` |
 | ~~**P5-17**~~ | ~~Natural-language descriptions have no length limit before they go to Gemini (`NaturalLanguageController`; only a meal's *stored* description is cut to 500). A very long prompt costs quota on every call, capped only by the AI tier's 10/min.~~ **Fixed 2026-10-16.** Both routes refuse a description over 1000 characters with a `400`, before the model is called (`InputChecks.aiDescription`). Both text boxes carry `maxlength="1000"`. | Low | `NaturalLanguageActivityService`, `NutritionService` |
-| **P5-18** | **Open.** A workout's `startTime` has no upper limit (`ActivityService.trackActivity` and `updateActivity`), so one dated in 2099 is accepted. Since O-1 it would sit at the top of the Activities list until that date, and it already counts towards a streak day that hasn't happened. Sleep refuses a date more than a day ahead (P5-8); the same rule would fit here. Found while changing O-1. | Low | `ActivityService` |
+| ~~**P5-18**~~ | ~~A workout's `startTime` has no upper limit (`ActivityService.trackActivity` and `updateActivity`), so one dated in 2099 is accepted. Since O-1 it would sit at the top of the Activities list until that date, and it already counts towards a streak day that hasn't happened. Sleep refuses a date more than a day ahead (P5-8); the same rule would fit here. Found while changing O-1.~~ **Fixed 2026-11-06** (`PROGRESS.md` Phase 26). A start time more than a day after the server's clock is a `400`, on create and edit, checked before anything changes (`InputChecks.startTime`). `/natural` always uses now. The frontend always sends now, so no UI change. | Low | `ActivityService`, `InputChecks` |
 
 **Observations — not bugs, recorded so they are a decision rather than a surprise:**
 
@@ -531,7 +534,7 @@ has a test that fails on the code before the fix. A struck-through row is fixed.
 
 # Suggested order
 
-**P0 to P4 are all done, and P5-1 to P5-17 are fixed.** What remains, in the order I'd do
+**P0 to P4 are all done, and P5-1 to P5-18 are fixed.** What remains, in the order I'd do
 it:
 
 1. **Not in the table, but open:**
@@ -553,7 +556,8 @@ it:
      Phase 24). After the first deploy, confirm per-client rate limiting behind Render's
      proxy (P5-1).
    - ~~The smaller open items P5-12, P5-13 and P5-17~~ **All fixed 2026-10-16.**
-   - **P5-18:** refuse a workout dated in the future.
+   - ~~**P5-18:** refuse a workout dated in the future.~~ **Fixed 2026-11-06**
+     (`PROGRESS.md` Phase 26).
    - **Observations:** ~~O-1~~ changed 2026-10-17. O-2 to O-6 still want a decision.
 
 Done earlier:

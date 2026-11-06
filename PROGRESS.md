@@ -1046,8 +1046,9 @@ list "newest first".
 * **Frontend:** the Activities panel, the Overview, and the AI Coach's "latest workout" all ask
   for `startTime,desc`. The coach now builds an insight on the most recent workout done, not the
   one entered last.
-* **Found on the way (P5-18, open):** a workout's start time has no upper limit, so one dated in
-  2099 would now sit at the top of the list. Sleep already refuses a date more than a day ahead.
+* **Found on the way (P5-18, fixed in Phase 26):** a workout's start time has no upper limit, so
+  one dated in 2099 would now sit at the top of the list. Sleep already refuses a date more than
+  a day ahead.
 
 ### Verification
 
@@ -1060,3 +1061,27 @@ list "newest first".
   two days ago. Both the Overview and the Activities panel showed today, yesterday, two days ago,
   last week, with no console errors.
 * **Backend suite:** **612 passing**, 0 failing (611 before). **Frontend:** 104 passing.
+
+## Phase 26 — A workout can't be dated in the future (2026-11-06)
+
+Fixes P5-18, found during Phase 25. A workout's `startTime` had no upper limit on create or
+edit, so one dated in 2099 was saved with a `200`. Since Phase 25 it would have sat at the top of
+the Activities list until 2099, and it already counted towards a streak day that hadn't happened.
+
+* **Rule:** `InputChecks.startTime` refuses a start time more than a day after the server's clock
+  with a `400` "A workout can't be logged for a time that hasn't happened yet." It is the rule
+  sleep already uses (P5-8), with the same day of slack for a server clock that is behind the
+  person's own.
+* **Where:** `ActivityService.checkNumbers`, so it holds on create and on edit, and on edit it
+  runs before any field changes, so a refused edit saves nothing. `/natural` always uses now.
+* **No API shape change, no frontend change:** the Log Workout form always sends now.
+  `API.md` lists the new limit under `POST /api/activities` and `PUT`.
+
+### Verification
+
+* **New tests:** `InputValidationIntegrationTest.activityStartTime` (over HTTP: 2099 and
+  now + 2 days refused on create, 2099 refused on edit with nothing saved, now + 12 h and three
+  days ago accepted) and `InputChecksTest.workoutStartTime` (at the edges).
+  * With the check commented out, the integration test fails: the 2099 workout is saved with a
+    `200`.
+* **Backend suite:** **614 passing**, 0 failing (612 before). Frontend unchanged at 104.

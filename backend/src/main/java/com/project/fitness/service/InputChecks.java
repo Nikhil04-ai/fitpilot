@@ -1,6 +1,7 @@
 package com.project.fitness.service;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 /**
  * The limits on numbers a person types in (PLAN P4-17).
@@ -106,6 +107,18 @@ public final class InputChecks {
         if (sets != null) range(what + ": sets", sets, 1, MAX_SETS, "");
         if (reps != null) range(what + ": reps", reps, 1, MAX_REPS, "");
         if (weightKg != null) range(what + ": weight", weightKg, 0, MAX_LIFT_KG, " kg");
+    }
+
+    /**
+     * When a workout started. One dated in 2099 was accepted, sat at the top of the
+     * Activities list until then and counted towards a streak day that hadn't happened
+     * (PLAN P5-18). A day of slack, as for sleep, because the server's clock can be
+     * behind the person's own. {@code null} passes (create defaults it to now).
+     */
+    public static void startTime(LocalDateTime start) {
+        if (start != null && start.isAfter(LocalDateTime.now().plusDays(1))) {
+            throw new RuntimeException("A workout can't be logged for a time that hasn't happened yet.");
+        }
     }
 
     /** Workout notes. {@code null} passes. */

@@ -3,6 +3,8 @@ package com.project.fitness.service;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDateTime;
+
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -23,6 +25,19 @@ class InputChecksTest {
             InputChecks.sleepQuality(1);  InputChecks.sleepQuality(5);
             InputChecks.difficultyRating(1); InputChecks.difficultyRating(5);
         }).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("a workout may start up to a day ahead, not later (PLAN P5-18)")
+    void workoutStartTime() {
+        assertThatCode(() -> {
+            InputChecks.startTime(LocalDateTime.now().minusYears(1));
+            InputChecks.startTime(LocalDateTime.now().plusHours(23));
+            InputChecks.startTime(null);
+        }).doesNotThrowAnyException();
+        assertThatThrownBy(() -> InputChecks.startTime(LocalDateTime.now().plusDays(1).plusMinutes(5)))
+                .isExactlyInstanceOf(RuntimeException.class)
+                .hasMessage("A workout can't be logged for a time that hasn't happened yet.");
     }
 
     @Test

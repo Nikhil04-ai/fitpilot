@@ -310,6 +310,7 @@ public class ActivityService {
     private void checkNumbers(ActivityRequest request) {
         InputChecks.durationMinutes(request.getDuration());
         InputChecks.caloriesBurned(request.getCaloriesBurned());
+        InputChecks.startTime(request.getStartTime());
         InputChecks.notes(request.getNotes());
         if (request.getExercises() != null) {
             for (ExerciseRequest e : request.getExercises()) {
