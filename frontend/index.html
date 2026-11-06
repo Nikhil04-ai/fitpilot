@@ -394,25 +394,41 @@
         <div id="recovery-content"><div class="loading-state"><div class="spinner"></div>Loading recovery data…</div></div>
       </section>
 
-      <section class="panel" id="panel-health">
-        <div class="sec-head"><h2 class="sec-ttl">Health Tracking</h2><div class="sec-sub">BMI, hydration, and sleep — the metrics that move the needle.</div></div>
-        <div class="grid g3" style="margin-bottom:18px" id="health-bmi-row">
-          <div class="loading-state" style="grid-column:1/-1"><div class="spinner"></div></div>
+      <!-- Health: the body in three figures, then hydration and sleep side by side, then
+           the two trends. -->
+      <section class="panel" id="panel-health" aria-labelledby="health-ttl">
+        <div class="sheet-head page-head">
+          <div>
+            <h2 class="sheet-ttl" id="health-ttl">Your body</h2>
+            <div class="sec-sub">BMI, hydration and sleep, the metrics that move the needle.</div>
+          </div>
         </div>
-        <div class="grid g2">
-          <div class="card"><h3 class="clbl">Hydration Today</h3><div id="water-content"><div class="loading-state"><div class="spinner"></div></div></div></div>
-          <div class="card"><div class="card-head"><h3 class="clbl" style="margin-bottom:0">Sleep — Last 7 Nights</h3><button class="btn btn-prim btn-sm" data-action="open-log-sleep">+ Log Sleep</button></div><div id="sleep-content"><div class="loading-state"><div class="spinner"></div></div></div></div>
+        <div class="figs figs-3" id="health-bmi-row">
+          <div class="loading-state">Loading…</div>
         </div>
-        <div class="card" style="margin-top:18px">
-          <h3 class="clbl">Weight &amp; BMI Trend</h3>
-          <div class="chartbox tall"><canvas id="chart-body"></canvas></div>
+        <div class="grid g2 health-pair">
+          <section class="sheet" aria-labelledby="water-ttl">
+            <div class="sheet-head"><h3 class="sheet-ttl" id="water-ttl">Hydration today</h3></div>
+            <div id="water-content"><div class="loading-state">Loading…</div></div>
+          </section>
+          <section class="sheet" aria-labelledby="sleep-ttl">
+            <div class="sheet-head">
+              <h3 class="sheet-ttl" id="sleep-ttl">Sleep, last 7 nights</h3>
+              <button type="button" class="btn btn-sec btn-sm" data-action="open-log-sleep">Log sleep</button>
+            </div>
+            <div id="sleep-content"><div class="loading-state">Loading…</div></div>
+          </section>
+        </div>
+        <section class="sheet section-gap" aria-labelledby="body-chart-ttl">
+          <div class="sheet-head"><h3 class="sheet-ttl" id="body-chart-ttl">Weight trend</h3></div>
+          <div class="chartbox tall"><canvas id="chart-body" role="img" aria-label="Body weight at each saved measurement, as a line. The note under the chart gives the change and the current BMI."></canvas></div>
           <div class="chart-note" id="chart-body-note"></div>
-        </div>
-        <div class="card" style="margin-top:18px">
-          <h3 class="clbl">Sleep vs Next-Day Output</h3>
-          <div class="chartbox tall"><canvas id="chart-sleepperf"></canvas></div>
+        </section>
+        <section class="sheet section-gap" aria-labelledby="sleepperf-ttl">
+          <div class="sheet-head"><h3 class="sheet-ttl" id="sleepperf-ttl">Sleep against next-day output</h3></div>
+          <div class="chartbox tall"><canvas id="chart-sleepperf" role="img" aria-label="Each logged night's hours of sleep against the calories burned the next day; rest days sit at zero. The note under the chart is the summary."></canvas></div>
           <div class="chart-note" id="chart-sleepperf-note"></div>
-        </div>
+        </section>
       </section>
 
       <section class="panel" id="panel-notifications">
@@ -643,19 +659,19 @@
           <label for="sleep-quality">Quality</label>
           <select id="sleep-quality" required>
             <option value="" selected disabled>Choose…</option>
-            <option value="1">1 — Awful</option>
-            <option value="2">2 — Poor</option>
-            <option value="3">3 — OK</option>
-            <option value="4">4 — Good</option>
-            <option value="5">5 — Great</option>
+            <option value="1">1: Awful</option>
+            <option value="2">2: Poor</option>
+            <option value="3">3: OK</option>
+            <option value="4">4: Good</option>
+            <option value="5">5: Great</option>
           </select>
         </div>
       </div>
-      <div class="field-hint" style="margin-bottom:14px">Fill in both times and the hours are worked out for you.</div>
+      <p class="field-hint field-gap">Fill in both times and the hours are worked out for you.</p>
       <div class="field"><label for="sleep-notes">Notes (optional)</label><input type="text" id="sleep-notes" maxlength="255" placeholder="Woke once around 3am"></div>
       <div class="modal-actions">
-        <button type="button" class="btn btn-sec" style="flex:1" data-action="close-modal" data-modal="modal-log-sleep">Cancel</button>
-        <button type="submit" class="btn btn-prim" style="flex:1" id="log-sleep-btn">Log It</button>
+        <button type="button" class="btn btn-sec" data-action="close-modal" data-modal="modal-log-sleep">Cancel</button>
+        <button type="submit" class="btn btn-prim" id="log-sleep-btn">Log sleep</button>
       </div>
     </form>
   </div>

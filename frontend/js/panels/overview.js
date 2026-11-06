@@ -1,5 +1,5 @@
 import { session } from '../state.js';
-import { emptyState, escapeHtml, skeletonFigures, skeletonLines, skeletonRows } from '../util.js';
+import { emptyState, escapeHtml, figure, skeletonFigures, skeletonLines, skeletonRows } from '../util.js';
 import { api } from '../api.js';
 import { activityRow } from './activities.js';
 import { goalRow } from './goals.js';
@@ -18,14 +18,6 @@ export async function loadOverview() {
 
 function sheetHead(title) {
   return `<div class="sheet-head"><h2 class="sheet-ttl">${title}</h2></div>`;
-}
-
-/** A stat: the figure, its label, and an optional line under it. No icon, no tint. */
-function figure(value, label, sub) {
-  return `<div class="fig"><div class="fig-v">${escapeHtml(String(value))}</div>`
-       + `<div class="fig-k">${escapeHtml(label)}</div>`
-       + (sub ? `<div class="fig-sub">${escapeHtml(sub)}</div>` : '')
-       + `</div>`;
 }
 
 /** A body measurement: the figure, then its unit a step smaller. A missing one is a dash. */

@@ -1210,3 +1210,32 @@ recast on charcoal with a restrained lime. No backend, API or auth change; no fr
   2px; figure names show only when stacked. No console errors or overflow at four widths in
   three runs (a fourth flagged a problem whose text was lost to an output filter).
 * **Left as found:** the maintenance note and the no-Gemini error are backend strings with a dash.
+
+## Phase 31 — Redesign, step 5: Health (2026-11-07)
+
+* **Body:** BMI (its category under it), weight and height as one ruled row of figures.
+* **Hydration:** today as one figure ("2.1 of 2.4 L goal", the share at the end); the bar fills
+  lime only at the goal. The week's bars carry a text alternative naming every day. The water
+  input had no label, only a placeholder; it has one now, and the API's 1-5000 ml limits.
+  The two requests behind the block run together instead of one after the other.
+* **Sleep:** the average as a figure; each night's hours beside its bar, where a short night
+  used to clip them inside it; each night a list item that says "Mon: 5.4 hours". The
+  server's insight is a quiet note band, not a yellow box with an emoji.
+* **Weight chart:** one series on one axis. BMI had its own right-hand axis, but with height
+  fixed it is weight times a constant, so the two lines always moved together and the second
+  scale only invited reading a relationship into that. Each point's BMI is in its tooltip and
+  the current one in the note, which also says the axis does not start at zero.
+* **Sleep chart:** trained days lime, rest days the muted mark, both from tokens. Both canvases
+  are labelled.
+* **Shared:** `figure()` moved into `util.js` (it had been copied into three panels); every
+  section head has one minimum height, so two heads side by side line up with or without a
+  button.
+
+### Verification
+
+* **Browser** (`hl.mjs`, H2 backend behind the JDBC-line gate): 14 checks pass. It adds 300 ml
+  and sees today rise by 0.3 L, logs a night from bed and wake times and sees 8 hours filled
+  in, and reads the weight chart's live Chart.js instance to confirm one dataset and no second
+  axis. Overview, Activities, Goals and Nutrition re-checked after the shared head change.
+* **Frontend:** 113 passing; every hook in `index.html` kept. sloplint: 11 fails, all on pages
+  not yet redone.

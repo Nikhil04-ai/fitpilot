@@ -67,6 +67,17 @@ export function trimNumber(value) {
 // ═══════════════════════════════════════════════════════════════════════
 
 /**
+ * A stat in a row of figures (.figs): the figure, its label, and an optional line
+ * under it. No icon tile and no tint: the number is the point.
+ */
+export function figure(value, label, sub) {
+  return `<div class="fig"><div class="fig-v">${escapeHtml(String(value))}</div>`
+       + `<div class="fig-k">${escapeHtml(label)}</div>`
+       + (sub ? `<div class="fig-sub">${escapeHtml(sub)}</div>` : '')
+       + `</div>`;
+}
+
+/**
  * What belongs in an empty region, and optionally the one action that fills it.
  * `icon` may be '' (the redesigned panels draw none); `actionHtml` is trusted markup,
  * a button with its data-action, never user text.

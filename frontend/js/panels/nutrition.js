@@ -1,4 +1,4 @@
-import { emptyState, escapeHtml, localDateTimeNow, numberOrNull, shortTime, skeletonFigures, skeletonLines, skeletonRows, trimNumber } from '../util.js';
+import { emptyState, escapeHtml, figure, localDateTimeNow, numberOrNull, shortTime, skeletonFigures, skeletonLines, skeletonRows, trimNumber } from '../util.js';
 import { closeModal, confirmDialog, openModal, toast } from '../ui.js';
 import { api } from '../api.js';
 import { invalidatePanel } from '../nav.js';
@@ -8,13 +8,6 @@ import { chartColor, chartPlaceholder, chartTheme, renderChart, setChartNote, sh
 // NUTRITION  (PLAN P2-1)
 // ═══════════════════════════════════════════════════════════════════════
 
-/** A stat: the figure, its label, and an optional line under it. As on the Overview. */
-function figure(value, label, sub) {
-  return `<div class="fig"><div class="fig-v">${escapeHtml(String(value))}</div>`
-       + `<div class="fig-k">${escapeHtml(label)}</div>`
-       + (sub ? `<div class="fig-sub">${escapeHtml(sub)}</div>` : '')
-       + `</div>`;
-}
 
 /**
  * Today's meals, keyed by id.
