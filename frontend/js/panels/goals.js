@@ -108,12 +108,37 @@ export function openCreateGoal() {
   goalTargetHint();
 }
 
+/**
+ * The groups the Goals page shows, in order. By period rather than by "done", because
+ * a weekly or daily goal that is complete is only complete until it resets: filing it
+ * under "Completed" would put a live goal in a finished pile. A goal whose deadline
+ * passed has ended whatever its period, so it leaves its group for the last one.
+ */
+export function goalGroups(goals) {
+  const live = goals.filter(g => !g.isExpired);
+  return [
+    ['This week',   live.filter(g => g.period === 'WEEKLY')],
+    ['Today',       live.filter(g => g.period === 'DAILY')],
+    ['Body weight', live.filter(g => g.period !== 'WEEKLY' && g.period !== 'DAILY')],
+    ['Ended',       goals.filter(g => g.isExpired)]
+  ].filter(([, list]) => list.length);
+}
+
 export async function loadGoals() {
   const el = document.getElementById('goals-list');
   el.innerHTML = skeletonRows(3);
   try {
     const goals = await api(`/api/goals/${session.currentUser.id}`);
-    el.innerHTML = goals.length ? goals.map(goalRow).join('') : emptyState('🎯', 'No goals yet — create your first target!');
+    if (!goals.length) {
+      el.innerHTML = emptyState('', 'No goals yet. Set a weekly target, a daily budget or a body weight to aim for.',
+        '<button type="button" class="btn btn-sec btn-sm" data-action="create-goal">New goal</button>');
+      return;
+    }
+    el.innerHTML = goalGroups(goals).map(([title, list]) => `
+      <section class="goal-group" aria-label="${escapeHtml(title)}">
+        <h3 class="goal-group-ttl">${escapeHtml(title)} <span class="sheet-meta">${list.length}</span></h3>
+        <div class="goal-grid">${list.map(g => goalRow(g)).join('')}</div>
+      </section>`).join('');
   } catch (err) {
     el.innerHTML = `<div class="error-state">Couldn't load goals: ${escapeHtml(err.message)}</div>`;
   }
@@ -133,10 +158,10 @@ export async function handleCreateGoal(e) {
     await api('/api/goals', { method: 'POST', body: JSON.stringify(payload) });
     closeModal('modal-create-goal');
     document.getElementById('form-create-goal').reset();
-    toast('🎯 Goal created!');
+    toast('Goal created');
     loadGoals();
   } catch (err) {
-    toast('❌ ' + err.message, true);
+    toast(err.message, true);
   } finally {
     btn.disabled = false; btn.textContent = 'Create Goal';
   }
@@ -161,10 +186,10 @@ export async function handleEditGoal(e) {
   try {
     await api(`/api/goals/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
     closeModal('modal-edit-goal');
-    toast('✅ Goal updated!');
+    toast('Goal updated');
     loadGoals();
   } catch (err) {
-    toast('❌ ' + err.message, true);
+    toast(err.message, true);
   } finally {
     btn.disabled = false; btn.textContent = 'Save Changes';
   }
@@ -181,9 +206,9 @@ export async function deleteGoal(id) {
   if (!ok) return;
   try {
     await api(`/api/goals/${id}`, { method: 'DELETE' });
-    toast('🗑 Goal removed');
+    toast('Goal removed');
     loadGoals();
   } catch (err) {
-    toast('❌ ' + err.message, true);
+    toast(err.message, true);
   }
 }

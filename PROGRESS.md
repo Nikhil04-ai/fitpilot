@@ -1152,3 +1152,31 @@ recast on charcoal with a restrained lime. No backend, API or auth change; no fr
   bugs the first version had (misaligned column heads; exercise heads overlapping at 390), fixed.
 * **Frontend:** 104 passing; every hook in `index.html` at the previous commit kept.
 * **sloplint:** 14 fails left, all on pages not yet redone.
+
+## Phase 29 — Redesign, step 3: Goals (2026-11-06)
+
+* **Grouped by how a goal is scored,** not by "done": This week, Today, Body weight, then Ended
+  for any goal whose deadline passed. A weekly or daily goal that is complete is only complete
+  until it resets (API.md: weekly on Monday, daily at midnight), so a "Completed" pile would have
+  filed live goals as finished. `goalGroups()` in `js/panels/goals.js`; goals sit two or three
+  abreast on a wide screen and the period chip is hidden inside a group, where it would repeat
+  the group's name.
+* **New goal** is a secondary button (the topbar's Log workout stays the one primary); the empty
+  state names the three kinds of goal and carries the button. The New Goal type list is grouped
+  (Training, Nutrition, Body) and has no emoji; toasts have none either.
+* **Every dialog's close button** is now labelled "Close", the seven on pages not yet redone too.
+
+### Verification
+
+* **Unit:** `tests/goals.test.mjs` (4 tests): the grouping order, a reached weekly goal staying
+  in its week, an expired goal moving to Ended, the row marking expiry by class with no emoji or
+  dash, a blown budget reading "over by" with the over fill. Frontend 108 passing.
+* **Browser** (`goals.mjs`, headless Chrome, backend on in-memory H2 with Gemini and mail
+  blanked, gated on the log's JDBC line): 11 checks through the UI, all passing. It creates a
+  protein goal (it lands under Today), edits it from 140 to 150, and deletes it through the
+  confirm dialog. No console errors or overflow at 1440, 1024, 768 and 390px.
+* **Found on the way, not a code change:** a backend started with `-Dspring-boot.run.profiles=test`
+  under `spring-boot:run` still reads `backend/local.properties` and connected to the local
+  MySQL `fitness_demo`, so Phases 27 and 28's browser checks wrote two test accounts there. They
+  were deleted (47 rows, one transaction, keyed to their two ids). Checks now pass the H2
+  datasource as run arguments, which outrank `local.properties`.

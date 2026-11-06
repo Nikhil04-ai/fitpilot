@@ -261,12 +261,19 @@
         </div>
       </section>
 
-      <section class="panel" id="panel-goals">
-        <div class="sec-head" style="display:flex;justify-content:space-between;align-items:flex-end">
-          <div><h2 class="sec-ttl">Goals</h2><div class="sec-sub">Weekly training targets, daily nutrition budgets and a body-weight goal — all scored automatically.</div></div>
-          <button class="btn btn-prim btn-sm" data-action="create-goal">+ New Goal</button>
+      <!-- Goals, grouped the way they are scored: this week's training targets, today's
+           nutrition budgets, the body-weight goal, then the ones whose deadline passed. -->
+      <section class="panel" id="panel-goals" aria-labelledby="goals-ttl">
+        <div class="sheet">
+          <div class="sheet-head">
+            <div>
+              <h2 class="sheet-ttl" id="goals-ttl">Your goals</h2>
+              <div class="sec-sub">Weekly training targets, daily nutrition budgets and a body-weight goal, all scored automatically.</div>
+            </div>
+            <button type="button" class="btn btn-sec btn-sm" data-action="create-goal">New goal</button>
+          </div>
+          <div id="goals-list"><div class="loading-state">Loading goals…</div></div>
         </div>
-        <div class="card"><div id="goals-list"><div class="loading-state"><div class="spinner"></div>Loading goals…</div></div></div>
       </section>
 
       <section class="panel" id="panel-bests">
@@ -571,7 +578,7 @@
 
 <div class="modal-overlay" id="modal-log-pain">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-log-pain-title">
-    <div class="modal-head"><h2 class="modal-ttl" id="modal-log-pain-title">Log Pain</h2><button class="modal-close" data-action="close-modal" data-modal="modal-log-pain">✕</button></div>
+    <div class="modal-head"><h2 class="modal-ttl" id="modal-log-pain-title">Log Pain</h2><button type="button" class="modal-close" aria-label="Close" data-action="close-modal" data-modal="modal-log-pain">✕</button></div>
     <form id="form-log-pain" data-submit="log-pain">
       <div class="field">
         <label for="pain-bodypart">Body Part</label>
@@ -610,7 +617,7 @@
 
 <div class="modal-overlay" id="modal-log-sleep">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-log-sleep-title">
-    <div class="modal-head"><h2 class="modal-ttl" id="modal-log-sleep-title">Log Sleep</h2><button class="modal-close" data-action="close-modal" data-modal="modal-log-sleep">✕</button></div>
+    <div class="modal-head"><h2 class="modal-ttl" id="modal-log-sleep-title">Log Sleep</h2><button type="button" class="modal-close" aria-label="Close" data-action="close-modal" data-modal="modal-log-sleep">✕</button></div>
     <form id="form-log-sleep" data-submit="log-sleep">
       <div class="field">
         <label for="sleep-date">Night of</label>
@@ -647,14 +654,14 @@
 
 <div class="modal-overlay" id="modal-edit-goal">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-edit-goal-title">
-    <div class="modal-head"><h2 class="modal-ttl" id="modal-edit-goal-title">Edit Goal</h2><button class="modal-close" data-action="close-modal" data-modal="modal-edit-goal">✕</button></div>
+    <div class="modal-head"><h2 class="modal-ttl" id="modal-edit-goal-title">Edit Goal</h2><button type="button" class="modal-close" aria-label="Close" data-action="close-modal" data-modal="modal-edit-goal">✕</button></div>
     <form id="form-edit-goal" data-submit="edit-goal">
       <input type="hidden" id="edit-goal-id">
-      <div class="field"><label for="edit-goal-target">Target Value</label><input type="number" id="edit-goal-target" required min="0.1" step="any"></div>
+      <div class="field"><label for="edit-goal-target">Target Value</label><input type="number" id="edit-goal-target" required min="0.1" step="any" inputmode="decimal"></div>
       <div class="field"><label for="edit-goal-deadline">Deadline (optional)</label><input type="date" id="edit-goal-deadline"></div>
       <div class="modal-actions">
-        <button type="button" class="btn btn-sec" style="flex:1" data-action="close-modal" data-modal="modal-edit-goal">Cancel</button>
-        <button type="submit" class="btn btn-prim" style="flex:1" id="edit-goal-btn">Save Changes</button>
+        <button type="button" class="btn btn-sec" data-action="close-modal" data-modal="modal-edit-goal">Cancel</button>
+        <button type="submit" class="btn btn-prim" id="edit-goal-btn">Save Changes</button>
       </div>
     </form>
   </div>
@@ -662,14 +669,14 @@
 
 <div class="modal-overlay" id="modal-challenge-detail">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="cd-title">
-    <div class="modal-head"><h2 class="modal-ttl" id="cd-title">Challenge</h2><button class="modal-close" data-action="close-modal" data-modal="modal-challenge-detail">✕</button></div>
+    <div class="modal-head"><h2 class="modal-ttl" id="cd-title">Challenge</h2><button type="button" class="modal-close" aria-label="Close" data-action="close-modal" data-modal="modal-challenge-detail">✕</button></div>
     <div id="cd-content"><div class="loading-state"><div class="spinner"></div></div></div>
   </div>
 </div>
 
 <div class="modal-overlay" id="modal-log-meal">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-log-meal-title">
-    <div class="modal-head"><h2 class="modal-ttl" id="modal-log-meal-title">Log Meal</h2><button class="modal-close" data-action="close-modal" data-modal="modal-log-meal">&#10005;</button></div>
+    <div class="modal-head"><h2 class="modal-ttl" id="modal-log-meal-title">Log Meal</h2><button type="button" class="modal-close" aria-label="Close" data-action="close-modal" data-modal="modal-log-meal">&#10005;</button></div>
 
     <div class="auth-tabs" style="margin-bottom:18px">
       <button class="auth-tab on" id="meal-tab-manual" data-action="meal-tab" data-tab="manual">📝 Manual</button>
@@ -721,7 +728,7 @@
 
 <div class="modal-overlay" id="modal-edit-meal">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-edit-meal-title">
-    <div class="modal-head"><h2 class="modal-ttl" id="modal-edit-meal-title">Edit Meal</h2><button class="modal-close" data-action="close-modal" data-modal="modal-edit-meal">&#10005;</button></div>
+    <div class="modal-head"><h2 class="modal-ttl" id="modal-edit-meal-title">Edit Meal</h2><button type="button" class="modal-close" aria-label="Close" data-action="close-modal" data-modal="modal-edit-meal">&#10005;</button></div>
     <form id="form-edit-meal" data-submit="edit-meal">
       <input type="hidden" id="edit-meal-id">
       <div class="field-row">
@@ -754,22 +761,28 @@
 
 <div class="modal-overlay" id="modal-create-goal">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-create-goal-title">
-    <div class="modal-head"><h2 class="modal-ttl" id="modal-create-goal-title">New Goal</h2><button class="modal-close" data-action="close-modal" data-modal="modal-create-goal">✕</button></div>
+    <div class="modal-head"><h2 class="modal-ttl" id="modal-create-goal-title">New Goal</h2><button type="button" class="modal-close" aria-label="Close" data-action="close-modal" data-modal="modal-create-goal">✕</button></div>
     <form id="form-create-goal" data-submit="create-goal">
       <div class="field">
         <label for="goal-type">Goal Type</label>
         <select id="goal-type" required data-change="goal-target-hint">
-          <option value="CALORIES_PER_WEEK">🔥 Calories per week</option>
-          <option value="WORKOUTS_PER_WEEK">💪 Workouts per week</option>
-          <option value="DURATION_PER_WEEK">⏱ Minutes per week</option>
-          <option value="CALORIE_INTAKE_PER_DAY">🍽 Calorie budget per day</option>
-          <option value="PROTEIN_PER_DAY">🥩 Protein per day (g)</option>
-          <option value="TARGET_WEIGHT">⚖️ Target body weight (kg)</option>
+          <optgroup label="Training, this week">
+            <option value="CALORIES_PER_WEEK">Calories per week</option>
+            <option value="WORKOUTS_PER_WEEK">Workouts per week</option>
+            <option value="DURATION_PER_WEEK">Minutes per week</option>
+          </optgroup>
+          <optgroup label="Nutrition, each day">
+            <option value="CALORIE_INTAKE_PER_DAY">Calorie budget per day</option>
+            <option value="PROTEIN_PER_DAY">Protein per day (g)</option>
+          </optgroup>
+          <optgroup label="Body">
+            <option value="TARGET_WEIGHT">Target body weight (kg)</option>
+          </optgroup>
         </select>
       </div>
       <div class="field">
         <label for="goal-target">Target Value</label>
-        <input type="number" id="goal-target" required min="0.1" step="any" placeholder="e.g. 3000">
+        <input type="number" id="goal-target" required min="0.1" step="any" inputmode="decimal" placeholder="e.g. 3000">
         <!-- Filled in by goalTargetHint(): a body-weight goal and a calorie budget want
              very different numbers, and a single generic placeholder invited people to
              type a weekly figure into a daily budget. -->
@@ -777,8 +790,8 @@
       </div>
       <div class="field"><label for="goal-deadline">Deadline (optional)</label><input type="date" id="goal-deadline"></div>
       <div class="modal-actions">
-        <button type="button" class="btn btn-sec" style="flex:1" data-action="close-modal" data-modal="modal-create-goal">Cancel</button>
-        <button type="submit" class="btn btn-prim" style="flex:1" id="create-goal-btn">Create Goal</button>
+        <button type="button" class="btn btn-sec" data-action="close-modal" data-modal="modal-create-goal">Cancel</button>
+        <button type="submit" class="btn btn-prim" id="create-goal-btn">Create Goal</button>
       </div>
     </form>
   </div>
@@ -786,7 +799,7 @@
 
 <div class="modal-overlay" id="modal-create-challenge">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-create-challenge-title">
-    <div class="modal-head"><h2 class="modal-ttl" id="modal-create-challenge-title">New Challenge</h2><button class="modal-close" data-action="close-modal" data-modal="modal-create-challenge">✕</button></div>
+    <div class="modal-head"><h2 class="modal-ttl" id="modal-create-challenge-title">New Challenge</h2><button type="button" class="modal-close" aria-label="Close" data-action="close-modal" data-modal="modal-create-challenge">✕</button></div>
     <form id="form-create-challenge" data-submit="create-challenge">
       <div class="field">
         <label for="ch-opponents">Who&#39;s competing</label>
@@ -820,7 +833,7 @@
      it is what openModal() focuses. -->
 <div class="modal-overlay" id="modal-confirm">
   <div class="modal modal-sm" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-message">
-    <div class="modal-head"><h2 class="modal-ttl" id="confirm-title">Are you sure?</h2><button class="modal-close" data-action="close-modal" data-modal="modal-confirm" aria-label="Close">✕</button></div>
+    <div class="modal-head"><h2 class="modal-ttl" id="confirm-title">Are you sure?</h2><button type="button" class="modal-close" aria-label="Close" data-action="close-modal" data-modal="modal-confirm" aria-label="Close">✕</button></div>
     <p class="confirm-msg" id="confirm-message"></p>
     <div class="modal-actions">
       <button type="button" class="btn btn-sec" style="flex:1" id="confirm-cancel" data-action="close-modal" data-modal="modal-confirm">Cancel</button>
