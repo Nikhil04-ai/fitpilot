@@ -1085,3 +1085,41 @@ the Activities list until 2099, and it already counted towards a streak day that
   * With the check commented out, the integration test fails: the 2099 workout is saved with a
     `200`.
 * **Backend suite:** **614 passing**, 0 failing (612 before). Frontend unchanged at 104.
+
+## Phase 27 — Redesign, step 1: the design system, the shell and the overview (2026-11-06)
+
+The frontend read as generated: an emoji per nav item and per button, a blue-to-cyan gradient on
+every primary surface, labels in 9-11px tracked capitals, a blinking dot before every card title,
+four stat cards with coloured icon tiles, 76 colours written outside any token. The redesign runs
+page by page, following the Hallmark design skill (github.com/nutlope/hallmark): its "Sport"
+material (a results sheet: condensed capitals, tabular figures, ruled rows, one volt signal)
+recast on charcoal with a restrained lime. No backend, API or auth change; no framework, no build.
+
+* **System:** `frontend/css/` (`tokens.css`, `base.css`, `app.css`) replaces the 510-line inline
+  `<style>`. Every colour, face and size is a token; the old names (`--blue`, `--panel`, ...) are
+  aliases so panels not yet redone stay usable. Saira Condensed and Albert Sans replace Barlow
+  Condensed and Inter. Lime marks only the primary action, the current page, a personal best and
+  a toast's done state.
+* **Shell:** the sidebar is text only, grouped Train / Body / Insight / People, and becomes a
+  drawer under 960px. The streak no longer wraps at phone width (PLAN O-2).
+* **Overview:** four figures in one ruled row; recent activities as a training log (when, the
+  session in condensed capitals, km / min / cal in aligned columns, effort, edit and delete);
+  goals and the athlete's measurements beside it. Empty states name the one action that fills
+  them. The streak ring went: it repeated the figure beside it and the topbar's.
+* **Shared rows:** `activityRow` and `goalRow` are the same on the Activities and Goals pages.
+  An activity row restacks by its list's width (a container query), not the screen's.
+* **Charts:** `chartColor` now resolves a token to `rgb()` by painting it once, because Chart.js
+  can't parse the `oklch()` the tokens use.
+
+### Verification
+
+* **Frontend:** 104 passing. Every `id`, `data-action`, `data-panel`, `data-modal`,
+  `data-submit` and `for` in `index.html` at the previous commit is still there, and every id the
+  JS queries exists.
+* **Browser:** headless Chrome driven over the DevTools protocol against the real backend (test
+  profile, in-memory H2), a seeded account and an empty one, at 1440, 1024, 768 and 390px: no
+  console errors, no horizontal overflow. It caught a session column collapsing to one letter per
+  line at 768px, fixed by the container query.
+* **Hallmark sloplint** (static, app scope): 166 findings before; 15 fails and 9 warnings after,
+  every fail on a page not yet redone (emoji on the auth, coach and log-workout controls, five
+  chart canvases without a label) except one waived false positive.

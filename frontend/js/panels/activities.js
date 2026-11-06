@@ -12,11 +12,6 @@ export const ACT_ICON = {
   RUNNING:'🏃', WALKING:'🚶', CYCLING:'🚴', SWIMMING:'🏊', WEIGHT_TRAINING:'🏋️',
   YOGA:'🧘', HIIT:'⚡', CARDIO:'🏄', STRETCHING:'🤸', OTHER:'➕'
 };
-const ACT_DOT_COLOR = {
-  RUNNING:'var(--blue)', WALKING:'var(--blue)', CYCLING:'var(--cyan)', SWIMMING:'var(--cyan)',
-  WEIGHT_TRAINING:'var(--gold)', YOGA:'#A855F7', HIIT:'var(--gold)', CARDIO:'var(--cyan)',
-  STRETCHING:'#A855F7', OTHER:'var(--blue)'
-};
 
 /** Labels for the metrics Gemini extracts, so a parsed "5km" is actually shown. */
 const METRIC_LABEL = {
@@ -59,35 +54,46 @@ function ratingStars(a) {
   return html + '</span>';
 }
 
+/** A figure and its unit, for the row's figure columns. An empty cell when not known, so the columns stay aligned. */
+function rowFigure(value, unit) {
+  return value != null ? `<span>${escapeHtml(String(value))}<span class="u">${unit}</span></span>` : '<span></span>';
+}
+
+/**
+ * One session in the training log: when, what, its figures, its actions. The same
+ * row is the overview's recent list and the Activities page.
+ *
+ * The coloured dot and the emoji per type are gone: the type is named in the
+ * display face, which says it once and better. A personal best is the one thing
+ * in a row that earns the lime.
+ */
 export function activityRow(a) {
-  const icon = ACT_ICON[a.type] || '🏃';
-  const dotColor = ACT_DOT_COLOR[a.type] || 'var(--blue)';
   const label = (a.type || '').replace('_',' ');
-  const dur = a.duration != null ? `${a.duration} min` : '';
-  const cal = a.caloriesBurned != null ? `${a.caloriesBurned} cal` : '';
-  const dist = a.distanceKm != null ? `${trimNumber(a.distanceKm)} km` : '';
-  const meta = [dist, dur, cal].filter(Boolean).join(' · ');
   const when = a.startTime ? shortDate(a.startTime) : '';
   const volume = a.totalVolume != null
     ? `<span class="ai-chip">${trimNumber(a.totalVolume)} kg total</span>` : '';
   // distanceKm has its own column now, so it must not also be rendered out of the
   // metrics blob — old rows still carry it there and it would appear twice.
-  const sub = [when ? `<span>${escapeHtml(when)}</span>` : '',
-               metricChips(a.additionalMetrics), volume, ratingStars(a)]
-    .filter(Boolean).join('');
+  const sub = [metricChips(a.additionalMetrics), volume, ratingStars(a)].filter(Boolean).join('');
+  const figures = [
+    rowFigure(a.distanceKm != null ? trimNumber(a.distanceKm) : null, 'km'),
+    rowFigure(a.duration, 'min'),
+    rowFigure(a.caloriesBurned, 'cal')
+  ].join('');
+  const named = [label.toLowerCase(), when].filter(Boolean).join(', ');
   return `
     <div class="ai">
-      <div class="ad" style="background:${dotColor};box-shadow:0 0 6px ${dotColor}"></div>
+      <div class="ai-when">${escapeHtml(when)}</div>
       <div class="ai-body">
-        <div class="an">${icon} ${escapeHtml(label)}${a.notes ? ' — ' + escapeHtml(a.notes) : ''}</div>
+        <div class="an">${escapeHtml(label)}${a.isPersonalBest ? '<span class="apr" title="Personal record">PR</span>' : ''}</div>
+        ${a.notes ? `<div class="ai-note">${escapeHtml(a.notes)}</div>` : ''}
         <div class="ai-sub">${sub}</div>
-        ${exerciseList(a.exercises)}
       </div>
-      <div class="am">${meta}</div>
-      ${a.isPersonalBest ? '<span class="apr">⭐ PR</span>' : ''}
+      <div class="am">${figures}</div>
+      ${exerciseList(a.exercises)}
       <div class="ai-acts">
-        <button title="Edit" data-action="edit-activity" data-id="${a.id}">✎</button>
-        <button title="Delete" class="danger" data-action="delete-activity" data-id="${a.id}">✕</button>
+        <button type="button" data-action="edit-activity" data-id="${a.id}" aria-label="Edit ${escapeHtml(named)}">Edit</button>
+        <button type="button" class="danger" data-action="delete-activity" data-id="${a.id}" aria-label="Delete ${escapeHtml(named)}">Delete</button>
       </div>
     </div>`;
 }

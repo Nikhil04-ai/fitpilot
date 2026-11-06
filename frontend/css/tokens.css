@@ -1,0 +1,82 @@
+/* FitPilot design tokens.
+ *
+ * The material is Hallmark's "Sport" (a results sheet: condensed capitals, tabular
+ * figures, ruled rows, one volt signal), recast on charcoal by request. Every colour,
+ * face and size in css/ goes through a token here; nothing past this file names a
+ * literal colour or font.
+ *
+ * Lime is a signal, not a decoration: the primary action, the current selection, a
+ * personal best, live state. Under 5% of any screen. */
+:root {
+  color-scheme: dark;
+
+  /* ── Space (4px scale) ── */
+  --space-3xs: 2px; --space-2xs: 4px; --space-xs: 8px; --space-sm: 12px; --space-md: 16px;
+  --space-lg: 24px; --space-xl: 32px; --space-2xl: 48px; --space-3xl: 64px;
+
+  /* ── Type (fixed app scale, ~1.125) ── */
+  --text-xs: 0.75rem;    /* 12px: the floor; meta that rides beside a figure */
+  --text-sm: 0.875rem;   /* 14px: labels, captions, table meta */
+  --text-md: 1rem;       /* 16px: body */
+  --text-lg: 1.125rem;   /* 18px: section heads */
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;    /* page title */
+  --text-3xl: 2rem;
+  --text-figure: 2.5rem; /* a stat at statement size */
+
+  --font-display: "Saira Condensed", "Arial Narrow", sans-serif;
+  --font-body: "Albert Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace; /* times and splits only, never a label */
+  --display-weight: 800;
+  --tracking-display: -0.01em;
+
+  /* ── Colour ── cool charcoal paper, hue 250 */
+  --color-paper:   oklch(18.5% 0.006 250);
+  --color-paper-2: oklch(21.5% 0.007 250);
+  --color-paper-3: oklch(25% 0.008 250);
+  --color-paper-4: oklch(29% 0.009 250);
+  --color-ink:     oklch(95% 0.004 250);
+  --color-ink-2:   oklch(83% 0.008 250);
+  --color-muted:   oklch(71% 0.012 250);   /* 4.5:1 or better on every paper step */
+  --color-rule:    oklch(32% 0.008 250);   /* hairlines between rows */
+  --color-rule-2:  oklch(70% 0.010 250);   /* the bar rule that opens a section */
+  --color-mark:    oklch(52% 0.010 250);   /* an unset control mark (effort): 3:1 on paper */
+
+  --color-accent:     oklch(89% 0.19 125); /* lime: a fill under dark ink, or a mark */
+  --color-accent-hi:  oklch(93% 0.16 125);
+  --color-accent-2:   oklch(72% 0.13 125); /* the second step of the lime ramp, for a second series */
+  --color-accent-ink: oklch(21% 0.05 125);
+  --color-focus:      var(--color-accent);
+
+  --color-error:  oklch(70% 0.17 25);
+  --color-warn:   oklch(83% 0.13 80);
+  --color-error-soft: color-mix(in oklab, var(--color-error) 14%, transparent);
+  --color-warn-soft:  color-mix(in oklab, var(--color-warn) 14%, transparent);
+  --color-accent-soft: color-mix(in oklab, var(--color-accent) 12%, transparent);
+  --color-scrim:  oklch(8% 0.005 250 / 0.72);
+  --shadow-float: 0 12px 40px oklch(5% 0.005 250 / 0.55); /* only for things that float: toast, dialog */
+
+  /* ── Shape and motion ── */
+  --radius: 4px; --radius-round: 999px;
+  --rule-hair: 1px; --rule-bar: 2px;
+  --control-h: 40px; --control-h-sm: 32px;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-micro: 120ms; --dur-short: 220ms;
+  --container: 1280px; --gutter: 32px; --sidebar-w: 232px;
+  --z-sticky: 10; --z-drawer: 200; --z-modal: 500; --z-toast: 900; --z-wake: 950; --z-skip: 1000;
+
+  /* ── Legacy names ──
+   * The panels' JS and inline styles still say var(--blue) and friends, and the charts
+   * read them by name (js/charts.js chartColor). They point at the new palette so a
+   * page not yet redesigned is plain rather than broken. --blue is the first chart
+   * series, --cyan the second step of the same ramp. Remove each as its last user goes. */
+  --bg: var(--color-paper); --panel: var(--color-paper-2); --panel2: var(--color-paper-3); --panel3: var(--color-paper-4);
+  --white: var(--color-ink); --fg: var(--color-ink); --silver: var(--color-ink-2); --muted: var(--color-muted);
+  --border: var(--color-rule);
+  --blue: var(--color-accent); --cyan: var(--color-accent-2); --gold: var(--color-warn); --red: var(--color-error);
+  --purple: var(--color-muted);
+  --fd: var(--font-display); --fb: var(--font-body); --fm: var(--font-mono);
+}
+
+@media (max-width: 60rem) { :root { --gutter: 24px; } }
+@media (max-width: 40rem) { :root { --gutter: 16px; } }

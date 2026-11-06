@@ -14,528 +14,16 @@
      tests/markup.test.mjs pins the no-'unsafe-inline' script rule. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https: http://localhost:* http://127.0.0.1:*; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FitPilot — Guide Your Fitness Journey</title>
+<title>FitPilot: Guide Your Fitness Journey</title>
 <meta name="description" content="FitPilot — AI-powered fitness tracking. Log workouts, track goals, and get coaching insights.">
 <meta name="color-scheme" content="dark">
 <link rel="icon" href="logo-128.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<style>
-:root{
-  --bg:#080B0F;--panel:#111820;--panel2:#151D27;--panel3:#1B2530;
-  --blue:#0EA5FF;--cyan:#00FFD1;--purple:#7C3AED;--red:#FF3B5C;--gold:#FFB800;
-  --white:#F1F5FF;--silver:#8899AA;--muted:#808C9F; /* >=4.5:1 on every surface; #4A5568 was ~2.4:1 */
-  --border:rgba(14,165,255,.14);
-  --fd:'Barlow Condensed',sans-serif;--fb:'Inter',sans-serif;--fm:'JetBrains Mono',monospace;
-}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--white);font-family:var(--fb);overflow-x:hidden;line-height:1.6;min-height:100vh}
-::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}
-::-webkit-scrollbar-thumb{background:var(--blue);border-radius:3px}
-.bg-grad{position:fixed;inset:0;z-index:0;pointer-events:none;
-  background:radial-gradient(ellipse 70% 50% at 50% -10%,rgba(14,165,255,.08) 0%,transparent 70%),
-             radial-gradient(ellipse 50% 40% at 90% 90%,rgba(0,255,209,.05) 0%,transparent 70%)}
-button{font-family:inherit;cursor:pointer}
-input,select,textarea{font-family:inherit}
-a{color:inherit}
-
-/* ═══ BUTTONS ═══ */
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;
-  font-family:var(--fd);font-size:15px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
-  padding:12px 28px;border-radius:10px;border:none;transition:all .25s;position:relative}
-.btn-prim{background:linear-gradient(135deg,var(--blue),var(--cyan));color:var(--bg);box-shadow:0 0 20px rgba(14,165,255,.25)}
-.btn-prim:hover{transform:translateY(-2px);box-shadow:0 6px 30px rgba(14,165,255,.45)}
-.btn-prim:disabled{opacity:.5;cursor:not-allowed;transform:none}
-.btn-sec{background:transparent;color:var(--silver);border:1px solid rgba(14,165,255,.25)}
-.btn-sec:hover{color:var(--blue);border-color:var(--blue);background:rgba(14,165,255,.05)}
-.btn-ghost{background:rgba(14,165,255,.08);color:var(--blue);font-size:12px;padding:7px 16px;border-radius:7px;border:1px solid rgba(14,165,255,.18)}
-.btn-ghost:hover{background:rgba(14,165,255,.16)}
-.btn-sm{padding:7px 16px;font-size:12px}
-.btn-block{width:100%}
-
-/* ═══ AUTH SCREEN ═══ */
-#auth-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;
-  padding:40px 20px;position:relative;z-index:1}
-.auth-card{width:100%;max-width:420px;background:var(--panel);border:1px solid var(--border);
-  border-radius:24px;padding:40px;position:relative;overflow:hidden}
-.auth-card::before{content:'';position:absolute;top:-80px;left:-80px;width:220px;height:220px;
-  border-radius:50%;background:radial-gradient(circle,rgba(14,165,255,.1),transparent 70%)}
-.auth-logo{display:flex;flex-direction:column;align-items:center;margin-bottom:28px;position:relative;z-index:1}
-.auth-logo img{height:64px;width:64px;object-fit:contain;margin-bottom:12px;filter:drop-shadow(0 0 16px rgba(14,165,255,.5))}
-.auth-logo-fallback{height:64px;width:64px;margin-bottom:12px;border-radius:16px;display:none;
-  background:linear-gradient(135deg,var(--blue),var(--cyan));align-items:center;justify-content:center;font-size:30px}
-.auth-logo-text{font-family:var(--fd);font-size:26px;font-weight:800;letter-spacing:3px}
-.auth-logo-text span{color:var(--blue)}
-.auth-tag{font-family:var(--fm);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-top:4px}
-
-.auth-tabs{display:flex;gap:4px;background:var(--panel2);border-radius:10px;padding:4px;margin-bottom:24px;position:relative;z-index:1}
-.auth-tab{flex:1;text-align:center;font-family:var(--fd);font-size:14px;font-weight:700;letter-spacing:1px;
-  text-transform:uppercase;padding:9px;border-radius:7px;border:none;background:transparent;color:var(--muted);transition:all .2s}
-.auth-tab.on{background:linear-gradient(135deg,rgba(14,165,255,.2),rgba(0,255,209,.08));color:var(--blue)}
-
-.field{margin-bottom:14px;position:relative;z-index:1}
-.field label{display:block;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
-.field input,.field select{width:100%;background:var(--panel2);border:1px solid var(--border);
-  border-radius:9px;padding:11px 14px;color:var(--white);font-size:14px;transition:border-color .2s}
-/* Inline controls outside a .field (the add-friend box, the export picker) get the same
-   look — without this they fell back to the browser's light default. */
-.export-row input,.export-row select{background:var(--panel2);border:1px solid var(--border);
-  border-radius:9px;padding:9px 12px;color:var(--white);font-size:14px;transition:border-color .2s}
-.export-row input::placeholder{color:var(--muted)}
-.field input:focus,.field select:focus,
-.export-row input:focus,.export-row select:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(14,165,255,.1)}
-.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
-.field-row .field{margin-bottom:0}
-.field-row + .field-hint{margin-top:-8px}
-
-.auth-error{background:rgba(255,59,92,.1);border:1px solid rgba(255,59,92,.3);color:var(--red);
-  font-size:13px;padding:10px 14px;border-radius:9px;margin-bottom:14px;display:none}
-.auth-error.show{display:block}
-.auth-hint{font-size:12px;color:var(--muted);text-align:center;margin-top:16px;position:relative;z-index:1}
-.auth-hint a{color:var(--blue);cursor:pointer;text-decoration:underline}
-
-/* ═══ APP SHELL ═══ */
-#app-shell{display:none;min-height:100vh;position:relative;z-index:1}
-#app-shell.show{display:flex}
-
-.sidebar{width:240px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--border);
-  display:flex;flex-direction:column;height:100vh;position:sticky;top:0}
-.sb-logo{display:flex;align-items:center;gap:10px;padding:22px 20px;border-bottom:1px solid var(--border)}
-.sb-logo img{height:32px;width:32px;object-fit:contain;filter:drop-shadow(0 0 8px rgba(14,165,255,.5))}
-.sb-logo-fallback{height:32px;width:32px;border-radius:8px;display:none;
-  background:linear-gradient(135deg,var(--blue),var(--cyan));align-items:center;justify-content:center;font-size:16px}
-.sb-logo-text{font-family:var(--fd);font-size:18px;font-weight:800;letter-spacing:2px}
-.sb-logo-text span{color:var(--blue)}
-
-.sb-nav{flex:1;padding:16px 12px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
-.sb-link{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:10px;
-  color:var(--silver);text-decoration:none;font-size:14px;font-weight:500;border:none;background:transparent;
-  width:100%;text-align:left;transition:all .2s;position:relative}
-.sb-link:hover{background:rgba(14,165,255,.06);color:var(--white)}
-.sb-link.on{background:linear-gradient(135deg,rgba(14,165,255,.16),rgba(0,255,209,.06));color:var(--blue)}
-.sb-link.on::before{content:'';position:absolute;left:-12px;top:50%;transform:translateY(-50%);
-  width:3px;height:18px;border-radius:2px;background:var(--blue);box-shadow:0 0 8px var(--blue)}
-.sb-ic{font-size:18px;width:20px;text-align:center;flex-shrink:0}
-.sb-badge{margin-left:auto;font-family:var(--fm);font-size:10px;background:rgba(255,59,92,.15);
-  color:var(--red);padding:2px 7px;border-radius:10px}
-
-.sb-user{padding:14px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px}
-.sb-av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--cyan));
-  display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:var(--bg);flex-shrink:0}
-.sb-uname{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sb-uemail{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sb-logout{background:transparent;border:none;color:var(--muted);font-size:16px;margin-left:auto;flex-shrink:0;padding:4px}
-.sb-logout:hover{color:var(--red)}
-
-.main{flex:1;min-width:0;display:flex;flex-direction:column;height:100vh;overflow-y:auto}
-.topbar{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;
-  padding:18px 32px;background:rgba(8,11,15,.85);backdrop-filter:blur(16px);border-bottom:1px solid var(--border)}
-.topbar-ttl{font-family:var(--fd);font-size:26px;font-weight:800}
-.topbar-right{display:flex;align-items:center;gap:14px}
-.streak-pill{display:flex;align-items:center;gap:7px;background:var(--panel2);border:1px solid var(--border);
-  border-radius:20px;padding:7px 16px;font-family:var(--fm);font-size:13px}
-.streak-pill .fl{font-size:15px}
-
-.content{padding:28px 32px 60px;flex:1}
-.panel{display:none}
-.panel.on{display:block;animation:panelIn .35s ease}
-@keyframes panelIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-
-/* ═══ CARDS / GRID ═══ */
-.grid{display:grid;gap:18px}
-.g2{grid-template-columns:1fr 1fr}
-.g3{grid-template-columns:repeat(3,1fr)}
-.g4{grid-template-columns:repeat(4,1fr)}
-.gcol-260{grid-template-columns:260px 1fr 240px}
-
-.card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:22px}
-/* Charts. A canvas has no intrinsic height, so the wrapper supplies one and
-   Chart.js is told not to keep its own aspect ratio - without both, the canvas
-   grows a little on every resize event and slowly pushes the panel off-screen. */
-.chartbox{position:relative;height:220px;margin-top:6px}
-.chartbox.tall{height:260px}
-.chart-note{font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5}
-/* Rendered as <h3> for document structure. font-weight is pinned because an h3
-   would otherwise arrive bold and these are meant to read as quiet eyebrow labels. */
-.clbl{font-size:10px;font-weight:400;letter-spacing:2px;text-transform:uppercase;color:var(--muted);
-  margin-bottom:14px;display:flex;align-items:center;gap:7px}
-.clbl::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--blue);
-  box-shadow:0 0 7px var(--blue);animation:bk 2s ease-in-out infinite;flex-shrink:0}
-@keyframes bk{0%,100%{opacity:1}50%{opacity:.25}}
-.card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
-
-.sec-head{margin-bottom:24px}
-.sec-ttl{font-family:var(--fd);font-size:28px;font-weight:800}
-.sec-sub{font-size:13px;color:var(--muted);margin-top:4px}
-
-.smc{display:flex;align-items:center;gap:14px}
-.smi{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
-.smi.b{background:rgba(14,165,255,.12)}.smi.c{background:rgba(0,255,209,.12)}
-.smi.g{background:rgba(255,184,0,.12)}.smi.p{background:rgba(124,58,237,.12)}
-.smv{font-family:var(--fm);font-size:24px;color:var(--white);line-height:1}
-.smk{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:3px}
-.smd{font-family:var(--fm);font-size:11px;color:var(--cyan);margin-top:3px}
-
-.av-lg{width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--cyan));
-  display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:var(--bg);margin-bottom:12px}
-.pname{font-family:var(--fd);font-size:20px;font-weight:800}
-.phandle{font-family:var(--fm);font-size:11px;color:var(--muted);margin-top:2px}
-.pstats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0}
-.ps{background:var(--panel2);border:1px solid var(--border);border-radius:9px;padding:10px;text-align:center}
-.psv{font-family:var(--fm);font-size:17px;color:var(--blue)}
-.psk{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px}
-.sring{display:flex;align-items:center;gap:14px;margin-top:14px}
-.srw{width:70px;height:70px;flex-shrink:0;position:relative;display:flex;align-items:center;justify-content:center}
-.srw svg{position:absolute;transform:rotate(-90deg)}
-.srn{font-family:var(--fm);font-size:18px;color:var(--cyan);position:relative;z-index:1}
-.srt{font-size:13px;font-weight:600}
-.srs{font-size:11px;color:var(--muted);margin-top:2px}
-
-.af{display:flex;flex-direction:column;gap:8px}
-.ai{display:flex;align-items:center;gap:10px;padding:11px 13px;background:var(--panel2);border-radius:10px;
-  border:1px solid transparent;transition:border-color .2s}
-.ai:hover{border-color:var(--border)}
-.ad{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.an{font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.am{font-family:var(--fm);font-size:11px;color:var(--muted);white-space:nowrap}
-.apr{font-family:var(--fm);font-size:9px;color:var(--cyan);background:rgba(0,255,209,.1);padding:2px 6px;border-radius:3px;flex-shrink:0}
-
-/* Activity row body — the second line carries the date, the parsed metrics
-   (distance/sets/reps) and the difficulty rating, none of which the row used to
-   show at all. See PLAN.md P0-1 and P0-2. */
-.ai-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
-.ai-sub{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:var(--fm);font-size:10px;color:var(--muted)}
-.ai-chip{background:rgba(255,255,255,.05);border-radius:3px;padding:1px 5px;white-space:nowrap}
-.ai-acts{display:flex;gap:2px;flex-shrink:0}
-.ai-acts button{background:none;border:none;color:var(--muted);font-size:12px;padding:3px 5px;border-radius:5px;line-height:1}
-.ai-acts button:hover{background:rgba(255,255,255,.07);color:var(--fg)}
-.ai-acts button.danger:hover{color:var(--red)}
-.rate{display:inline-flex;gap:1px}
-.rate button{background:none;border:none;padding:0 1px;font-size:11px;line-height:1;color:var(--muted);opacity:.45}
-.rate button.on{opacity:1;color:var(--gold)}
-.rate:hover button{opacity:.8}
-.rate button:hover{opacity:1;color:var(--gold)}
-.g-exp{font-family:var(--fm);font-size:9px;color:var(--red);background:rgba(255,77,79,.12);padding:2px 6px;border-radius:3px}
-
-/* Nutrition (PLAN P2-1). The estimate badge is load-bearing rather than decorative:
-   a parsed calorie count is a language model's guess at a portion size, and showing
-   it identically to a figure the user read off a packet would be the app overstating
-   what it actually knows. */
-.est{font-family:var(--fm);font-size:9px;color:var(--gold);background:rgba(255,184,0,.12);
-  padding:1px 5px;border-radius:3px;white-space:nowrap;cursor:help}
-.field-hint{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5}
-.export-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px}
-
-/* Weekly digest (PLAN P2-3). The figures sit next to the prose on purpose: a digest
-   whose numbers can't be checked is one the reader has to take on faith. */
-.dg-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
-.dg-hl{font-size:17px;font-weight:600;color:var(--white);line-height:1.4}
-.dg-week{font-family:var(--fm);font-size:11px;color:var(--muted);white-space:nowrap;margin-top:4px}
-.dg-nar{font-size:13px;color:var(--silver);line-height:1.65;margin:12px 0 4px}
-.dg-sec{margin-top:16px}
-.dg-sec h4{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
-.dg-sec ul{list-style:none;display:flex;flex-direction:column;gap:7px}
-.dg-sec li{font-size:13px;color:var(--silver);line-height:1.5;padding-left:16px;position:relative}
-.dg-sec li:before{content:"▸";position:absolute;left:0;color:var(--blue)}
-.dg-sec.focus li:before{content:"→";color:var(--cyan)}
-.dg-facts{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;margin-top:16px;
-  padding-top:16px;border-top:1px solid var(--border)}
-.dg-fact b{display:block;font-family:var(--fm);font-size:17px;color:var(--white);font-weight:400}
-.dg-fact span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
-.dg-src{font-family:var(--fm);font-size:9px;padding:2px 7px;border-radius:3px;white-space:nowrap}
-.dg-src.ai{color:var(--cyan);background:rgba(0,255,209,.1)}
-.dg-src.rules{color:var(--muted);background:rgba(255,255,255,.05)}
-
-/* Notifications (PLAN P2-2) */
-.bell{position:relative;background:none;border:1px solid var(--border);border-radius:9px;
-  width:36px;height:36px;font-size:15px;line-height:1;color:var(--silver);cursor:pointer;transition:border-color .2s}
-.bell:hover{border-color:var(--blue)}
-.bell-dot{position:absolute;top:-5px;right:-5px;min-width:17px;height:17px;padding:0 4px;
-  border-radius:9px;background:var(--red);color:#fff;font-family:var(--fm);font-size:10px;
-  display:flex;align-items:center;justify-content:center}
-/* display:flex above outranks the browser's own [hidden] rule, so without this the dot
-   showed "0" permanently. */
-.bell-dot[hidden]{display:none}
-/* An unread row is the one you haven't dealt with, so it keeps a marker until you do. */
-.ai.unread{border-color:rgba(14,165,255,.35);background:rgba(14,165,255,.05)}
-.nt-ic{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;
-  font-size:14px;flex-shrink:0;background:rgba(255,255,255,.05)}
-.nt-body{font-size:12px;color:var(--muted);line-height:1.5;margin-top:2px}
-
-/* Group challenge standings (PLAN P2-4). The two-avatar "VS" block only ever
-   described two people; a ranked list is the shape that works for two and for eight. */
-.std{display:flex;flex-direction:column;gap:6px;margin:14px 0}
-.stdr{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;background:var(--panel2)}
-.stdr.me{border:1px solid rgba(14,165,255,.35)}
-.stdr.out{opacity:.45}
-.stdp{font-family:var(--fm);font-size:11px;color:var(--muted);width:18px;flex-shrink:0}
-.stdn{flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.stds{font-family:var(--fm);font-size:13px;color:var(--white)}
-.stdr.lead .stds{color:var(--cyan)}
-.fr{display:flex;align-items:center;gap:10px}
-.fr-av{width:28px;height:28px;border-radius:8px;background:rgba(14,165,255,.12);display:flex;
-  align-items:center;justify-content:center;font-family:var(--fm);font-size:12px;flex-shrink:0}
-.export-row select{flex:1;min-width:180px}
-.est-note{font-size:11px;color:var(--muted);margin:-6px 0 16px 2px;line-height:1.5}
-.mbar{display:flex;height:8px;border-radius:4px;overflow:hidden;background:var(--panel2);margin:10px 0 12px}
-.mbar span{display:block;height:100%}
-.mk{display:flex;justify-content:space-between;font-family:var(--fm);font-size:11px;color:var(--muted)}
-.mk b{display:block;font-size:16px;color:var(--white);font-weight:400;margin-bottom:2px}
-.mdot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:5px}
-/* A budget that has been blown reads red, not "complete". */
-.gf.over{background:linear-gradient(90deg,var(--gold),var(--red))}
-
-.empty-state{text-align:center;padding:48px 20px;color:var(--muted)}
-.empty-state .es-icon{font-size:40px;margin-bottom:12px;opacity:.5}
-.empty-state .es-text{font-size:14px;margin-bottom:16px}
-.loading-state{text-align:center;padding:40px;color:var(--muted);font-family:var(--fm);font-size:13px}
-.spinner{width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--blue);
-  border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
-@keyframes spin{to{transform:rotate(360deg)}}
-.error-state{text-align:center;padding:32px;color:var(--red);font-size:13px}
-
-.gi{margin-bottom:16px}
-.git{display:flex;justify-content:space-between;margin-bottom:6px}
-.gn{font-size:13px;font-weight:500}.gp{font-family:var(--fm);font-size:12px;color:var(--cyan)}
-.gb2{height:6px;background:var(--panel2);border-radius:3px;overflow:hidden}
-.gf{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--blue),var(--cyan));
-  transition:width 1s cubic-bezier(.23,1,.32,1);position:relative}
-.gf.done{background:linear-gradient(90deg,var(--cyan),var(--gold))}
-.g-meta{font-size:11px;color:var(--muted);margin-top:4px;display:flex;justify-content:space-between}
-.g-del{background:none;border:none;color:var(--muted);font-size:11px}
-.g-del:hover{color:var(--red)}
-
-.pb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
-.pb-card{background:var(--panel2);border:1px solid var(--border);border-radius:14px;padding:18px}
-.pb-type{font-family:var(--fm);font-size:10px;color:var(--gold);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
-.pb-row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px}
-.pb-val{font-family:var(--fm);color:var(--white)}
-/* Exercise logging (PLAN P1-1) */
-.exrows{display:flex;flex-direction:column;gap:8px;margin-bottom:8px}
-.exrow{display:grid;grid-template-columns:1fr 62px 62px 72px 30px;gap:6px;align-items:center}
-.exrow input{width:100%;background:var(--panel2);border:1px solid var(--border);border-radius:8px;
-  padding:9px 10px;color:var(--white);font-size:13px}
-.exrow input:focus{outline:none;border-color:var(--blue)}
-.exrow .exdel{background:none;border:none;color:var(--muted);font-size:14px;cursor:pointer;padding:4px}
-.exrow .exdel:hover{color:var(--red)}
-.exhead{display:grid;grid-template-columns:1fr 62px 62px 72px 30px;gap:6px;
-  font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
-/* Exercises as rendered on an activity row */
-.exlist{display:flex;flex-direction:column;gap:2px;margin-top:6px}
-.exli{display:flex;gap:8px;align-items:baseline;font-size:12px;color:var(--silver)}
-.exli .exn{font-weight:500}
-.exli .exs{font-family:var(--fm);font-size:11px;color:var(--muted)}
-.exli .ex1rm{font-family:var(--fm);font-size:10px;color:var(--cyan);opacity:.8}
-.exli .expr{font-family:var(--fm);font-size:9px;color:var(--gold);background:rgba(255,184,0,.12);
-  padding:1px 5px;border-radius:3px}
-
-.cg{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
-.chc{background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:22px;position:relative}
-.cbadge{position:absolute;top:16px;right:16px;font-family:var(--fm);font-size:10px;padding:3px 9px;border-radius:12px;letter-spacing:.8px}
-.bl{background:rgba(0,255,209,.12);color:var(--cyan)}
-.bp2{background:rgba(255,184,0,.12);color:var(--gold)}
-.bd{background:rgba(255,59,92,.12);color:var(--red)}
-.bn{background:rgba(14,165,255,.12);color:var(--blue)}
-.ctype{font-family:var(--fm);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:2px;margin-bottom:9px}
-.ctitle{font-family:var(--fd);font-size:19px;font-weight:800;margin-bottom:16px;line-height:1.2}
-.vs{display:flex;align-items:center;gap:9px;margin-bottom:16px}
-.vsp{flex:1;text-align:center;background:var(--panel2);border-radius:10px;padding:10px 6px;border:1px solid var(--border)}
-.vsav{width:30px;height:30px;border-radius:50%;margin:0 auto 6px;background:linear-gradient(135deg,var(--blue),var(--cyan));
-  display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:var(--bg)}
-.vsav.op{background:linear-gradient(135deg,#6C63FF,#A855F7)}
-.vsn{font-size:11px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.vssc{font-family:var(--fm);font-size:17px;color:var(--blue);margin-top:3px}
-.vsdi{font-family:var(--fd);font-size:13px;font-weight:800;color:var(--muted);flex-shrink:0}
-.cf{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.cdl{font-family:var(--fm);font-size:11px;color:var(--muted)}
-
-.rg{display:grid;grid-template-columns:1fr 320px;gap:24px;align-items:start}
-.bmap{background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:28px;display:flex;flex-direction:column;align-items:center}
-.leg{display:flex;gap:14px;justify-content:center;margin-top:16px;flex-wrap:wrap}
-.li{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--silver)}
-.ld{width:8px;height:8px;border-radius:50%}
-.ld.f{background:var(--cyan)}.ld.m{background:var(--gold)}.ld.s{background:var(--red)}
-.rl{display:flex;flex-direction:column;gap:9px}
-.ri{background:var(--panel);border:1px solid var(--border);border-radius:11px;padding:13px 16px;display:flex;align-items:center;gap:12px}
-.rd{width:10px;height:10px;border-radius:50%;flex-shrink:0}
-.rd.f{background:var(--cyan);box-shadow:0 0 7px var(--cyan)}
-.rd.m{background:var(--gold);box-shadow:0 0 7px var(--gold)}
-.rd.s{background:var(--red);box-shadow:0 0 7px var(--red)}
-.rmu{font-size:13px;font-weight:500;flex:1}
-.rt2{font-family:var(--fm);font-size:11px;color:var(--muted)}
-
-.wviz{display:flex;align-items:flex-end;gap:5px;height:80px;margin-top:14px}
-.wb{flex:1;border-radius:3px 3px 0 0;background:linear-gradient(0deg,#0066AA,var(--blue));min-height:6px;transition:height .8s ease}
-.wlbs{display:flex;gap:5px;margin-top:6px}
-.wl{flex:1;text-align:center;font-size:9px;color:var(--muted)}
-.water-add{display:flex;gap:8px;margin-top:16px}
-.water-add input{flex:1}
-.slpbars{display:flex;flex-direction:column;gap:9px;margin-top:14px}
-.slpr{display:flex;align-items:center;gap:10px}
-.slpd{font-family:var(--fm);font-size:10px;color:var(--muted);width:28px}
-.slpt{flex:1;height:20px;background:var(--panel2);border-radius:4px;overflow:hidden;position:relative}
-.slpf{height:100%;border-radius:4px;display:flex;align-items:center;justify-content:flex-end;padding-right:7px;
-  background:linear-gradient(90deg,rgba(14,165,255,.25),rgba(0,255,209,.45))}
-.slph{font-family:var(--fm);font-size:9px;color:var(--white)}
-
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);
-  z-index:500;display:none;align-items:center;justify-content:center;padding:20px}
-.modal-overlay.show{display:flex}
-.modal{width:100%;max-width:440px;background:var(--panel);border:1px solid var(--border);
-  border-radius:20px;padding:28px;max-height:88vh;overflow-y:auto}
-.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
-.modal-ttl{font-family:var(--fd);font-size:22px;font-weight:800}
-.modal-close{background:var(--panel2);border:none;color:var(--silver);width:30px;height:30px;
-  border-radius:50%;font-size:16px;flex-shrink:0}
-.modal-close:hover{color:var(--red)}
-.modal-actions{display:flex;gap:10px;margin-top:20px}
-/* The confirm dialog (js/ui.js confirmDialog) — replaced window.confirm(). */
-.modal-sm{max-width:380px}
-.confirm-msg{font-size:14px;color:var(--silver);line-height:1.6}
-.btn-danger{background:linear-gradient(135deg,var(--red),#FF6B81);color:var(--white);box-shadow:0 0 20px rgba(255,59,92,.25)}
-.btn-danger:hover{transform:translateY(-2px);box-shadow:0 6px 30px rgba(255,59,92,.45)}
-
-/* ═══ WAKE NOTICE ═══
-   Shown by js/wake.js while a sleeping Render instance starts (30–60s). Top centre,
-   clear of the toast in the bottom corner. */
-.wake-notice{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:950;
-  display:none;align-items:center;gap:12px;width:calc(100% - 32px);max-width:440px;
-  background:var(--panel);border:1px solid rgba(14,165,255,.3);border-radius:12px;padding:12px 16px;
-  box-shadow:0 8px 40px rgba(0,0,0,.5);font-size:13px;color:var(--white)}
-.wake-notice.show{display:flex}
-.wake-notice .spinner{width:18px;height:18px;margin:0;flex-shrink:0}
-.wake-sub{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.5}
-
-.toast{position:fixed;bottom:24px;right:24px;z-index:900;background:var(--panel);
-  border:1px solid rgba(0,255,209,.25);border-radius:12px;padding:13px 16px;
-  display:flex;align-items:center;gap:10px;font-size:13px;color:var(--white);
-  transform:translateX(130%);transition:transform .4s cubic-bezier(.23,1,.32,1);
-  box-shadow:0 8px 40px rgba(0,0,0,.5);max-width:300px}
-.toast.on{transform:translateX(0)}
-.toast.err{border-color:rgba(255,59,92,.3)}
-.tic{font-size:18px;flex-shrink:0}
-
-.fab{position:fixed;bottom:28px;right:28px;z-index:50;width:56px;height:56px;border-radius:50%;
-  background:linear-gradient(135deg,var(--blue),var(--cyan));border:none;display:flex;align-items:center;
-  justify-content:center;font-size:24px;box-shadow:0 4px 24px rgba(14,165,255,.4);transition:all .3s;color:var(--bg)}
-.fab:hover{transform:scale(1.1) rotate(90deg)}
-
-/* AI Coach cards */
-.ai-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
-.ac{background:var(--panel);border:1px solid var(--border);border-radius:18px;padding:22px;position:relative;overflow:hidden}
-.ac::before{content:'';position:absolute;top:-40px;right:-40px;width:140px;height:140px;
-  border-radius:50%;background:radial-gradient(circle,rgba(14,165,255,.06),transparent 70%)}
-.atag{display:inline-flex;align-items:center;gap:7px;font-family:var(--fm);font-size:10px;
-  letter-spacing:1.5px;text-transform:uppercase;padding:4px 11px;border-radius:14px;margin-bottom:14px}
-.atag.b{color:var(--blue);background:rgba(14,165,255,.08);border:1px solid rgba(14,165,255,.2)}
-.atag.c{color:var(--cyan);background:rgba(0,255,209,.08);border:1px solid rgba(0,255,209,.2)}
-.atag.g{color:var(--gold);background:rgba(255,184,0,.08);border:1px solid rgba(255,184,0,.2)}
-.atag.r{color:var(--red);background:rgba(255,59,92,.08);border:1px solid rgba(255,59,92,.2)}
-.adot{width:5px;height:5px;border-radius:50%;animation:bk 1.5s ease-in-out infinite}
-.adot.b{background:var(--blue)}.adot.c{background:var(--cyan)}.adot.g{background:var(--gold)}.adot.r{background:var(--red)}
-.attl{font-family:var(--fd);font-size:19px;font-weight:800;margin-bottom:9px;line-height:1.2}
-.abody{font-size:13px;color:var(--silver);line-height:1.85;margin-bottom:14px}
-.apills{display:flex;gap:6px;flex-wrap:wrap}
-.apill{font-family:var(--fm);font-size:10px;padding:3px 9px;border-radius:14px;
-  background:rgba(14,165,255,.08);color:var(--blue);border:1px solid rgba(14,165,255,.16)}
-.ai-teaser{background:linear-gradient(135deg,var(--panel),rgba(14,165,255,.05));border:1px solid var(--border);
-  border-radius:16px;padding:22px;margin-top:18px;display:flex;align-items:center;gap:18px}
-.ai-teaser-icon{width:48px;height:48px;border-radius:12px;background:rgba(14,165,255,.12);
-  display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
-
-/* Warning / alert boxes (pain patterns, plateau alerts) */
-.warnbox{background:rgba(255,59,92,.07);border:1px solid rgba(255,59,92,.2);border-radius:11px;padding:13px 16px}
-.wtt{font-size:12px;font-weight:600;color:var(--red);margin-bottom:4px}
-.wtb{font-size:12px;color:var(--muted)}
-
-/* Textarea (natural language logging) */
-.field textarea{width:100%;background:var(--panel2);border:1px solid var(--border);border-radius:9px;
-  padding:11px 14px;color:var(--white);font-size:14px;font-family:inherit;resize:vertical;transition:border-color .2s}
-.field textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(14,165,255,.1)}
-
-/* ═══ SKIP LINK ═══ */
-.skip-link{position:absolute;left:-9999px;top:0;z-index:1000;background:var(--blue);color:var(--bg);
-  font-family:var(--fd);font-size:14px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
-  padding:12px 20px;border-radius:0 0 10px 0;text-decoration:none}
-.skip-link:focus{left:0}
-
-/* ═══ FOCUS VISIBILITY ═══
-   Keyboard users need to see where they are. :focus-visible (not :focus) so a
-   mouse click doesn't leave a ring behind on every button it touches. */
-button:focus-visible,a:focus-visible,[tabindex]:focus-visible{
-  outline:2px solid var(--blue);outline-offset:2px;border-radius:6px}
-input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none}
-
-/* ═══ MOBILE MENU BUTTON ═══
-   Purely CSS-driven. It used to be toggled once in enterApp() from
-   window.innerWidth, with no resize listener - so narrowing a desktop window
-   after login left the sidebar parked off-screen with no way to open it. */
-.mobile-menu-btn{display:none;font-size:20px}
-
-/* Scroll lock while a modal is open, so the page behind doesn't scroll away. */
-body.modal-open{overflow:hidden}
-
-/* ═══ SKELETONS ═══
-   Shown instead of a centred spinner so the layout doesn't jump when real
-   content lands. Each skeleton mirrors the geometry of the card it replaces. */
-@keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
-.sk{background:linear-gradient(90deg,var(--panel2) 25%,var(--panel3) 50%,var(--panel2) 75%);
-  background-size:800px 100%;animation:shimmer 1.4s linear infinite;border-radius:7px}
-.sk-line{height:11px;margin-bottom:9px}
-.sk-line.w40{width:40%}.sk-line.w60{width:60%}.sk-line.w80{width:80%}.sk-line.w100{width:100%}
-.sk-stat{display:flex;align-items:center;gap:14px}
-.sk-stat .sk-ic{width:46px;height:46px;border-radius:12px;flex-shrink:0}
-.sk-stat .sk-txt{flex:1}
-.sk-row{display:flex;align-items:center;gap:10px;padding:11px 13px;background:var(--panel2);
-  border-radius:10px;margin-bottom:8px}
-.sk-row .sk-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.sk-row .sk-txt{flex:1}
-.sk-block{height:120px;border-radius:12px}
-.sk-chart{height:220px;border-radius:12px}
-
-/* ═══ PAGER ═══
-   Prev / "n of m" / Next. It used to render one button per page, which wrapped
-   across three lines once someone had a few months of history. */
-.pager{display:flex;justify-content:center;align-items:center;gap:14px;margin-top:18px}
-.pager-pos{font-family:var(--fm);font-size:12px;color:var(--muted);min-width:78px;text-align:center}
-.pager button:disabled{opacity:.35;cursor:not-allowed}
-
-/* Toast dismiss — errors used to vanish after 3.5s with no way to hold them. */
-.toast-close{background:none;border:none;color:var(--muted);font-size:15px;line-height:1;
-  padding:2px 4px;margin-left:auto;flex-shrink:0}
-.toast-close:hover{color:var(--white)}
-
-@media(max-width:1000px){
-  .gcol-260{grid-template-columns:1fr 1fr}
-  .g3,.g4{grid-template-columns:1fr 1fr}
-  .rg{grid-template-columns:1fr}
-  .g2{grid-template-columns:1fr}
-}
-@media(max-width:720px){
-  .sidebar{position:fixed;left:-240px;z-index:200;transition:left .3s;box-shadow:20px 0 60px rgba(0,0,0,.5)}
-  .sidebar.show{left:0}
-  .topbar{padding:16px}
-  .content{padding:18px}
-  .g3,.g4,.gcol-260{grid-template-columns:1fr}
-  .mobile-menu-btn{display:block}
-}
-
-/* ═══ REDUCED MOTION ═══
-   Panel transitions, the blinking card labels, the rotating FAB and the 1s goal
-   bars are all decoration. Honour the OS setting and drop them. */
-@media(prefers-reduced-motion:reduce){
-  *,*::before,*::after{
-    animation-duration:.01ms !important;animation-iteration-count:1 !important;
-    transition-duration:.01ms !important;scroll-behavior:auto !important}
-  .fab:hover{transform:none}
-  .btn-prim:hover,.btn-danger:hover{transform:none}
-  .sk{animation:none;background:var(--panel2)}
-}
-</style>
+<link href="https://fonts.googleapis.com/css2?family=Albert+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500&family=Saira+Condensed:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css">
 </head>
 <body>
-<div class="bg-grad"></div>
 <a class="skip-link" href="#main-content">Skip to content</a>
 <!-- role=status so a screen reader announces a toast without stealing focus. -->
 <div class="toast" id="toast" role="status" aria-live="polite">
@@ -557,7 +45,7 @@ body.modal-open{overflow:hidden}
   <div class="auth-card">
     <div class="auth-logo">
       <img src="logo-128.png" alt="" width="64" height="64" id="auth-logo-img">
-      <div class="auth-logo-fallback" id="auth-logo-fb" aria-hidden="true">💪</div>
+      <div class="auth-logo-fallback" id="auth-logo-fb" aria-hidden="true">FP</div>
       <h1 class="auth-logo-text">FIT<span>PILOT</span></h1>
       <p class="auth-tag">Guide Your Fitness Journey</p>
     </div>
@@ -645,68 +133,86 @@ body.modal-open{overflow:hidden}
   <aside class="sidebar" id="sidebar">
     <div class="sb-logo">
       <img src="logo-128.png" alt="" width="32" height="32" id="sb-logo-img">
-      <div class="sb-logo-fallback" id="sb-logo-fb" aria-hidden="true">💪</div>
+      <div class="sb-logo-fallback" id="sb-logo-fb" aria-hidden="true">FP</div>
       <div class="sb-logo-text">FIT<span>PILOT</span></div>
     </div>
+    <!-- Grouped by what you came to do. Text only: fourteen emoji in a column read as
+         a generated template, and every word here is already its own label. -->
     <nav class="sb-nav" aria-label="Sections">
-      <button class="sb-link on" data-panel="overview" data-action="nav"><span class="sb-ic">🏠</span>Overview</button>
-      <button class="sb-link" data-panel="activities" data-action="nav"><span class="sb-ic">🏃</span>Activities</button>
-      <button class="sb-link" data-panel="nutrition" data-action="nav"><span class="sb-ic">🍽</span>Nutrition</button>
-      <button class="sb-link" data-panel="goals" data-action="nav"><span class="sb-ic">🎯</span>Goals</button>
-      <button class="sb-link" data-panel="bests" data-action="nav"><span class="sb-ic">🏆</span>Personal Bests</button>
-      <button class="sb-link" data-panel="ai" data-action="nav"><span class="sb-ic">🧠</span>AI Coach</button>
-      <button class="sb-link" data-panel="pain" data-action="nav"><span class="sb-ic">🩹</span>Pain Log</button>
-      <button class="sb-link" data-panel="plans" data-action="nav"><span class="sb-ic">📋</span>Workout Plans</button>
-      <button class="sb-link" data-panel="insights" data-action="nav"><span class="sb-ic">📊</span>Stats &amp; Insights</button>
-      <button class="sb-link" data-panel="challenges" data-action="nav"><span class="sb-ic">⚔️</span>Challenges<span class="sb-badge" id="invite-badge" style="display:none">0</span></button>
-      <button class="sb-link" data-panel="recovery" data-action="nav"><span class="sb-ic">🛡</span>Recovery</button>
-      <button class="sb-link" data-panel="health" data-action="nav"><span class="sb-ic">💧</span>Health</button>
-      <button class="sb-link" data-panel="notifications" data-action="nav"><span class="sb-ic">🔔</span>Notifications<span class="sb-badge" id="notif-badge" style="display:none">0</span></button>
-      <button class="sb-link" data-panel="profile" data-action="nav"><span class="sb-ic">👤</span>Profile</button>
+      <div class="sb-group" aria-hidden="true">Train</div>
+      <button class="sb-link on" data-panel="overview" data-action="nav">Overview</button>
+      <button class="sb-link" data-panel="activities" data-action="nav">Activities</button>
+      <button class="sb-link" data-panel="plans" data-action="nav">Workout Plans</button>
+      <button class="sb-link" data-panel="goals" data-action="nav">Goals</button>
+      <button class="sb-link" data-panel="bests" data-action="nav">Personal Bests</button>
+      <div class="sb-group" aria-hidden="true">Body</div>
+      <button class="sb-link" data-panel="nutrition" data-action="nav">Nutrition</button>
+      <button class="sb-link" data-panel="health" data-action="nav">Health</button>
+      <button class="sb-link" data-panel="recovery" data-action="nav">Recovery</button>
+      <button class="sb-link" data-panel="pain" data-action="nav">Pain Log</button>
+      <div class="sb-group" aria-hidden="true">Insight</div>
+      <button class="sb-link" data-panel="insights" data-action="nav">Stats &amp; Insights</button>
+      <button class="sb-link" data-panel="ai" data-action="nav">AI Coach</button>
+      <div class="sb-group" aria-hidden="true">People</div>
+      <button class="sb-link" data-panel="challenges" data-action="nav">Challenges<span class="sb-badge" id="invite-badge" style="display:none">0</span></button>
+      <button class="sb-link" data-panel="notifications" data-action="nav">Notifications<span class="sb-badge" id="notif-badge" style="display:none">0</span></button>
+      <button class="sb-link" data-panel="profile" data-action="nav">Profile</button>
     </nav>
     <div class="sb-user">
-      <div class="sb-av" id="sb-av">?</div>
-      <div style="min-width:0">
-        <div class="sb-uname" id="sb-uname">—</div>
-        <div class="sb-uemail" id="sb-uemail">—</div>
+      <div class="sb-av" id="sb-av" aria-hidden="true">?</div>
+      <div class="sb-who">
+        <div class="sb-uname" id="sb-uname">Athlete</div>
+        <div class="sb-uemail" id="sb-uemail"></div>
       </div>
-      <button class="sb-logout" data-action="logout" title="Log out">⏻</button>
+      <button class="sb-logout" data-action="logout">Log out</button>
     </div>
   </aside>
 
   <main class="main">
     <div class="topbar">
-      <div style="display:flex;align-items:center;gap:14px">
-        <button class="sb-logout mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle navigation"
-                aria-controls="sidebar" aria-expanded="false" data-action="toggle-sidebar">☰</button>
+      <div class="topbar-left">
+        <button class="icon-btn mobile-menu-btn" id="mobile-menu-btn" aria-label="Toggle navigation"
+                aria-controls="sidebar" aria-expanded="false" data-action="toggle-sidebar">
+          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </button>
         <h1 class="topbar-ttl" id="topbar-ttl">Overview</h1>
       </div>
       <div class="topbar-right">
-        <div class="streak-pill"><span class="fl" aria-hidden="true">🔥</span><span id="topbar-streak">0</span> day streak</div>
-        <button class="bell" id="bell-btn" data-action="nav" data-panel="notifications"
-                aria-label="Notifications" title="Notifications">🔔<span class="bell-dot" id="bell-count" hidden>0</span></button>
-        <button class="btn btn-prim btn-sm" data-action="open-modal" data-modal="modal-log-activity">+ Log Workout</button>
+        <div class="streak-pill"><span id="topbar-streak">0</span> day streak</div>
+        <button class="icon-btn bell" id="bell-btn" data-action="nav" data-panel="notifications"
+                aria-label="Notifications" title="Notifications">
+          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 8 2.5 8h-17S6 15 6 9"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/></svg>
+          <span class="bell-dot" id="bell-count" hidden>0</span>
+        </button>
+        <button class="btn btn-prim topbar-log" data-action="open-modal" data-modal="modal-log-activity">Log workout</button>
       </div>
     </div>
 
     <div class="content" id="main-content">
 
-      <section class="panel on" id="panel-overview">
-        <div class="grid g4" id="overview-stats" style="margin-bottom:18px">
-          <div class="loading-state" style="grid-column:1/-1"><div class="spinner"></div>Loading your stats…</div>
+      <!-- Overview: this week in four figures, then the log of recent sessions, with
+           the goals and the athlete beside it. Every figure comes from the API. -->
+      <section class="panel on" id="panel-overview" aria-label="Overview">
+        <div class="figs" id="overview-stats">
+          <div class="loading-state">Loading your stats…</div>
         </div>
-        <div class="grid gcol-260">
-          <div class="card" id="overview-profile"><div class="loading-state"><div class="spinner"></div></div></div>
-          <div class="card">
-            <h3 class="clbl">Recent Activities</h3>
-            <div class="af" id="overview-activities"><div class="loading-state"><div class="spinner"></div>Loading…</div></div>
+        <div class="ov-grid">
+          <div class="ov-main">
+            <section class="sheet" aria-labelledby="ov-recent-ttl">
+              <div class="sheet-head"><h2 class="sheet-ttl" id="ov-recent-ttl">Recent activities</h2></div>
+              <div class="af" id="overview-activities"><div class="loading-state">Loading…</div></div>
+            </section>
+            <div id="overview-ai-teaser"></div>
           </div>
-          <div class="card" id="overview-goals">
-            <h3 class="clbl">Active Goals</h3>
-            <div class="loading-state"><div class="spinner"></div></div>
+          <div class="ov-side">
+            <section class="sheet" id="overview-goals" aria-label="Active goals">
+              <div class="loading-state">Loading…</div>
+            </section>
+            <section class="sheet" id="overview-profile" aria-label="Athlete profile">
+              <div class="loading-state">Loading…</div>
+            </section>
           </div>
         </div>
-        <div id="overview-ai-teaser"></div>
       </section>
 
       <section class="panel" id="panel-activities">

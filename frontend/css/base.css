@@ -1,0 +1,33 @@
+/* Base rules: the floor every screen stands on. From Hallmark's scaffold, cut to an
+ * app (no photograph slots, no fluid heads). */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* clip, not hidden: hidden makes body a scroll container and breaks position: sticky. */
+html, body { overflow-x: clip; }
+html { scrollbar-color: var(--color-paper-4) var(--color-paper); }
+body {
+  min-height: 100vh; background: var(--color-paper); color: var(--color-ink);
+  font-family: var(--font-body); font-size: var(--text-md); line-height: 1.55;
+  -webkit-font-smoothing: antialiased; caret-color: var(--color-accent);
+}
+::selection { background: var(--color-accent); color: var(--color-accent-ink); }
+a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 0.16em; }
+h1, h2, h3, h4 { font-weight: inherit; font-size: inherit; overflow-wrap: break-word; min-width: 0; }
+p { text-wrap: pretty; }
+img, svg { display: block; max-width: 100%; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+[hidden] { display: none !important; }
+.num { font-variant-numeric: tabular-nums; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* Keyboard users need to see where they are; :focus-visible so a click leaves no ring.
+ * Instant: a ring that fades in is a ring you can lose. */
+:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+input:focus-visible, select:focus-visible, textarea:focus-visible { outline-offset: -1px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important; animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important; scroll-behavior: auto !important;
+  }
+}

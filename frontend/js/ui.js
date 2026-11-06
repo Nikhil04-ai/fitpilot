@@ -24,7 +24,7 @@ export function toast(msg, isError) {
   // <img onerror=...> ran as script in whoever accepted the request, with their
   // tokens sitting in localStorage.
   document.getElementById('tmsg').textContent = msg;
-  t.querySelector('.tic').textContent = isError ? '⚠️' : '✓';
+  t.querySelector('.tic').textContent = isError ? '!' : '✓';
   t.classList.toggle('err', !!isError);
   t.classList.add('on');
   // An error is also announced assertively; a success stays polite so it doesn't

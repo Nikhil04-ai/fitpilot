@@ -172,25 +172,23 @@ export async function loadOverviewAiTeaser() {
     if (!list.length) {
       el.innerHTML = `
         <div class="ai-teaser">
-          <div class="ai-teaser-icon">🧠</div>
-          <div style="flex:1">
-            <div style="font-weight:700;font-size:14px">No AI insights yet</div>
-            <div style="font-size:12px;color:var(--muted);margin-top:2px">Log 3 workouts and Gemini will auto-generate your first coaching insight.</div>
+          <div class="ai-teaser-body">
+            <div class="ai-teaser-ttl">No AI insights yet</div>
+            <div class="ai-teaser-text">Log 3 workouts and Gemini will auto-generate your first coaching insight.</div>
           </div>
-          <button class="btn-ghost" data-action="nav" data-panel="ai">View AI Coach →</button>
+          <button type="button" class="btn-ghost" data-action="nav" data-panel="ai">View AI Coach</button>
         </div>`;
       return;
     }
     const latest = list[0];
-    const meta = REC_TYPE_META[latest.type] || { label: latest.type || 'Insight', icon: '💡' };
+    const meta = REC_TYPE_META[latest.type] || { label: latest.type || 'Insight' };
     el.innerHTML = `
       <div class="ai-teaser">
-        <div class="ai-teaser-icon">${meta.icon}</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-weight:700;font-size:14px">Latest AI Insight — ${escapeHtml(meta.label)}</div>
-          <div style="font-size:12px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(latest.recommendation || '')}</div>
+        <div class="ai-teaser-body">
+          <div class="ai-teaser-ttl">Latest AI insight <span class="ai-teaser-kind">${escapeHtml(meta.label)}</span></div>
+          <div class="ai-teaser-text">${escapeHtml(latest.recommendation || '')}</div>
         </div>
-        <button class="btn-ghost" data-action="nav" data-panel="ai">View All →</button>
+        <button type="button" class="btn-ghost" data-action="nav" data-panel="ai">View all</button>
       </div>`;
   } catch (err) {
     el.innerHTML = '';

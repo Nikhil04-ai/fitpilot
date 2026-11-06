@@ -15,29 +15,57 @@
  */
 const chartRegistry = {};
 
-/** Colours pulled from the stylesheet so the charts can't drift from the theme. */
+/**
+ * Colours pulled from the stylesheet so the charts can't drift from the theme.
+ *
+ * The tokens are oklch(), which Chart.js's own colour helper can't parse (it derives
+ * hover colours from them). Painting the colour onto a 1px canvas and reading the
+ * pixel back gives a plain rgb() whatever syntax the stylesheet uses.
+ */
 export function chartColor(token, fallback) {
   const v = getComputedStyle(document.documentElement).getPropertyValue(token).trim();
-  return v || fallback;
+  return v ? toRgb(v, fallback) : fallback;
+}
+
+let probe = null;
+function toRgb(css, fallback) {
+  try {
+    probe = probe || document.createElement('canvas').getContext('2d', { willReadFrequently: true });
+    if (!probe) return css;
+    probe.clearRect(0, 0, 1, 1);
+    probe.fillStyle = fallback || '#000';   // an unparseable value leaves the last fillStyle
+    probe.fillStyle = css;
+    probe.fillRect(0, 0, 1, 1);
+    const [r, g, b, a] = probe.getImageData(0, 0, 1, 1).data;
+    return a === 255 ? `rgb(${r}, ${g}, ${b})` : `rgba(${r}, ${g}, ${b}, ${(a / 255).toFixed(3)})`;
+  } catch {
+    return css;
+  }
+}
+
+/** The face a token names, for Chart.js, which wants a family string. */
+function chartFont(token, fallback) {
+  return getComputedStyle(document.documentElement).getPropertyValue(token).trim() || fallback;
 }
 
 /** Chart.js options shared by all four charts: dark grid, mono ticks, themed tooltip. */
 export function chartTheme() {
-  const muted  = chartColor('--muted', '#4A5568');
-  const silver = chartColor('--silver', '#8899AA');
+  const muted  = chartColor('--color-muted', '#A3AAB5');
+  const silver = chartColor('--color-ink-2', '#C9CED6');
+  const body   = chartFont('--font-body', 'sans-serif');
   return {
-    grid:  'rgba(136,153,170,.10)',
-    tick:  { color: muted, font: { family: "'JetBrains Mono', monospace", size: 10 } },
-    title: { color: silver, font: { family: "'JetBrains Mono', monospace", size: 10 } },
-    legend: { labels: { color: silver, boxWidth: 10, font: { size: 11 } } },
+    grid:  chartColor('--color-rule', '#3A3F46'),
+    tick:  { color: muted, font: { family: body, size: 12 } },
+    title: { color: silver, font: { family: body, size: 12 } },
+    legend: { labels: { color: silver, boxWidth: 10, font: { family: body, size: 12 } } },
     tooltip: {
-      backgroundColor: chartColor('--panel3', '#1B2530'),
-      borderColor: 'rgba(136,153,170,.20)',
+      backgroundColor: chartColor('--color-paper-4', '#3A3F46'),
+      borderColor: chartColor('--color-rule', '#3A3F46'),
       borderWidth: 1,
-      titleColor: chartColor('--white', '#F1F5FF'),
+      titleColor: chartColor('--color-ink', '#F1F3F5'),
       bodyColor: silver,
-      titleFont: { family: "'JetBrains Mono', monospace", size: 11 },
-      bodyFont:  { family: "'Inter', sans-serif", size: 12 },
+      titleFont: { family: body, size: 12, weight: '600' },
+      bodyFont:  { family: body, size: 12 },
       padding: 10,
       displayColors: false
     }

@@ -8,10 +8,10 @@ import { api } from '../api.js';
 // ═══════════════════════════════════════════════════════════════════════
 
 const GOAL_LABEL = {
-  CALORIES_PER_WEEK: '🔥 Calories', WORKOUTS_PER_WEEK: '💪 Workouts', DURATION_PER_WEEK: '⏱ Duration (min)',
+  CALORIES_PER_WEEK: 'Calories', WORKOUTS_PER_WEEK: 'Workouts', DURATION_PER_WEEK: 'Duration (min)',
   // PLAN P2-1 — the intake side. A budget and a body-weight target are scored
   // differently from the three above, which goalRow() reads off g.direction.
-  CALORIE_INTAKE_PER_DAY: '🍽 Calorie budget', PROTEIN_PER_DAY: '🥩 Protein', TARGET_WEIGHT: '⚖️ Body weight'
+  CALORIE_INTAKE_PER_DAY: 'Calorie budget', PROTEIN_PER_DAY: 'Protein', TARGET_WEIGHT: 'Body weight'
 };
 
 /** Placeholder guidance per goal type — 2000 kcal/day and 3000 kcal/week look alike. */
@@ -58,7 +58,7 @@ export function goalRow(g) {
   if (expired) {
     deadlineNote = '<span class="g-exp">Expired</span>';
   } else if (!g.isCompleted && due != null && due <= 7) {
-    deadlineNote = `<span class="g-exp" style="color:var(--gold);background:rgba(255,193,7,.12)">${
+    deadlineNote = `<span class="g-exp soon">${
       due === 0 ? 'Due today' : due === 1 ? '1 day left' : due + ' days left'}</span>`;
   }
 
@@ -67,34 +67,36 @@ export function goalRow(g) {
   let status;
   if (budget) {
     status = g.isExceeded
-      ? `<span style="color:var(--red)">${trimNumber(g.currentValue ?? 0)} / ${trimNumber(g.targetValue)}${unit} — over by ${trimNumber(g.exceededBy || 0)}</span>`
-      : `${trimNumber(g.currentValue ?? 0)} / ${trimNumber(g.targetValue)}${unit} — ${trimNumber(g.remaining || 0)} left`;
+      ? `<span class="g-over">${trimNumber(g.currentValue ?? 0)} / ${trimNumber(g.targetValue)}${unit}, over by ${trimNumber(g.exceededBy || 0)}</span>`
+      : `${trimNumber(g.currentValue ?? 0)} / ${trimNumber(g.targetValue)}${unit}, ${trimNumber(g.remaining || 0)} left`;
   } else if (towards) {
     const from = g.startValue != null ? `from ${trimNumber(g.startValue)}` : 'no starting weight yet';
     status = `${trimNumber(g.currentValue ?? 0)} → ${trimNumber(g.targetValue)}${unit} (${escapeHtml(from)})`
-           + (g.isCompleted ? ' ✓ Reached' : expired ? ' — never reached' : '');
+           + (g.isCompleted ? ', reached' : expired ? ', never reached' : '');
   } else {
-    status = `${trimNumber(g.currentValue ?? 0)} / ${trimNumber(g.targetValue)}${unit} `
-           + (g.isCompleted ? '✓ Complete' : expired ? '— never reached' : '');
+    status = `${trimNumber(g.currentValue ?? 0)} / ${trimNumber(g.targetValue)}${unit}`
+           + (g.isCompleted ? ', complete' : expired ? ', never reached' : '');
   }
 
-  // A blown budget is not a finished goal, so it must not get the "done" gradient.
+  // A blown budget is not a finished goal, so it must not get the "done" fill.
   const fillClass = g.isExceeded ? 'over' : (g.isCompleted ? 'done' : '');
   const periodNote = g.period === 'DAILY' ? '<span class="ai-chip">today</span>'
                    : g.period === 'WEEKLY' ? '<span class="ai-chip">this week</span>' : '';
 
+  // The target is in the status line under the bar, so the title is only what the
+  // goal is about and when.
   return `
-    <div class="gi" style="${expired ? 'opacity:.55' : ''}">
+    <div class="gi${expired ? ' expired' : ''}">
       <div class="git">
-        <span class="gn">${GOAL_LABEL[g.type] || g.type} — ${trimNumber(g.targetValue)}${unit} ${periodNote} ${deadlineNote}</span>
+        <span class="gn">${GOAL_LABEL[g.type] || escapeHtml(g.type)} ${periodNote} ${deadlineNote}</span>
         <span class="gp">${pct.toFixed(0)}%</span>
       </div>
       <div class="gb2"><div class="gf ${fillClass}" style="width:${pct}%"></div></div>
       <div class="g-meta">
         <span>${status}</span>
-        <span>
-          <button class="g-del" data-action="edit-goal" data-id="${g.id}" data-target="${g.targetValue}" data-deadline="${escapeHtml(deadlineAttr)}">Edit</button>
-          <button class="g-del" data-action="delete-goal" data-id="${g.id}">Delete</button>
+        <span class="g-acts">
+          <button type="button" class="g-del" data-action="edit-goal" data-id="${g.id}" data-target="${g.targetValue}" data-deadline="${escapeHtml(deadlineAttr)}">Edit</button>
+          <button type="button" class="g-del" data-action="delete-goal" data-id="${g.id}">Delete</button>
         </span>
       </div>
     </div>`;

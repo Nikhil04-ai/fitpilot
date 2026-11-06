@@ -66,8 +66,14 @@ export function trimNumber(value) {
 // HELPERS
 // ═══════════════════════════════════════════════════════════════════════
 
-export function emptyState(icon, text) {
-  return `<div class="empty-state"><div class="es-icon" aria-hidden="true">${icon}</div><div class="es-text">${escapeHtml(text)}</div></div>`;
+/**
+ * What belongs in an empty region, and optionally the one action that fills it.
+ * `icon` may be '' (the redesigned panels draw none); `actionHtml` is trusted markup,
+ * a button with its data-action, never user text.
+ */
+export function emptyState(icon, text, actionHtml = '') {
+  const ic = icon ? `<div class="es-icon" aria-hidden="true">${icon}</div>` : '';
+  return `<div class="empty-state">${ic}<div class="es-text">${escapeHtml(text)}</div>${actionHtml}</div>`;
 }
 
 // ── Skeletons ─────────────────────────────────────────────────────────
@@ -76,7 +82,15 @@ export function emptyState(icon, text) {
 // so the page settles once instead of twice. aria-hidden + a live region on the
 // container would be noise; the panel's own heading already says what's loading.
 
-/** Stat tiles across the top of Overview and Health. */
+/** The Overview's row of figures: a tall figure and its label, per cell. */
+export function skeletonFigures(n) {
+  return Array.from({ length: n }, () => `
+    <div class="fig" aria-hidden="true">
+      <div class="sk sk-figv"></div><div class="sk sk-line w60 sk-flat"></div>
+    </div>`).join('');
+}
+
+/** Stat tiles across the top of Health. */
 export function skeletonStats(n) {
   return Array.from({ length: n }, () => `
     <div class="card sk-stat" aria-hidden="true">
