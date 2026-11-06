@@ -8,29 +8,39 @@ import { shortAxisDate } from '../charts.js';
 // AI COACH — Gemini-powered recommendations (Feature 10)
 // ═══════════════════════════════════════════════════════════════════════
 
+// The kind of insight, said in words. Only a safety note carries a colour, because
+// that one is a warning; the rest are the same kind of thing and look it.
 const REC_TYPE_META = {
-  PERFORMANCE: { label: 'Performance', icon: '📈', cls: 'b' },
-  RECOVERY:    { label: 'Recovery',    icon: '🛡',  cls: 'c' },
-  SAFETY:      { label: 'Safety',      icon: '⚠️',  cls: 'r' },
-  MOTIVATION:  { label: 'Motivation',  icon: '🔥',  cls: 'g' }
+  PERFORMANCE: { label: 'Performance' },
+  RECOVERY:    { label: 'Recovery' },
+  SAFETY:      { label: 'Safety', warn: true },
+  MOTIVATION:  { label: 'Motivation' }
 };
 
-function recommendationCard(r) {
-  const meta = REC_TYPE_META[r.type] || { label: r.type || 'Insight', icon: '💡', cls: 'b' };
-  const improvements = (r.improvements || []).map(i => `<div class="apill">${escapeHtml(i)}</div>`).join('');
-  const suggestions  = (r.suggestions  || []).map(s => `<div class="apill">${escapeHtml(s)}</div>`).join('');
+/** A titled list inside an insight, or nothing when the list is empty. */
+function insightList(title, items) {
+  return items && items.length
+    ? `<h4 class="mini-ttl">${title}</h4><ul class="ac-list">${items.map(i => `<li>${escapeHtml(i)}</li>`).join('')}</ul>`
+    : '';
+}
+
+/** One per-workout insight, as a note: its kind and date, what it says, then its lists. */
+export function recommendationCard(r) {
+  const meta = REC_TYPE_META[r.type] || { label: r.type || 'Insight' };
   const safety = r.safety || [];
   const dateStr = r.createdAt ? new Date(r.createdAt).toLocaleDateString('en', { day: 'numeric', month: 'short' }) : '';
 
   return `
-    <div class="ac">
-      <div class="atag ${meta.cls}"><div class="adot ${meta.cls}"></div>${meta.icon} ${escapeHtml(meta.label)}</div>
-      <div class="abody">${escapeHtml(r.recommendation || 'No details available.')}</div>
-      ${improvements ? `<h3 class="clbl" style="margin-bottom:6px">Improvements</h3><div class="apills" style="margin-bottom:12px">${improvements}</div>` : ''}
-      ${suggestions  ? `<h3 class="clbl" style="margin-bottom:6px">Suggestions</h3><div class="apills" style="margin-bottom:12px">${suggestions}</div>`   : ''}
-      ${safety.length ? `<div style="margin-top:6px;background:rgba(255,59,92,.07);border:1px solid rgba(255,59,92,.2);border-radius:9px;padding:10px 12px;font-size:12px;color:var(--silver)">⚠️ ${safety.map(escapeHtml).join(' · ')}</div>` : ''}
-      <div style="margin-top:14px;font-family:var(--fm);font-size:10px;color:var(--muted)">${dateStr}</div>
-    </div>`;
+    <article class="ac">
+      <div class="ac-head">
+        <span class="atag${meta.warn ? ' r' : ''}">${escapeHtml(meta.label)}</span>
+        <time class="ac-date">${escapeHtml(dateStr)}</time>
+      </div>
+      <p class="abody">${escapeHtml(r.recommendation || 'No details available.')}</p>
+      ${insightList('Improvements', r.improvements)}
+      ${insightList('Suggestions', r.suggestions)}
+      ${safety.length ? `<div class="note note-warn"><strong>Take care.</strong><ul class="ac-list">${safety.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ul></div>` : ''}
+    </article>`;
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -49,8 +59,8 @@ async function loadWeeklyDigest() {
   try {
     const digest = await api('/api/digest');
     if (!digest) {
-      el.innerHTML = emptyState('📋',
-        'No weekly digest yet — one is written every Monday, or generate last week’s now.');
+      el.innerHTML = emptyState('',
+        'No weekly digest yet. One is written every Monday, or write last week’s now.');
       return;
     }
     renderDigest(el, digest);
@@ -59,33 +69,34 @@ async function loadWeeklyDigest() {
   }
 }
 
-function renderDigest(el, d) {
+export function renderDigest(el, d) {
   const week = d.weekStart
-    ? `${shortAxisDate(d.weekStart)} – ${shortAxisDate(d.weekEnd)}`
+    ? `${shortAxisDate(d.weekStart)} to ${shortAxisDate(d.weekEnd)}`
     : '';
 
   // Said out loud rather than hidden. The fallback states the facts and the model
   // interprets them, and the reader is entitled to know which one they are reading.
   const source = d.aiGenerated
-    ? '<span class="dg-src ai" title="Written by Gemini from your logged figures">✨ AI narrative</span>'
-    : '<span class="dg-src rules" title="No Gemini key configured — your figures, summarised by rule">📊 Your figures</span>';
+    ? '<span class="dg-src ai" title="Written by Gemini from your logged figures">Written by Gemini</span>'
+    : '<span class="dg-src rules" title="No Gemini key configured: your figures, summarised by rule">From your figures</span>';
 
   const list = (items, cls) => (items && items.length)
     ? `<div class="dg-sec ${cls}"><h4>${cls === 'focus' ? 'Next week' : 'What the week showed'}</h4><ul>${
         items.map(i => `<li>${escapeHtml(i)}</li>`).join('')}</ul></div>`
     : '';
 
+  // The headline leads, as a report's would; the two lists sit side by side under the
+  // narrative; the figures the narrative was written from close it.
   el.innerHTML = `
     <div class="dg-head">
       <div>
-        <div class="dg-hl">${escapeHtml(d.headline || 'Your week')}</div>
+        <p class="dg-hl">${escapeHtml(d.headline || 'Your week')}</p>
         <div class="dg-week">${escapeHtml(week)}</div>
       </div>
       ${source}
     </div>
-    ${d.narrative ? `<div class="dg-nar">${escapeHtml(d.narrative)}</div>` : ''}
-    ${list(d.observations, 'obs')}
-    ${list(d.focusNextWeek, 'focus')}
+    ${d.narrative ? `<p class="dg-nar">${escapeHtml(d.narrative)}</p>` : ''}
+    <div class="dg-lists">${list(d.observations, 'obs')}${list(d.focusNextWeek, 'focus')}</div>
     ${digestFacts(d.dataPoints)}
   `;
 }
@@ -131,13 +142,13 @@ export async function generateDigestNow() {
   try {
     const digest = await api('/api/digest/generate', { method: 'POST' });
     renderDigest(el, digest);
-    toast(digest.aiGenerated ? '📋 Weekly digest ready' : '📋 Digest ready — from your own figures');
+    toast(digest.aiGenerated ? 'Weekly digest ready' : 'Digest ready, from your own figures');
   } catch (err) {
-    toast('❌ ' + err.message, true);
+    toast(err.message, true);
     // The button failing shouldn't also wipe whatever was already on screen.
     loadWeeklyDigest();
   } finally {
-    btn.disabled = false; btn.textContent = '📋 Weekly Digest';
+    btn.disabled = false; btn.textContent = 'Write last week’s digest';
   }
 }
 
@@ -156,10 +167,10 @@ async function loadPerWorkoutInsights(page = 0) {
     const rows = res.content || [];
     el.innerHTML = rows.length
       ? rows.map(recommendationCard).join('')
-      : `<div style="grid-column:1/-1">${emptyState('🧠', 'No AI insights yet. Recommendations auto-generate every 3rd workout — or click "Generate Insight" above to get one now.')}</div>`;
+      : emptyState('', 'No AI insights yet. Recommendations auto-generate every 3rd workout, or use Generate insight above to get one now.');
     renderPager('ai-pager', page, res.page?.totalPages ?? 1, loadPerWorkoutInsights);
   } catch (err) {
-    el.innerHTML = `<div class="error-state" style="grid-column:1/-1">Couldn't load AI insights: ${escapeHtml(err.message)}</div>`;
+    el.innerHTML = `<div class="error-state">Couldn't load AI insights: ${escapeHtml(err.message)}</div>`;
   }
 }
 
@@ -202,20 +213,20 @@ export async function generateRecommendationNow() {
     const latestPage = await api('/api/activities?page=0&size=1&sort=startTime,desc');
     const latestActivity = (latestPage.content || [])[0];
     if (!latestActivity) {
-      toast('Log a workout first — insights are based on your activity history.', true);
+      toast('Log a workout first: insights are based on your activity history.', true);
       return;
     }
     const rec = await api('/api/recommendation/generate', {
       method: 'POST',
       body: JSON.stringify({ userId: session.currentUser.id, activityId: latestActivity.id })
     });
-    toast('✨ New insight generated!');
+    toast('New insight generated');
     loadPerWorkoutInsights();   // the digest above is weekly and unaffected by one new insight
     const overviewTeaser = document.getElementById('overview-ai-teaser');
     if (overviewTeaser) loadOverviewAiTeaser();
   } catch (err) {
-    toast('❌ ' + err.message, true);
+    toast(err.message, true);
   } finally {
-    btn.disabled = false; btn.textContent = '✨ Generate Insight';
+    btn.disabled = false; btn.textContent = 'Generate insight';
   }
 }

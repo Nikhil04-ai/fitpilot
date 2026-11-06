@@ -1264,3 +1264,29 @@ recast on charcoal with a restrained lime. No backend, API or auth change; no fr
   plateau check rendered a real "Plateau detected" verdict rather than only "not enough data".
   No console errors or overflow at four widths.
 * **Frontend:** 113 passing; every hook kept. sloplint: 8 fails, all on pages not yet redone.
+
+## Phase 33 — Redesign, step 7: AI Coach (2026-11-07)
+
+* **Weekly digest** as a short report: the headline in the display face, the week under it
+  ("Oct 26 to Nov 1"), the source said in words ("Written by Gemini" / "From your figures",
+  in place of two emoji badges; the distinction itself is kept), the narrative at a reading
+  measure, the two lists side by side, and the figures it was written from. The region is
+  `aria-live`.
+* **Actions:** "Write last week's digest" (was "📋 Weekly Digest", which never said it wrote
+  last week's) and "Generate insight", each in the head of the section it acts on, both
+  secondary.
+* **Per-workout insights** as ruled notes, two or three abreast: kind and date, the text, then
+  Improvements and Suggestions as lists instead of chips. Only a safety insight is coloured,
+  its notes a list on a warm "Take care" band rather than a red box joined by middle dots.
+* No emoji in empty states or toasts.
+
+### Verification
+
+* **Unit:** `tests/coach.test.mjs` (4 tests) on `recommendationCard` and `renderDigest`: kind in
+  words, no emoji or inline style, only safety marked as a warning and as a list, text escaped,
+  the source label and the "x to y" week. Frontend 117 passing.
+* **Browser** (`coach.mjs`, H2 backend with Gemini and mail blanked, behind the JDBC-line gate):
+  7 checks pass. It writes last week's digest through the button (labelled "From your figures",
+  correctly, with no key) and generates an insight on the rule-based path (2 to 3 insights).
+  No console errors or overflow at four widths.
+* **Left as found:** the rule-based digest and insight texts are backend strings with dashes.

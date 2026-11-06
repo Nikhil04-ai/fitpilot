@@ -293,22 +293,33 @@
         <div id="exercise-bests-list"><div class="loading-state"><div class="spinner"></div>Loading records…</div></div>
       </section>
 
-      <section class="panel" id="panel-ai">
-        <div class="sec-head" style="display:flex;justify-content:space-between;align-items:flex-end">
-          <div><h2 class="sec-ttl">AI Coach</h2><div class="sec-sub">Your week reasoned over as a whole, plus per-workout insights.</div></div>
-          <div style="display:flex;gap:8px">
-            <button class="btn btn-sec btn-sm" data-action="generate-digest" id="gen-digest-btn">📋 Weekly Digest</button>
-            <button class="btn btn-prim btn-sm" data-action="generate-insight" id="gen-insight-btn">✨ Generate Insight</button>
+      <!-- AI Coach: the week as a short report (its headline, the narrative, what it
+           showed, next week's focus, and the figures it was written from), then the
+           per-workout insights as notes. -->
+      <section class="panel" id="panel-ai" aria-labelledby="ai-ttl">
+        <div class="sheet-head page-head">
+          <div>
+            <h2 class="sheet-ttl" id="ai-ttl">Your coach</h2>
+            <div class="sec-sub">Your week reasoned over as a whole, plus per-workout insights.</div>
           </div>
         </div>
 
-        <div class="card" style="margin-bottom:22px" id="digest-card">
-          <div class="loading-state"><div class="spinner"></div>Loading your weekly digest…</div>
-        </div>
+        <section class="sheet" aria-labelledby="digest-ttl">
+          <div class="sheet-head">
+            <h3 class="sheet-ttl" id="digest-ttl">Weekly digest</h3>
+            <button type="button" class="btn btn-sec btn-sm" data-action="generate-digest" id="gen-digest-btn">Write last week&rsquo;s digest</button>
+          </div>
+          <div id="digest-card" aria-live="polite"><div class="loading-state">Loading your weekly digest…</div></div>
+        </section>
 
-        <h3 class="clbl" style="margin-left:2px">Per-Workout Insights</h3>
-        <div class="ai-grid" id="ai-list"><div class="loading-state" style="grid-column:1/-1"><div class="spinner"></div>Loading insights…</div></div>
-        <div class="pager" id="ai-pager"></div>
+        <section class="sheet section-gap" aria-labelledby="insights-list-ttl">
+          <div class="sheet-head">
+            <h3 class="sheet-ttl" id="insights-list-ttl">Per-workout insights</h3>
+            <button type="button" class="btn btn-sec btn-sm" data-action="generate-insight" id="gen-insight-btn">Generate insight</button>
+          </div>
+          <div class="ai-grid" id="ai-list"><div class="loading-state">Loading insights…</div></div>
+          <div class="pager" id="ai-pager"></div>
+        </section>
       </section>
 
       <section class="panel" id="panel-pain">
