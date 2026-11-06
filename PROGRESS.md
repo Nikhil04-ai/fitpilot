@@ -1180,3 +1180,33 @@ recast on charcoal with a restrained lime. No backend, API or auth change; no fr
   MySQL `fitness_demo`, so Phases 27 and 28's browser checks wrote two test accounts there. They
   were deleted (47 rows, one transaction, keyed to their two ids). Checks now pass the H2
   datasource as run arguments, which outrank `local.properties`.
+
+## Phase 30 — Redesign, step 4: Nutrition (2026-11-06)
+
+* **Figures:** Eaten, Training burn, Maintenance and Net as one ruled row, as on the Overview.
+  Net is no longer coloured by direction (cyan under, gold over still read as a verdict); its
+  sign and the word under it ("Deficit") say which way it went.
+* **Today's meals** is a log in the training log's shape: the time, the meal type in condensed
+  capitals with its description, then Protein / Carbs / Fat / Energy in aligned columns. The
+  per-type emoji and coloured dot and the "30p · 40c · 12f" string are gone. Each figure names
+  itself in a visually hidden span that is shown once the row stacks, so a phone reads
+  "Protein 14g" and a screen reader always does (the column heads are `aria-hidden`).
+  An estimated meal carries an "Estimate" badge.
+* **Macros today:** one bar split by energy in three steps of the lime (`--color-accent`,
+  `-2`, `-3`), each macro's grams, swatch and share under it, and a text alternative on the bar.
+* **Energy balance chart:** intake bars in the lime against the burn line in ink, in place of
+  a hard-coded blue fill; the canvas has `role="img"` and a label.
+* **Dialogs:** Log Meal's tabs are a tablist with `aria-selected`; no emoji in the meal types,
+  buttons or toasts; inputs carry the API's limits (P5-8: 20000 kcal, 0-2000 g a macro).
+
+### Verification
+
+* **Unit:** `tests/nutrition.test.mjs` (5 tests) on `mealRow`: four aligned cells with an
+  empty one for a missing macro, each figure named, no emoji or dot, the estimate badge, free
+  text escaped. Frontend 113 passing.
+* **Browser** (`nut.mjs`, H2 backend behind the JDBC-line gate): 17 checks through the UI pass.
+  It logs a meal from macros only and sees 165 kcal derived at 4/4/9, edits and deletes it, and
+  with no Gemini key sees "Describe it" fail with a plain message. Column heads line up within
+  2px; figure names show only when stacked. No console errors or overflow at four widths in
+  three runs (a fourth flagged a problem whose text was lost to an output filter).
+* **Left as found:** the maintenance note and the no-Gemini error are backend strings with a dash.

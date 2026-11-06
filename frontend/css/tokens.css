@@ -45,6 +45,8 @@
   --color-accent:     oklch(89% 0.19 125); /* lime: a fill under dark ink, or a mark */
   --color-accent-hi:  oklch(93% 0.16 125);
   --color-accent-2:   oklch(72% 0.13 125); /* the second step of the lime ramp, for a second series */
+  --color-accent-3:   oklch(55% 0.10 125); /* the third step: a three-part split (macros) */
+  --chart-fill:       color-mix(in oklab, var(--color-accent) 45%, transparent); /* bars under their own outline */
   --color-accent-ink: oklch(21% 0.05 125);
   --color-focus:      var(--color-accent);
 

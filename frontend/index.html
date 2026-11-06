@@ -235,30 +235,39 @@
         </div>
       </section>
 
-      <section class="panel" id="panel-nutrition">
-        <div class="sec-head" style="display:flex;justify-content:space-between;align-items:flex-end">
-          <div><h2 class="sec-ttl">Nutrition</h2><div class="sec-sub">What you eat against what you spend — the other half of the equation.</div></div>
-          <button class="btn btn-prim btn-sm" data-action="open-modal" data-modal="modal-log-meal">+ Log Meal</button>
+      <!-- Nutrition: today's balance in four figures, the meals as a log with their
+           macros in columns, the macro split beside it, then thirty days of balance. -->
+      <section class="panel" id="panel-nutrition" aria-labelledby="nutrition-ttl">
+        <div class="sheet-head page-head">
+          <div>
+            <h2 class="sheet-ttl" id="nutrition-ttl">Today</h2>
+            <div class="sec-sub">What you eat against what you spend, the other half of the equation.</div>
+          </div>
+          <button type="button" class="btn btn-sec btn-sm" data-action="open-modal" data-modal="modal-log-meal">Log meal</button>
         </div>
-        <div class="grid g4" style="margin-bottom:18px" id="nutrition-summary-row">
-          <div class="loading-state" style="grid-column:1/-1"><div class="spinner"></div></div>
+        <div class="figs" id="nutrition-summary-row">
+          <div class="loading-state">Loading…</div>
         </div>
         <div class="est-note" id="nutrition-estimate-note"></div>
-        <div class="grid g2">
-          <div class="card">
-            <h3 class="clbl">Today&#39;s Meals</h3>
-            <div class="af" id="nutrition-meals"><div class="loading-state"><div class="spinner"></div></div></div>
-          </div>
-          <div class="card">
-            <h3 class="clbl">Macros Today</h3>
-            <div id="nutrition-macros"><div class="loading-state"><div class="spinner"></div></div></div>
-          </div>
+        <div class="ov-grid">
+          <section class="sheet log" aria-labelledby="nutrition-meals-ttl">
+            <div class="sheet-head"><h3 class="sheet-ttl" id="nutrition-meals-ttl">Today&rsquo;s meals</h3></div>
+            <div class="ai meal ai-head" aria-hidden="true">
+              <span>When</span><span>Meal</span>
+              <span class="am"><span>Protein</span><span>Carbs</span><span>Fat</span><span>Energy</span></span><span></span>
+            </div>
+            <div class="af" id="nutrition-meals"><div class="loading-state">Loading…</div></div>
+          </section>
+          <section class="sheet" aria-labelledby="nutrition-macros-ttl">
+            <div class="sheet-head"><h3 class="sheet-ttl" id="nutrition-macros-ttl">Macros today</h3></div>
+            <div id="nutrition-macros"><div class="loading-state">Loading…</div></div>
+          </section>
         </div>
-        <div class="card" style="margin-top:18px">
-          <h3 class="clbl">Energy Balance &mdash; Last 30 Days</h3>
-          <div class="chartbox tall"><canvas id="chart-nutrition"></canvas></div>
+        <section class="sheet section-gap" aria-labelledby="nutrition-chart-ttl">
+          <div class="sheet-head"><h3 class="sheet-ttl" id="nutrition-chart-ttl">Energy balance, last 30 days</h3></div>
+          <div class="chartbox tall"><canvas id="chart-nutrition" role="img" aria-label="Calories eaten each day over the last 30 days, as bars, against calories burned, as a line. The note under the chart says how to read it."></canvas></div>
           <div class="chart-note" id="chart-nutrition-note"></div>
-        </div>
+        </section>
       </section>
 
       <!-- Goals, grouped the way they are scored: this week's training targets, today's
@@ -678,35 +687,36 @@
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-log-meal-title">
     <div class="modal-head"><h2 class="modal-ttl" id="modal-log-meal-title">Log Meal</h2><button type="button" class="modal-close" aria-label="Close" data-action="close-modal" data-modal="modal-log-meal">&#10005;</button></div>
 
-    <div class="auth-tabs" style="margin-bottom:18px">
-      <button class="auth-tab on" id="meal-tab-manual" data-action="meal-tab" data-tab="manual">📝 Manual</button>
-      <button class="auth-tab" id="meal-tab-natural" data-action="meal-tab" data-tab="natural">💬 Describe it</button>
+    <div class="auth-tabs" role="tablist" aria-label="How to log it">
+      <button type="button" class="auth-tab on" id="meal-tab-manual" role="tab" aria-selected="true" aria-controls="form-log-meal" data-action="meal-tab" data-tab="manual">Manual</button>
+      <button type="button" class="auth-tab" id="meal-tab-natural" role="tab" aria-selected="false" aria-controls="form-log-meal-natural" data-action="meal-tab" data-tab="natural">Describe it</button>
     </div>
 
+    <!-- Limits match the API's (PLAN P5-8): a meal up to 20000 kcal, each macro 0-2000 g. -->
     <form id="form-log-meal" data-submit="log-meal">
       <div class="field-row">
         <div class="field">
           <label for="meal-type">Meal</label>
           <select id="meal-type">
-            <option value="BREAKFAST">🌅 Breakfast</option>
-            <option value="LUNCH">🥗 Lunch</option>
-            <option value="DINNER">🍽 Dinner</option>
-            <option value="SNACK">🍎 Snack</option>
-            <option value="OTHER">➕ Other</option>
+            <option value="BREAKFAST">Breakfast</option>
+            <option value="LUNCH">Lunch</option>
+            <option value="DINNER">Dinner</option>
+            <option value="SNACK">Snack</option>
+            <option value="OTHER">Other</option>
           </select>
         </div>
-        <div class="field"><label for="meal-calories">Calories</label><input type="number" id="meal-calories" min="0" placeholder="Or fill the macros below"></div>
+        <div class="field"><label for="meal-calories">Calories</label><input type="number" id="meal-calories" min="0" max="20000" inputmode="numeric" placeholder="From macros"></div>
       </div>
       <div class="field"><label for="meal-description">What was it?</label><input type="text" id="meal-description" maxlength="500" placeholder="Porridge with berries"></div>
-      <div class="field-row">
-        <div class="field"><label for="meal-protein">Protein (g)</label><input type="number" id="meal-protein" min="0" step="any" placeholder="optional"></div>
-        <div class="field"><label for="meal-carbs">Carbs (g)</label><input type="number" id="meal-carbs" min="0" step="any" placeholder="optional"></div>
-        <div class="field"><label for="meal-fat">Fat (g)</label><input type="number" id="meal-fat" min="0" step="any" placeholder="optional"></div>
+      <div class="field-row field-row-3">
+        <div class="field"><label for="meal-protein">Protein (g)</label><input type="number" id="meal-protein" min="0" max="2000" step="any" inputmode="decimal" placeholder="optional"></div>
+        <div class="field"><label for="meal-carbs">Carbs (g)</label><input type="number" id="meal-carbs" min="0" max="2000" step="any" inputmode="decimal" placeholder="optional"></div>
+        <div class="field"><label for="meal-fat">Fat (g)</label><input type="number" id="meal-fat" min="0" max="2000" step="any" inputmode="decimal" placeholder="optional"></div>
       </div>
-      <div class="field-hint">Leave calories blank and they&#39;re worked out from the macros at 4/4/9 kcal per gram.</div>
+      <div class="field-hint">Leave calories blank and they&rsquo;re worked out from the macros at 4/4/9 kcal per gram.</div>
       <div class="modal-actions">
-        <button type="button" class="btn btn-sec" style="flex:1" data-action="close-modal" data-modal="modal-log-meal">Cancel</button>
-        <button type="submit" class="btn btn-prim" style="flex:1" id="log-meal-btn">Log It 🍽</button>
+        <button type="button" class="btn btn-sec" data-action="close-modal" data-modal="modal-log-meal">Cancel</button>
+        <button type="submit" class="btn btn-prim" id="log-meal-btn">Log meal</button>
       </div>
     </form>
 
@@ -715,12 +725,12 @@
         <label for="meal-natural-description">Describe what you ate</label>
         <textarea id="meal-natural-description" required maxlength="1000" rows="3" placeholder="two eggs, toast and a flat white"></textarea>
       </div>
-      <div class="field-hint">Powered by Gemini &mdash; needs GEMINI_API_KEY on the backend. The numbers come back as an
+      <div class="field-hint">Powered by Gemini, which needs GEMINI_API_KEY on the backend. The numbers come back as an
         <strong>estimate</strong> from typical portion sizes, not from a food database, and every estimated meal is
         marked so you can correct it.</div>
       <div class="modal-actions">
-        <button type="button" class="btn btn-sec" style="flex:1" data-action="close-modal" data-modal="modal-log-meal">Cancel</button>
-        <button type="submit" class="btn btn-prim" style="flex:1" id="log-meal-natural-btn">Estimate &amp; Log 💬</button>
+        <button type="button" class="btn btn-sec" data-action="close-modal" data-modal="modal-log-meal">Cancel</button>
+        <button type="submit" class="btn btn-prim" id="log-meal-natural-btn">Estimate and log</button>
       </div>
     </form>
   </div>
@@ -735,25 +745,25 @@
         <div class="field">
           <label for="edit-meal-type">Meal</label>
           <select id="edit-meal-type">
-            <option value="BREAKFAST">🌅 Breakfast</option>
-            <option value="LUNCH">🥗 Lunch</option>
-            <option value="DINNER">🍽 Dinner</option>
-            <option value="SNACK">🍎 Snack</option>
-            <option value="OTHER">➕ Other</option>
+            <option value="BREAKFAST">Breakfast</option>
+            <option value="LUNCH">Lunch</option>
+            <option value="DINNER">Dinner</option>
+            <option value="SNACK">Snack</option>
+            <option value="OTHER">Other</option>
           </select>
         </div>
-        <div class="field"><label for="edit-meal-calories">Calories</label><input type="number" id="edit-meal-calories" min="0"></div>
+        <div class="field"><label for="edit-meal-calories">Calories</label><input type="number" id="edit-meal-calories" min="0" max="20000" inputmode="numeric"></div>
       </div>
       <div class="field"><label for="edit-meal-description">What was it?</label><input type="text" id="edit-meal-description" maxlength="500"></div>
-      <div class="field-row">
-        <div class="field"><label for="edit-meal-protein">Protein (g)</label><input type="number" id="edit-meal-protein" min="0" step="any"></div>
-        <div class="field"><label for="edit-meal-carbs">Carbs (g)</label><input type="number" id="edit-meal-carbs" min="0" step="any"></div>
-        <div class="field"><label for="edit-meal-fat">Fat (g)</label><input type="number" id="edit-meal-fat" min="0" step="any"></div>
+      <div class="field-row field-row-3">
+        <div class="field"><label for="edit-meal-protein">Protein (g)</label><input type="number" id="edit-meal-protein" min="0" max="2000" step="any" inputmode="decimal"></div>
+        <div class="field"><label for="edit-meal-carbs">Carbs (g)</label><input type="number" id="edit-meal-carbs" min="0" max="2000" step="any" inputmode="decimal"></div>
+        <div class="field"><label for="edit-meal-fat">Fat (g)</label><input type="number" id="edit-meal-fat" min="0" max="2000" step="any" inputmode="decimal"></div>
       </div>
       <div class="field-hint" id="edit-meal-note"></div>
       <div class="modal-actions">
-        <button type="button" class="btn btn-sec" style="flex:1" data-action="close-modal" data-modal="modal-edit-meal">Cancel</button>
-        <button type="submit" class="btn btn-prim" style="flex:1" id="edit-meal-btn">Save Changes</button>
+        <button type="button" class="btn btn-sec" data-action="close-modal" data-modal="modal-edit-meal">Cancel</button>
+        <button type="submit" class="btn btn-prim" id="edit-meal-btn">Save Changes</button>
       </div>
     </form>
   </div>

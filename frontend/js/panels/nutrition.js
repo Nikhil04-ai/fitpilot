@@ -1,4 +1,4 @@
-import { emptyState, escapeHtml, localDateTimeNow, numberOrNull, shortTime, skeletonLines, skeletonStats, trimNumber } from '../util.js';
+import { emptyState, escapeHtml, localDateTimeNow, numberOrNull, shortTime, skeletonFigures, skeletonLines, skeletonRows, trimNumber } from '../util.js';
 import { closeModal, confirmDialog, openModal, toast } from '../ui.js';
 import { api } from '../api.js';
 import { invalidatePanel } from '../nav.js';
@@ -8,13 +8,13 @@ import { chartColor, chartPlaceholder, chartTheme, renderChart, setChartNote, sh
 // NUTRITION  (PLAN P2-1)
 // ═══════════════════════════════════════════════════════════════════════
 
-const MEAL_ICON = {
-  BREAKFAST: '🌅', LUNCH: '🥗', DINNER: '🍽', SNACK: '🍎', OTHER: '➕'
-};
-const MEAL_DOT_COLOR = {
-  BREAKFAST: 'var(--gold)', LUNCH: 'var(--cyan)', DINNER: 'var(--blue)',
-  SNACK: '#A855F7', OTHER: 'var(--blue)'
-};
+/** A stat: the figure, its label, and an optional line under it. As on the Overview. */
+function figure(value, label, sub) {
+  return `<div class="fig"><div class="fig-v">${escapeHtml(String(value))}</div>`
+       + `<div class="fig-k">${escapeHtml(label)}</div>`
+       + (sub ? `<div class="fig-sub">${escapeHtml(sub)}</div>` : '')
+       + `</div>`;
+}
 
 /**
  * Today's meals, keyed by id.
@@ -34,8 +34,8 @@ async function loadNutritionToday() {
   const rowEl = document.getElementById('nutrition-summary-row');
   const mealsEl = document.getElementById('nutrition-meals');
   const macroEl = document.getElementById('nutrition-macros');
-  rowEl.innerHTML = skeletonStats(4);
-  mealsEl.innerHTML = skeletonLines(3);
+  rowEl.innerHTML = skeletonFigures(4);
+  mealsEl.innerHTML = skeletonRows(3);
   macroEl.innerHTML = skeletonLines(3);
 
   try {
@@ -49,11 +49,12 @@ async function loadNutritionToday() {
     meals.forEach(m => { nutritionMealsById[m.id] = m; });
     mealsEl.innerHTML = meals.length
       ? meals.map(mealRow).join('')
-      : emptyState('🍽', 'Nothing logged today — add your first meal.');
+      : emptyState('', 'Nothing logged today.',
+          '<button type="button" class="btn btn-sec btn-sm" data-action="open-modal" data-modal="modal-log-meal">Log meal</button>');
 
     document.getElementById('nutrition-estimate-note').textContent = s.estimateNote || '';
   } catch (err) {
-    rowEl.innerHTML = `<div class="error-state" style="grid-column:1/-1">Couldn't load nutrition: ${escapeHtml(err.message)}</div>`;
+    rowEl.innerHTML = `<div class="error-state">Couldn't load nutrition: ${escapeHtml(err.message)}</div>`;
     mealsEl.innerHTML = '';
     macroEl.innerHTML = '';
   }
@@ -61,18 +62,18 @@ async function loadNutritionToday() {
 
 function renderNutritionSummary(el, s) {
   const net = s.netCalories;
-  // Deficit is the goal for most people using this, but not for everyone, so the
-  // colour marks direction rather than approval: cyan under, gold over.
-  const netColor = net == null ? 'var(--muted)' : net < 0 ? 'var(--cyan)' : 'var(--gold)';
-  const netText = net == null ? '—' : (net > 0 ? '+' : '') + net;
+  // Deficit is the goal for most people using this, but not for everyone. The figure
+  // used to be coloured by direction, which still read as a verdict; now the sign and
+  // the word under it say which way it went, and the colour says nothing.
+  const netText = net == null ? '–' : (net > 0 ? '+' : '') + net;
   const balance = s.balance ? s.balance.toLowerCase() : 'add your profile';
 
-  el.innerHTML = `
-    <div class="card smc"><div class="smi g">🍽</div><div><div class="smv">${s.caloriesIn ?? 0}</div><div class="smk">Eaten (kcal)</div></div></div>
-    <div class="card smc"><div class="smi c">🔥</div><div><div class="smv">${s.caloriesBurnedExercise ?? 0}</div><div class="smk">Training burn</div></div></div>
-    <div class="card smc"><div class="smi b">🫀</div><div><div class="smv">${s.maintenanceCalories ?? '—'}</div><div class="smk">Maintenance (est.)</div></div></div>
-    <div class="card smc"><div class="smi p">⚖️</div><div><div class="smv" style="color:${netColor}">${netText}</div><div class="smk">Net · ${escapeHtml(balance)}</div></div></div>
-  `;
+  el.innerHTML = [
+    figure(s.caloriesIn ?? 0, 'Eaten (kcal)'),
+    figure(s.caloriesBurnedExercise ?? 0, 'Training burn'),
+    figure(s.maintenanceCalories ?? '–', 'Maintenance (est.)'),
+    figure(netText, 'Net', balance.charAt(0).toUpperCase() + balance.slice(1))
+  ].join('');
 }
 
 function renderNutritionMacros(el, s) {
@@ -84,59 +85,71 @@ function renderNutritionMacros(el, s) {
   const total = pc + cc + fc;
 
   if (!total) {
-    el.innerHTML = emptyState('🥗', 'No macros logged today.');
+    el.innerHTML = emptyState('', 'No macros logged today.');
     return;
   }
 
+  // One hue, three steps of it: a part-of-a-whole split, read by the swatch beside
+  // each label, never by dyeing the words.
   const pct = v => ((v / total) * 100).toFixed(0);
+  const part = (cls, grams, name, cal) =>
+    `<div class="mk-part"><b>${trimNumber(grams)}<span class="u">g</span></b>`
+    + `<span class="mk-name"><span class="mdot ${cls}" aria-hidden="true"></span>${name}</span>`
+    + `<span class="mk-pct">${pct(cal)}% of energy</span></div>`;
   el.innerHTML = `
-    <div class="mbar">
-      <span style="width:${(pc / total) * 100}%;background:var(--cyan)" title="Protein"></span>
-      <span style="width:${(cc / total) * 100}%;background:var(--blue)" title="Carbs"></span>
-      <span style="width:${(fc / total) * 100}%;background:var(--gold)" title="Fat"></span>
+    <div class="mbar" role="img" aria-label="Protein ${pct(pc)}%, carbs ${pct(cc)}%, fat ${pct(fc)}% of today's energy">
+      <span class="m-p" style="width:${(pc / total) * 100}%"></span>
+      <span class="m-c" style="width:${(cc / total) * 100}%"></span>
+      <span class="m-f" style="width:${(fc / total) * 100}%"></span>
     </div>
     <div class="mk">
-      <div><b>${trimNumber(p)}g</b><span class="mdot" style="background:var(--cyan)"></span>Protein · ${pct(pc)}%</div>
-      <div><b>${trimNumber(c)}g</b><span class="mdot" style="background:var(--blue)"></span>Carbs · ${pct(cc)}%</div>
-      <div><b>${trimNumber(f)}g</b><span class="mdot" style="background:var(--gold)"></span>Fat · ${pct(fc)}%</div>
+      ${part('m-p', p, 'Protein', pc)}
+      ${part('m-c', c, 'Carbs', cc)}
+      ${part('m-f', f, 'Fat', fc)}
     </div>
     <div class="field-hint">${s.mealsLogged} meal${s.mealsLogged === 1 ? '' : 's'} logged today.</div>
   `;
 }
 
-function mealRow(m) {
-  const icon = MEAL_ICON[m.mealType] || '🍽';
-  const dot = MEAL_DOT_COLOR[m.mealType] || 'var(--blue)';
-  const label = (m.mealType || 'OTHER').toLowerCase();
-  const title = m.description || label.charAt(0).toUpperCase() + label.slice(1);
+/**
+ * A figure and its unit for the meal row's columns; an empty cell when not known, so
+ * columns stay aligned. The cell names itself: the column heads are hidden from
+ * assistive tech and fold away when the log stacks, and "14g 62g 9g" alone says
+ * nothing about which is which. The name is visually hidden until the row stacks.
+ */
+function cell(value, unit, name) {
+  return value != null
+    ? `<span><span class="k">${name} </span>${trimNumber(value)}<span class="u">${unit}</span></span>`
+    : '<span></span>';
+}
 
-  const macros = [
-    m.proteinGrams != null ? `${trimNumber(m.proteinGrams)}p` : '',
-    m.carbsGrams != null ? `${trimNumber(m.carbsGrams)}c` : '',
-    m.fatGrams != null ? `${trimNumber(m.fatGrams)}f` : ''
-  ].filter(Boolean).join(' · ');
+/**
+ * One meal in today's log, the same shape as a session in the training log: when,
+ * what, its macros and energy in columns, its actions. The meal type is named in the
+ * display face, so the per-type emoji and coloured dot it used to carry are gone.
+ */
+export function mealRow(m) {
+  const type = (m.mealType || 'OTHER').toLowerCase();
+  const when = m.loggedAt ? shortTime(m.loggedAt) : '';
+  const named = [type, when].filter(Boolean).join(' at ');
 
-  // The badge that keeps this honest — see .est in index.html.
+  // The badge that keeps this honest: a parsed number is a guess at a portion, and
+  // must not look like one read off a packet (see .est in css/app.css).
   const estimated = m.aiEstimated
-    ? '<span class="est" title="Estimated from your description, not measured. Edit to correct it.">~ est</span>'
+    ? '<span class="est" title="Estimated from your description, not measured. Edit to correct it.">Estimate</span>'
     : '';
 
-  const when = m.loggedAt ? shortTime(m.loggedAt) : '';
-  const sub = [when ? `<span>${escapeHtml(when)}</span>` : '',
-               macros ? `<span class="ai-chip">${escapeHtml(macros)}</span>` : '',
-               estimated].filter(Boolean).join('');
-
   return `
-    <div class="ai">
-      <div class="ad" style="background:${dot};box-shadow:0 0 6px ${dot}"></div>
+    <div class="ai meal">
+      <div class="ai-when">${escapeHtml(when)}</div>
       <div class="ai-body">
-        <div class="an">${icon} ${escapeHtml(title)}</div>
-        <div class="ai-sub">${sub}</div>
+        <div class="an">${escapeHtml(type.replace('_', ' '))}${estimated}</div>
+        ${m.description ? `<div class="ai-note">${escapeHtml(m.description)}</div>` : ''}
       </div>
-      <div class="am">${m.calories != null ? m.calories + ' kcal' : ''}</div>
+      <div class="am">${cell(m.proteinGrams, 'g', 'Protein')}${cell(m.carbsGrams, 'g', 'Carbs')}${cell(m.fatGrams, 'g', 'Fat')}${cell(m.calories, 'kcal', 'Energy')}</div>
       <div class="ai-acts">
-        <button title="Edit" data-action="edit-meal" data-id="${m.id}">✎</button>
-        <button title="Delete" class="danger" data-action="delete-meal" data-id="${m.id}">✕</button>
+        <button type="button" data-action="edit-meal" data-id="${m.id}" aria-label="Edit ${escapeHtml(named)}">Edit</button>
+        <button type="button" class="danger" data-action="delete-meal" data-id="${m.id}" aria-label="Delete ${escapeHtml(named)}">Delete</button>
       </div>
     </div>`;
 }
@@ -145,8 +158,11 @@ function mealRow(m) {
 
 export function switchMealTab(which) {
   const manual = which === 'manual';
-  document.getElementById('meal-tab-manual').classList.toggle('on', manual);
-  document.getElementById('meal-tab-natural').classList.toggle('on', !manual);
+  for (const [id, on] of [['meal-tab-manual', manual], ['meal-tab-natural', !manual]]) {
+    const tab = document.getElementById(id);
+    tab.classList.toggle('on', on);
+    tab.setAttribute('aria-selected', String(on));
+  }
   document.getElementById('form-log-meal').style.display = manual ? '' : 'none';
   document.getElementById('form-log-meal-natural').style.display = manual ? 'none' : '';
 }
@@ -172,11 +188,11 @@ export async function handleLogMeal(e) {
     const res = await api('/api/nutrition/meals', { method: 'POST', body: JSON.stringify(payload) });
     closeModal('modal-log-meal');
     document.getElementById('form-log-meal').reset();
-    handleMealLoggedResponse(res, '🍽 Meal logged!');
+    handleMealLoggedResponse(res, 'Meal logged');
   } catch (err) {
-    toast('❌ ' + err.message, true);
+    toast(err.message, true);
   } finally {
-    btn.disabled = false; btn.textContent = 'Log It 🍽';
+    btn.disabled = false; btn.textContent = 'Log meal';
   }
 }
 
@@ -192,11 +208,11 @@ export async function handleLogMealNatural(e) {
     });
     closeModal('modal-log-meal');
     document.getElementById('form-log-meal-natural').reset();
-    handleMealLoggedResponse(res, `🍽 Logged ~${res.calories} kcal — estimated, tap ✎ to correct.`);
+    handleMealLoggedResponse(res, `Logged about ${res.calories} kcal. It's an estimate: use Edit to correct it.`);
   } catch (err) {
-    toast('❌ ' + err.message, true);
+    toast(err.message, true);
   } finally {
-    btn.disabled = false; btn.textContent = 'Estimate & Log 💬';
+    btn.disabled = false; btn.textContent = 'Estimate and log';
   }
 }
 
@@ -209,7 +225,7 @@ export async function handleLogMealNatural(e) {
  */
 function handleMealLoggedResponse(res, message) {
   toast(message);
-  (res.goalAchievements || []).forEach((m, i) => setTimeout(() => toast('🎯 ' + m), (i + 1) * 900));
+  (res.goalAchievements || []).forEach((m, i) => setTimeout(() => toast(m), (i + 1) * 900));
   // Goal progress is read straight off the meal log, so those panels are stale the
   // moment this lands.
   invalidatePanel('goals');
@@ -221,7 +237,7 @@ function handleMealLoggedResponse(res, message) {
 
 export function openEditMeal(id) {
   const m = nutritionMealsById[id];
-  if (!m) { toast('That meal is no longer on screen — reload the panel.', true); return; }
+  if (!m) { toast('That meal is no longer on screen. Reload the panel.', true); return; }
 
   document.getElementById('edit-meal-id').value = id;
   document.getElementById('edit-meal-type').value = m.mealType || 'OTHER';
@@ -260,9 +276,9 @@ export async function handleEditMeal(e) {
   try {
     const res = await api(`/api/nutrition/meals/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
     closeModal('modal-edit-meal');
-    handleMealLoggedResponse(res, '✅ Meal updated');
+    handleMealLoggedResponse(res, 'Meal updated');
   } catch (err) {
-    toast('❌ ' + err.message, true);
+    toast(err.message, true);
   } finally {
     btn.disabled = false; btn.textContent = 'Save Changes';
   }
@@ -277,12 +293,12 @@ export async function deleteMeal(id) {
   if (!ok) return;
   try {
     await api(`/api/nutrition/meals/${id}`, { method: 'DELETE' });
-    toast('🗑 Meal removed');
+    toast('Meal removed');
     invalidatePanel('goals');
     invalidatePanel('overview');
     loadNutrition();
   } catch (err) {
-    toast('❌ ' + err.message, true);
+    toast(err.message, true);
   }
 }
 
@@ -308,14 +324,17 @@ async function loadNutritionChart() {
 
     if (!logged.length) {
       chartPlaceholder('chart-nutrition', 'chart-nutrition-note',
-        'Nothing logged in the last 30 days yet — log a meal and this fills in.');
+        'Nothing logged in the last 30 days yet. Log a meal and this fills in.');
       return;
     }
     showChartBox('chart-nutrition');
 
+    // Intake is the series that argues, in the lime; the burn line is its reference,
+    // in ink. Two hues for two series would have read as two equal claims.
     const t = chartTheme();
-    const blue = chartColor('--blue', '#0EA5FF');
-    const gold = chartColor('--gold', '#FFB800');
+    const intake = chartColor('--color-accent', '#C8F25A');
+    const intakeFill = chartColor('--chart-fill', 'rgba(200, 242, 90, 0.45)');
+    const spendLine = chartColor('--color-ink-2', '#C9CED6');
     const maintenanceRow = series.find(d => d.maintenanceCalories != null);
     const maintenance = maintenanceRow ? maintenanceRow.maintenanceCalories : null;
 
@@ -330,17 +349,17 @@ async function loadNutritionChart() {
             type: 'bar',
             label: 'Eaten',
             data: series.map(d => (d.caloriesIn || 0) > 0 ? d.caloriesIn : null),
-            backgroundColor: 'rgba(14,165,255,.45)',
-            borderColor: blue,
+            backgroundColor: intakeFill,
+            borderColor: intake,
             borderWidth: 1,
-            borderRadius: 3
+            borderRadius: 2
           },
           {
             type: 'line',
             label: 'Burned (maintenance + training)',
             data: spend,
-            borderColor: gold,
-            backgroundColor: gold,
+            borderColor: spendLine,
+            backgroundColor: spendLine,
             borderWidth: 2,
             pointRadius: 0,
             // No spline: the spend line steps up on the days you trained, and smoothing
