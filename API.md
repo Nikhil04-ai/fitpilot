@@ -818,7 +818,7 @@ Returns totals for the last 30 days, plus `weekOverWeekCalorieChange`.
   - `mostFrequentActivityType` is the name of the most common `ActivityType`, or `"N/A"` if there are no activities.
   - `fromDate` and `toDate` are ISO local date-time strings.
   - `weekOverWeekCalorieChange` is a signed percentage string with one decimal and a `.` separator. It compares the calories of the last 7 days with the 7 days before them.
-  - It is `null` when that earlier week had no calories, since no percentage can be given. The Insights panel shows `—`.
+  - It is `null` when that earlier week had no calories, since no percentage can be given. The Insights panel shows a dash.
 - **Errors:** none specific.
 
 ### `GET /api/stats/weekly/{userId}`

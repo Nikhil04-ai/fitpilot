@@ -1239,3 +1239,28 @@ recast on charcoal with a restrained lime. No backend, API or auth change; no fr
   axis. Overview, Activities, Goals and Nutrition re-checked after the shared head change.
 * **Frontend:** 113 passing; every hook in `index.html` kept. sloplint: 11 fails, all on pages
   not yet redone.
+
+## Phase 32 — Redesign, step 6: Stats & Insights (2026-11-07)
+
+* **Last 30 days** as a row of figures (Workouts, Calories, Minutes, Calories vs the week
+  before) with the most frequent activity under it; with no workouts it says so rather than
+  showing "N/A".
+* **Training volume:** one axis. Minutes had a second, right-hand axis; most calories are
+  estimated from minutes, and two scales invite reading a relationship between the lines. Each
+  day's minutes and sessions are in its tooltip ("Rest day" when none).
+* **When you train:** the peak window and the hour histogram sit side by side, being one piece
+  of data; only the peak hour's bar carries the lime. The suggestion is a note band.
+* **Plateau check:** the select had no label (it has one), and no emoji; Check is secondary; the
+  result region is `aria-live`; the verdict is in words on a warm band, and the change figure
+  is no longer coloured to repeat it.
+* Both canvases labelled, so every chart in the app now has a text alternative. `API.md`'s note
+  that the panel shows "—" for a missing week-over-week figure now says "a dash".
+
+### Verification
+
+* **Browser** (`ins.mjs`, H2 backend behind the JDBC-line gate): 9 checks pass. Two read the live
+  Chart.js instances: the volume chart has one dataset and no second axis, and exactly one hour
+  bar is lit, the one the peak window beside it starts at. Eight more runs were logged so the
+  plateau check rendered a real "Plateau detected" verdict rather than only "not enough data".
+  No console errors or overflow at four widths.
+* **Frontend:** 113 passing; every hook kept. sloplint: 8 fails, all on pages not yet redone.

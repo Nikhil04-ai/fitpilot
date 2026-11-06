@@ -327,41 +327,54 @@
         <div class="cg" id="plans-list"><div class="loading-state" style="grid-column:1/-1"><div class="spinner"></div>Loading plans…</div></div>
       </section>
 
-      <section class="panel" id="panel-insights">
-        <div class="sec-head"><h2 class="sec-ttl">Stats &amp; Insights</h2><div class="sec-sub">Monthly trends, your peak workout time, and plateau detection.</div></div>
-        <div class="grid g2" style="margin-bottom:18px">
-          <div class="card"><h3 class="clbl">Monthly Overview</h3><div id="monthly-stats"><div class="loading-state"><div class="spinner"></div></div></div></div>
-          <div class="card"><h3 class="clbl">Peak Workout Time</h3><div id="timing-stats"><div class="loading-state"><div class="spinner"></div></div></div></div>
-        </div>
-        <div class="card" style="margin-bottom:18px">
-          <h3 class="clbl">Training Volume — Last 30 Days</h3>
-          <div class="chartbox tall"><canvas id="chart-volume"></canvas></div>
-          <div class="chart-note" id="chart-volume-note"></div>
-        </div>
-        <div class="card" style="margin-bottom:18px">
-          <h3 class="clbl">When You Train — Last 30 Days</h3>
-          <div class="chartbox"><canvas id="chart-hours"></canvas></div>
-          <div class="chart-note" id="chart-hours-note"></div>
-        </div>
-        <div class="card">
-          <h3 class="clbl">Plateau Check</h3>
-          <div style="display:flex;gap:10px;margin-bottom:16px">
-            <select id="plateau-type" style="flex:1;background:var(--panel2);border:1px solid var(--border);border-radius:9px;padding:11px 14px;color:var(--white);font-size:14px">
-              <option value="RUNNING">🏃 Running</option>
-              <option value="WALKING">🚶 Walking</option>
-              <option value="CYCLING">🚴 Cycling</option>
-              <option value="SWIMMING">🏊 Swimming</option>
-              <option value="WEIGHT_TRAINING">🏋️ Weight Training</option>
-              <option value="YOGA">🧘 Yoga</option>
-              <option value="HIIT">⚡ HIIT</option>
-              <option value="CARDIO">🏄 Cardio</option>
-              <option value="STRETCHING">🤸 Stretching</option>
-              <option value="OTHER">➕ Other</option>
-            </select>
-            <button class="btn btn-prim btn-sm" data-action="check-plateau">Check</button>
+      <!-- Stats & Insights: the last 30 days in figures, the volume behind them, when you
+           train (the sentence and its histogram together, being one piece of data), and
+           the plateau check. -->
+      <section class="panel" id="panel-insights" aria-labelledby="insights-ttl">
+        <div class="sheet-head page-head">
+          <div>
+            <h2 class="sheet-ttl" id="insights-ttl">Last 30 days</h2>
+            <div class="sec-sub">Monthly trends, your peak workout time and plateau detection.</div>
           </div>
-          <div id="plateau-result"><div style="font-size:12px;color:var(--muted)">Pick an activity type and click Check to see if your progress has stalled.</div></div>
         </div>
+        <div class="figs-block" id="monthly-stats"><div class="loading-state">Loading…</div></div>
+        <section class="sheet" aria-labelledby="volume-ttl">
+          <div class="sheet-head"><h3 class="sheet-ttl" id="volume-ttl">Training volume</h3></div>
+          <div class="chartbox tall"><canvas id="chart-volume" role="img" aria-label="Calories burned in training each day for the last 30 days, as bars; rest days are zero. The note under the chart gives the totals."></canvas></div>
+          <div class="chart-note" id="chart-volume-note"></div>
+        </section>
+        <section class="sheet section-gap" aria-labelledby="timing-ttl">
+          <div class="sheet-head"><h3 class="sheet-ttl" id="timing-ttl">When you train</h3></div>
+          <div class="split">
+            <div id="timing-stats"><div class="loading-state">Loading…</div></div>
+            <div>
+              <div class="chartbox"><canvas id="chart-hours" role="img" aria-label="Number of workouts started in each hour of the day over the last 30 days, with the peak hour highlighted."></canvas></div>
+              <div class="chart-note" id="chart-hours-note"></div>
+            </div>
+          </div>
+        </section>
+        <section class="sheet section-gap" aria-labelledby="plateau-ttl">
+          <div class="sheet-head"><h3 class="sheet-ttl" id="plateau-ttl">Plateau check</h3></div>
+          <div class="inline-form">
+            <div class="field">
+              <label for="plateau-type">Activity</label>
+              <select id="plateau-type">
+                <option value="RUNNING">Running</option>
+                <option value="WALKING">Walking</option>
+                <option value="CYCLING">Cycling</option>
+                <option value="SWIMMING">Swimming</option>
+                <option value="WEIGHT_TRAINING">Weight Training</option>
+                <option value="YOGA">Yoga</option>
+                <option value="HIIT">HIIT</option>
+                <option value="CARDIO">Cardio</option>
+                <option value="STRETCHING">Stretching</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </div>
+            <button type="button" class="btn btn-sec" data-action="check-plateau">Check</button>
+          </div>
+          <div id="plateau-result" aria-live="polite"><p class="field-hint">Pick an activity type and click Check to see if your progress has stalled.</p></div>
+        </section>
       </section>
 
       <section class="panel" id="panel-challenges">

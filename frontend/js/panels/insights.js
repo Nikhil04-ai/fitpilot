@@ -1,5 +1,5 @@
 import { session } from '../state.js';
-import { emptyState, escapeHtml, skeletonLines } from '../util.js';
+import { emptyState, escapeHtml, figure, skeletonFigures, skeletonLines } from '../util.js';
 import { api } from '../api.js';
 import { chartColor, chartPlaceholder, chartTheme, renderChart, setChartNote, shortAxisDate, showChartBox } from '../charts.js';
 
@@ -13,18 +13,21 @@ export async function loadInsights() {
 
 async function loadMonthlyStats() {
   const el = document.getElementById('monthly-stats');
-  el.innerHTML = skeletonLines(3);
+  el.innerHTML = `<div class="figs">${skeletonFigures(4)}</div>`;
   try {
     const m = await api(`/api/stats/monthly/${session.currentUser.id}`);
+    const type = m.mostFrequentActivityType;
+    const most = !type || type === 'N/A' ? 'No workouts in the last 30 days.'
+      : `Most frequent: ${type.replace('_', ' ').toLowerCase()}.`;
     el.innerHTML = `
-      <div class="pstats" style="grid-template-columns:1fr 1fr">
-        <div class="ps"><div class="psv">${m.totalCalories ?? 0}</div><div class="psk">Calories</div></div>
-        <div class="ps"><div class="psv">${m.activityCount ?? 0}</div><div class="psk">Workouts</div></div>
-        <div class="ps"><div class="psv">${m.totalDurationMinutes ?? 0}</div><div class="psk">Minutes</div></div>
-        <div class="ps"><div class="psv">${m.weekOverWeekCalorieChange ?? '—'}</div><div class="psk">WoW Change</div></div>
-      </div>
-      <div style="margin-top:12px;font-size:12px;color:var(--muted)">Most frequent: ${(m.mostFrequentActivityType || '—').replace('_', ' ')}</div>
-    `;
+      <div class="figs">${[
+        figure(m.activityCount ?? 0, 'Workouts'),
+        figure(m.totalCalories ?? 0, 'Calories'),
+        figure(m.totalDurationMinutes ?? 0, 'Minutes'),
+        // null when the week before had no calories: no percentage can be given.
+        figure(m.weekOverWeekCalorieChange ?? '–', 'Calories vs the week before')
+      ].join('')}</div>
+      <p class="figs-note">${escapeHtml(most)}</p>`;
   } catch (err) {
     el.innerHTML = `<div class="error-state">Couldn't load monthly stats: ${escapeHtml(err.message)}</div>`;
   }
@@ -36,16 +39,18 @@ async function loadTimingStats() {
   try {
     const t = await api(`/api/stats/timing/${session.currentUser.id}`);
     if (t.message) {
-      el.innerHTML = emptyState('⏰', t.message);
+      el.innerHTML = emptyState('', t.message);
       chartPlaceholder('chart-hours', 'chart-hours-note', t.message);
       return;
     }
     el.innerHTML = `
-      <div style="font-family:var(--fm);font-size:26px;color:var(--blue)">${t.peakTimeWindow || '—'}</div>
-      <div style="font-size:12px;color:var(--muted);margin:6px 0 12px">${t.completionRateAtPeak || ''} of workouts happen in this window</div>
-      <div style="background:rgba(14,165,255,.06);border:1px solid rgba(14,165,255,.15);border-radius:9px;padding:11px 14px;font-size:12px;color:var(--silver)">💡 ${escapeHtml(t.suggestion || '')}</div>
+      <div class="metric metric-stack">
+        <span class="metric-v">${escapeHtml(t.peakTimeWindow || '–')}</span>
+        <span class="metric-u">${escapeHtml(t.completionRateAtPeak || '')} of workouts happen in this window</span>
+      </div>
+      ${t.suggestion ? `<p class="note">${escapeHtml(t.suggestion)}</p>` : ''}
     `;
-    // Same payload, no second request — the histogram is the distribution behind
+    // Same payload, no second request: the histogram is the distribution behind
     // the sentence this card just rendered.
     renderHoursChart(t);
   } catch (err) {
@@ -57,23 +62,24 @@ async function loadTimingStats() {
 export async function checkPlateau() {
   const type = document.getElementById('plateau-type').value;
   const el = document.getElementById('plateau-result');
-  el.innerHTML = `<div class="loading-state"><div class="spinner"></div>Checking…</div>`;
+  el.innerHTML = `<div class="loading-state">Checking…</div>`;
   try {
     const r = await api(`/api/stats/plateau/${session.currentUser.id}?activityType=${type}`);
     if (r.status === 'insufficient_data') {
-      el.innerHTML = `<div style="font-size:12px;color:var(--muted);padding:8px 0">${escapeHtml(r.message)}</div>`;
+      el.innerHTML = `<p class="field-hint">${escapeHtml(r.message)}</p>`;
       return;
     }
+    // The verdict is said in words; the change figure is not coloured to say it again.
     const plateaued = r.plateauDetected;
     el.innerHTML = `
-      <div style="display:flex;gap:24px;margin-bottom:14px">
-        <div><div style="font-family:var(--fm);font-size:20px;color:var(--blue)">${r.recentAverageCalories}</div><div class="psk">Recent avg cal</div></div>
-        <div><div style="font-family:var(--fm);font-size:20px;color:var(--muted)">${r.previousAverageCalories}</div><div class="psk">Previous avg cal</div></div>
-        <div><div style="font-family:var(--fm);font-size:20px;color:${plateaued?'var(--red)':'var(--cyan)'}">${r.improvementPercent}</div><div class="psk">Change</div></div>
-      </div>
+      <dl class="body-figs plateau-figs">
+        <div><dt>Recent average</dt><dd>${escapeHtml(String(r.recentAverageCalories))}<span class="u">kcal</span></dd></div>
+        <div><dt>Previous average</dt><dd>${escapeHtml(String(r.previousAverageCalories))}<span class="u">kcal</span></dd></div>
+        <div><dt>Change</dt><dd>${escapeHtml(String(r.improvementPercent))}</dd></div>
+      </dl>
       ${plateaued
-        ? `<div style="background:rgba(255,184,0,.07);border:1px solid rgba(255,184,0,.2);border-radius:9px;padding:11px 14px;font-size:12px;color:var(--silver)">⚠️ ${escapeHtml(r.recommendation || 'Plateau detected.')}</div>`
-        : `<div style="background:rgba(0,255,209,.07);border:1px solid rgba(0,255,209,.2);border-radius:9px;padding:11px 14px;font-size:12px;color:var(--silver)">✅ No plateau — you're progressing!</div>`}
+        ? `<p class="note note-warn"><strong>Plateau detected.</strong> ${escapeHtml(r.recommendation || '')}</p>`
+        : `<p class="note">No plateau. You're progressing.</p>`}
     `;
   } catch (err) {
     el.innerHTML = `<div class="error-state">${escapeHtml(err.message)}</div>`;
@@ -83,7 +89,12 @@ export async function checkPlateau() {
 // ── Training volume ────────────────────────────────────────────────────
 
 /**
- * Calories per day as bars, with minutes as a line on a second axis.
+ * Calories per day as bars, on one axis.
+ *
+ * Minutes used to be a line on a second, right-hand axis. Two scales on one chart can
+ * be set to make any two lines look related, and here they mostly are anyway: most
+ * calories are estimated from minutes. Each day's minutes and sessions are in its
+ * tooltip, and the month's minutes are a figure above.
  *
  * The server returns rest days as explicit zeros, so the gaps in someone's week
  * are part of the picture rather than smoothed over.
@@ -95,63 +106,55 @@ async function loadVolumeChart() {
 
     if (!totalCalories) {
       chartPlaceholder('chart-volume', 'chart-volume-note',
-        'Nothing logged in the last 30 days yet — log a workout and this fills in.');
+        'Nothing logged in the last 30 days yet. Log a workout and this fills in.');
       return;
     }
     showChartBox('chart-volume');
 
     const t = chartTheme();
-    const blue = chartColor('--blue', '#0EA5FF');
-    const cyan = chartColor('--cyan', '#00FFD1');
+    const bar = chartColor('--color-accent', '#C8F25A');
+    const barFill = chartColor('--chart-fill', 'rgba(200, 242, 90, 0.45)');
 
     renderChart('chart-volume', {
+      type: 'bar',
       data: {
         labels: series.map(d => shortAxisDate(d.date)),
-        datasets: [
-          {
-            type: 'bar',
-            label: 'Calories',
-            data: series.map(d => d.calories),
-            backgroundColor: 'rgba(14,165,255,.45)',
-            borderColor: blue,
-            borderWidth: 1,
-            borderRadius: 3,
-            yAxisID: 'y'
-          },
-          {
-            type: 'line',
-            label: 'Minutes',
-            data: series.map(d => d.minutes),
-            borderColor: cyan,
-            backgroundColor: cyan,
-            borderWidth: 2,
-            pointRadius: 0,
-            pointHoverRadius: 4,
-            // No spline. Smoothing a daily series that is mostly zeros bows the line
-            // up across rest days and draws training that did not happen.
-            tension: 0,
-            yAxisID: 'y1'
-          }
-        ]
+        datasets: [{
+          label: 'Calories',
+          data: series.map(d => d.calories),
+          backgroundColor: barFill,
+          borderColor: bar,
+          borderWidth: 1,
+          borderRadius: 2
+        }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
-        plugins: { legend: t.legend, tooltip: t.tooltip },
+        plugins: {
+          legend: { display: false },
+          tooltip: Object.assign({}, t.tooltip, {
+            callbacks: {
+              label: item => `${item.parsed.y} kcal`,
+              afterLabel: item => {
+                const d = series[item.dataIndex];
+                return d.workouts ? `${d.minutes || 0} min, ${d.workouts} session${d.workouts === 1 ? '' : 's'}` : 'Rest day';
+              }
+            }
+          })
+        },
         scales: {
-          x:  { grid: { display: false }, ticks: Object.assign({}, t.tick, { maxTicksLimit: 10 }) },
-          y:  { position: 'left',  beginAtZero: true, grid: { color: t.grid }, ticks: t.tick,
-                title: Object.assign({ display: true, text: 'kcal' }, t.title) },
-          y1: { position: 'right', beginAtZero: true, grid: { display: false }, ticks: t.tick,
-                title: Object.assign({ display: true, text: 'min' }, t.title) }
+          x: { grid: { display: false }, ticks: Object.assign({}, t.tick, { maxTicksLimit: 10 }) },
+          y: { beginAtZero: true, grid: { color: t.grid }, ticks: t.tick,
+               title: Object.assign({ display: true, text: 'kcal' }, t.title) }
         }
       }
     }, 'chart-volume-note');
 
     const activeDays = series.filter(d => d.workouts > 0).length;
     setChartNote('chart-volume-note',
-      `${activeDays} of the last ${series.length} days had a session — ${totalCalories.toLocaleString()} kcal in total.`);
+      `${activeDays} of the last ${series.length} days had a session, ${totalCalories.toLocaleString()} kcal in total.`);
   } catch (err) {
     setChartNote('chart-volume-note', `Couldn't load volume data: ${err.message}`);
   }
@@ -178,8 +181,8 @@ function renderHoursChart(timing) {
 
   const t = chartTheme();
   const peak = timing.peakWorkoutHour;
-  const blue = chartColor('--blue', '#0EA5FF');
-  const cyan = chartColor('--cyan', '#00FFD1');
+  const accent = chartColor('--color-accent', '#C8F25A');
+  const rest = chartColor('--color-mark', '#6B7280');
 
   renderChart('chart-hours', {
     type: 'bar',
@@ -190,10 +193,9 @@ function renderHoursChart(timing) {
         data: hours,
         // The peak hour is the point of the chart, so it gets the accent colour
         // and every other bar recedes.
-        backgroundColor: hours.map((_, h) => h === peak ? cyan : 'rgba(14,165,255,.30)'),
-        borderColor:     hours.map((_, h) => h === peak ? cyan : blue),
-        borderWidth: 1,
-        borderRadius: 3
+        backgroundColor: hours.map((_, h) => h === peak ? accent : rest),
+        borderWidth: 0,
+        borderRadius: 2
       }]
     },
     options: {
@@ -203,7 +205,7 @@ function renderHoursChart(timing) {
         legend: { display: false },
         tooltip: Object.assign({}, t.tooltip, {
           callbacks: {
-            title: items => `${items[0].label}:00–${String(Number(items[0].label) + 1).padStart(2, '0')}:00`,
+            title: items => `${items[0].label}:00 to ${String(Number(items[0].label) + 1).padStart(2, '0')}:00`,
             label: item => `${item.parsed.y} workout${item.parsed.y === 1 ? '' : 's'}`
           }
         })
