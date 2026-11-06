@@ -133,7 +133,7 @@ export function mealRow(m) {
     : '';
 
   return `
-    <div class="ai meal">
+    <div class="ai logrow meal">
       <div class="ai-when">${escapeHtml(when)}</div>
       <div class="ai-body">
         <div class="an">${escapeHtml(type.replace('_', ' '))}${estimated}</div>

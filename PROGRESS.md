@@ -1290,3 +1290,34 @@ recast on charcoal with a restrained lime. No backend, API or auth change; no fr
   correctly, with no key) and generates an insight on the rule-based path (2 to 3 insights).
   No console errors or overflow at four widths.
 * **Left as found:** the rule-based digest and insight texts are backend strings with dashes.
+
+## Phase 34 — Redesign, step 8: Challenges, and a fix to step 1 (2026-11-07)
+
+* **Fix to Phase 27:** making `.ai` the training log's four-column grid also forced it on every
+  other list that used `.ai` (friends, notifications, pain entries), which came out laid out in
+  the log's columns. The grid moved to a `.logrow` class carried only by workout and meal rows
+  and their column heads; `.ai` is a plain row again. Unread rows lose their lime side stripe
+  (a paper step marks them).
+* **Page:** "Waiting on you" (only when there are invites), then your challenges with your
+  friends beside them; New challenge is secondary.
+* **A challenge** is a ruled note: what it is scored on in words (it read "// calories_burned"),
+  its status in sentence case with only an active one in the lime, the title, the standings as
+  an ordered list with you and the host marked in words (the host was a trailing " ·"), and what
+  you can do. Unranked places are blank rather than "—"; days left is no longer red.
+* **Friends:** the add-friend input had no label; it has one. Rows act with "Remove", "Accept",
+  "Decline" (were ✕ and ✓), each naming the person it acts on.
+* **Details:** the score history is a table, a row per day and a column per person, in place of
+  "Name: 120 · Name: 90" lines; the head-to-head is three figures under "All-time head-to-head
+  with ...".
+* No emoji in the type options or any toast.
+
+### Verification
+
+* **Unit:** `tests/social.test.mjs` (6 tests) on `friendRow`, `inviteRow`, `challengeCard` and
+  `scoreHistoryTable`. Frontend 123 passing.
+* **Browser** (`ch.mjs` and `acc2.mjs`, H2 backend behind the JDBC-line gate, with a seeded
+  friend, a pending challenge invite and a pending friend request): 13 checks pass, including
+  opening the details, accepting an invite (it moves into Challenges) and a friend request, and
+  friend and notification rows being a line rather than the log grid. Two runs that hit the
+  login rate limit (the test profile's relaxed limits don't load either) were discarded.
+* **sloplint:** 3 fails left: the two auth buttons and the Pain Log subtitle.

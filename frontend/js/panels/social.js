@@ -26,10 +26,10 @@ async function loadFriends() {
     friendsCache = friends;
     listEl.innerHTML = friends.length
       ? friends.map(friendRow).join('')
-      : emptyState('🤝', 'No friends yet — add someone by their email address above.');
+      : emptyState('', 'No friends yet. Add someone by their email address above.');
 
     inviteEl.innerHTML = invites.length
-      ? `<h3 class="clbl">Friend requests</h3><div class="af">${invites.map(inviteRow).join('')}</div>`
+      ? `<h4 class="mini-ttl">Friend requests</h4><div class="af">${invites.map(inviteRow).join('')}</div>`
       : '';
 
     populateOpponentPicker();
@@ -38,33 +38,35 @@ async function loadFriends() {
   }
 }
 
-function friendRow(f) {
-  const initial = (f.name || '?')[0].toUpperCase();
+/** A friend: their initial, their name and streak, and the one action on them. */
+export function friendRow(f) {
+  const name = f.name || 'Athlete';
   return `
-    <div class="ai">
-      <div class="fr-av">${escapeHtml(initial)}</div>
+    <div class="ai person">
+      <div class="fr-av" aria-hidden="true">${escapeHtml(name[0].toUpperCase())}</div>
       <div class="ai-body">
-        <div class="an">${escapeHtml(f.name || 'Athlete')}</div>
-        <div class="ai-sub"><span>🔥 ${f.currentStreak ?? 0} day streak</span></div>
+        <div class="person-name">${escapeHtml(name)}</div>
+        <div class="ai-sub"><span>${f.currentStreak ?? 0} day streak</span></div>
       </div>
       <div class="ai-acts">
-        <button title="Remove" class="danger" data-action="remove-friend" data-id="${f.friendshipId}">✕</button>
+        <button type="button" class="danger" data-action="remove-friend" data-id="${f.friendshipId}" aria-label="Remove ${escapeHtml(name)}">Remove</button>
       </div>
     </div>`;
 }
 
-function inviteRow(f) {
-  const initial = (f.name || '?')[0].toUpperCase();
+/** A friend request waiting on you: marked unread until you answer it. */
+export function inviteRow(f) {
+  const name = f.name || 'Athlete';
   return `
-    <div class="ai unread">
-      <div class="fr-av">${escapeHtml(initial)}</div>
+    <div class="ai person unread">
+      <div class="fr-av" aria-hidden="true">${escapeHtml(name[0].toUpperCase())}</div>
       <div class="ai-body">
-        <div class="an">${escapeHtml(f.name || 'Athlete')}</div>
+        <div class="person-name">${escapeHtml(name)}</div>
         <div class="ai-sub"><span>wants to connect</span></div>
       </div>
       <div class="ai-acts">
-        <button title="Accept" data-action="accept-friend" data-id="${f.friendshipId}">✓</button>
-        <button title="Decline" class="danger" data-action="decline-friend" data-id="${f.friendshipId}">✕</button>
+        <button type="button" data-action="accept-friend" data-id="${f.friendshipId}" aria-label="Accept ${escapeHtml(name)}">Accept</button>
+        <button type="button" class="danger" data-action="decline-friend" data-id="${f.friendshipId}" aria-label="Decline ${escapeHtml(name)}">Decline</button>
       </div>
     </div>`;
 }
@@ -76,7 +78,7 @@ function populateOpponentPicker() {
   select.innerHTML = friendsCache.length
     ? friendsCache.map(f =>
         `<option value="${escapeHtml(f.userId)}">${escapeHtml(f.name || 'Athlete')}</option>`).join('')
-    : '<option disabled>Add a friend first — you can only challenge friends</option>';
+    : '<option disabled>Add a friend first: you can only challenge friends</option>';
 }
 
 export async function handleAddFriend(e) {
@@ -92,13 +94,13 @@ export async function handleAddFriend(e) {
     // The backend answers identically for a known and an unknown address on purpose —
     // otherwise this is a free "does this person have an account" lookup. The message
     // it returns is the one to show, rather than a cheerier one this page invents.
-    toast('🤝 ' + res.message);
+    toast(res.message);
     input.value = '';
     loadFriends();
   } catch (err) {
-    toast('❌ ' + err.message, true);
+    toast(err.message, true);
   } finally {
-    btn.disabled = false; btn.textContent = '+ Add friend';
+    btn.disabled = false; btn.textContent = 'Add friend';
   }
   return false;
 }
@@ -106,11 +108,11 @@ export async function handleAddFriend(e) {
 export async function acceptFriend(friendshipId) {
   try {
     const res = await api(`/api/friends/${friendshipId}/accept`, { method: 'POST' });
-    toast('🤝 ' + res.message);
+    toast(res.message);
     loadFriends();
     refreshUnreadCount();
   } catch (err) {
-    toast('❌ ' + err.message, true);
+    toast(err.message, true);
   }
 }
 
@@ -122,11 +124,11 @@ export async function removeFriend(friendshipId, isDecline = false) {
   }))) return;
   try {
     await api(`/api/friends/${friendshipId}`, { method: 'DELETE' });
-    toast(isDecline ? '👋 Request declined' : '👋 Friend removed');
+    toast(isDecline ? 'Request declined' : 'Friend removed');
     loadFriends();
     refreshUnreadCount();
   } catch (err) {
-    toast('❌ ' + err.message, true);
+    toast(err.message, true);
   }
 }
 
@@ -141,42 +143,76 @@ export async function removeFriend(friendshipId, isDecline = false) {
  * choice — it was the data model showing through, because a challenge held exactly two
  * people (PLAN P2-4). A ranked list reads correctly for two and for eight.
  */
-function challengeCard(c, isInvite) {
-  const badgeClass = c.status === 'ACTIVE' ? 'bl' : c.status === 'PENDING' ? 'bn'
-                   : c.status === 'COMPLETED' ? 'bp2' : 'bd';
+/** What a challenge is scored on, in words. The enum used to show through as "// calories_burned". */
+const CHALLENGE_TYPE_LABEL = {
+  CALORIES_BURNED: 'Most calories burned', WORKOUT_COUNT: 'Most workouts logged',
+  TOTAL_DURATION: 'Most minutes trained', STREAK_LENGTH: 'Longest streak'
+};
+/** The status, in sentence case. Only a live challenge carries the lime: it is the one in play. */
+const STATUS_META = {
+  ACTIVE: { label: 'Active', cls: 'bl' }, PENDING: { label: 'Pending', cls: 'bn' },
+  COMPLETED: { label: 'Completed', cls: 'bp2' }, CANCELLED: { label: 'Cancelled', cls: 'bd' }
+};
+
+export function challengeCard(c, isInvite) {
+  const status = STATUS_META[c.status] || { label: c.status || '', cls: 'bd' };
 
   let actions = '';
   if (isInvite) {
     actions = `
-      <button class="btn btn-prim btn-sm" style="flex:1" data-action="respond-challenge" data-id="${c.id}" data-accept="true">Accept</button>
-      <button class="btn btn-sec btn-sm" style="flex:1" data-action="respond-challenge" data-id="${c.id}" data-accept="false">Decline</button>`;
+      <button type="button" class="btn btn-sec btn-sm" data-action="respond-challenge" data-id="${c.id}" data-accept="true">Accept</button>
+      <button type="button" class="g-del" data-action="respond-challenge" data-id="${c.id}" data-accept="false">Decline</button>`;
   } else if (c.status === 'PENDING') {
     const waiting = pendingCount(c);
     actions = c.youAreCreator
-      ? `<span class="cdl">Waiting on ${waiting} ${waiting === 1 ? 'person' : 'people'}…</span><button class="g-del" data-action="cancel-challenge" data-id="${c.id}">Cancel</button>`
+      ? `<span class="cdl">Waiting on ${waiting} ${waiting === 1 ? 'person' : 'people'}…</span><button type="button" class="g-del" data-action="cancel-challenge" data-id="${c.id}">Cancel</button>`
       : `<span class="cdl">Waiting for others to accept…</span>`;
   } else if (c.status === 'ACTIVE') {
     const leave = c.youAreCreator ? ''
-      : `<button class="g-del" data-action="leave-challenge" data-id="${c.id}">Leave</button>`;
-    actions = `<span class="cdl"><span style="color:var(--red)">${c.daysRemaining ?? '?'}</span> days left</span>${leave}<button class="btn-ghost" data-action="challenge-detail" data-id="${c.id}">Details</button>`;
+      : `<button type="button" class="g-del" data-action="leave-challenge" data-id="${c.id}">Leave</button>`;
+    const days = c.daysRemaining ?? '?';
+    actions = `<span class="cdl"><b class="num">${days}</b> ${days === 1 ? 'day' : 'days'} left</span>${leave}<button type="button" class="btn-ghost" data-action="challenge-detail" data-id="${c.id}">Details</button>`;
   } else if (c.status === 'COMPLETED') {
-    actions = `<span class="cdl">${escapeHtml(c.resultMessage || 'Challenge complete')}</span><button class="btn-ghost" data-action="challenge-detail" data-id="${c.id}">Details</button>`;
+    actions = `<span class="cdl">${escapeHtml(c.resultMessage || 'Challenge complete')}</span><button type="button" class="btn-ghost" data-action="challenge-detail" data-id="${c.id}">Details</button>`;
   } else if (c.status === 'CANCELLED' && c.resultMessage) {
     // Settled with no contest ("Nobody else joined"). The message says why; the bare
     // status word did not (PLAN P4-14). A challenge its creator cancelled has no message.
     actions = `<span class="cdl">${escapeHtml(c.resultMessage)}</span>`;
   } else {
-    actions = `<span class="cdl">${escapeHtml(c.status || '')}</span>`;
+    actions = `<span class="cdl">${escapeHtml(status.label)}</span>`;
   }
 
   return `
-    <div class="chc">
-      <span class="cbadge ${badgeClass}">${escapeHtml(c.status || '')}</span>
-      <div class="ctype">// ${escapeHtml((c.type || '').toLowerCase())}</div>
-      <div class="ctitle">${escapeHtml(c.title || 'Challenge')}</div>
+    <article class="chc">
+      <div class="ac-head">
+        <span class="ctype">${escapeHtml(CHALLENGE_TYPE_LABEL[c.type] || (c.type || '').toLowerCase())}</span>
+        <span class="cbadge ${status.cls}">${escapeHtml(status.label)}</span>
+      </div>
+      <h4 class="ctitle">${escapeHtml(c.title || 'Challenge')}</h4>
       ${standingsList(c)}
       <div class="cf">${actions}</div>
-    </div>`;
+    </article>`;
+}
+
+/**
+ * The score history as a table: a row per day, a column per person. It used to be one
+ * line per day of "Name: 120 · Name: 90", which made reading one person's progress
+ * down the days a hunt. The snapshot carries everyone, not two columns (PLAN P2-4).
+ */
+export function scoreHistoryTable(leaderboard) {
+  const names = [];
+  leaderboard.forEach(l => (l.standings || []).forEach(r => {
+    const n = r.name || 'Athlete';
+    if (!names.includes(n)) names.push(n);
+  }));
+  const day = d => new Date(d).toLocaleDateString('en', { day: 'numeric', month: 'short' });
+  return `<div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th scope="col">Day</th>${names.map(n => `<th scope="col" class="num">${escapeHtml(n)}</th>`).join('')}</tr></thead>
+    <tbody>${leaderboard.map(l => `<tr><th scope="row">${escapeHtml(day(l.date))}</th>${names.map(n => {
+      const row = (l.standings || []).find(r => (r.name || 'Athlete') === n);
+      return `<td class="num">${row ? escapeHtml(String(row.score ?? 0)) : ''}</td>`;
+    }).join('')}</tr>`).join('')}</tbody>
+  </table></div>`;
 }
 
 /** How many invitations are still unanswered. */
@@ -194,7 +230,9 @@ function standingsList(c) {
   const rows = c.participants || [];
   if (!rows.length) return '';
 
-  return `<div class="std">${rows.map(p => {
+  // A ranked list: position, name, score. "host" says who started it, where a trailing
+  // middle dot used to, which nobody could read.
+  return `<ol class="std">${rows.map(p => {
     const competing = p.status === 'ACCEPTED';
     const classes = ['stdr'];
     if (p.isYou) classes.push('me');
@@ -206,12 +244,12 @@ function standingsList(c) {
       : p.status === 'INVITED' ? 'invited' : 'declined';
 
     return `
-      <div class="${classes.join(' ')}">
-        <span class="stdp">${competing && p.position ? '#' + p.position : '—'}</span>
-        <span class="stdn">${escapeHtml(p.isYou ? 'You' : (p.name || 'Athlete'))}${p.isCreator ? ' ·' : ''}</span>
+      <li class="${classes.join(' ')}">
+        <span class="stdp">${competing && p.position ? p.position : ''}</span>
+        <span class="stdn">${escapeHtml(p.isYou ? 'You' : (p.name || 'Athlete'))}${p.isCreator ? ' <span class="std-tag">host</span>' : ''}</span>
         <span class="stds">${escapeHtml(String(label))}</span>
-      </div>`;
-  }).join('')}</div>`;
+      </li>`;
+  }).join('')}</ol>`;
 }
 
 export async function leaveChallenge(id) {
@@ -223,10 +261,10 @@ export async function leaveChallenge(id) {
   if (!ok) return;
   try {
     await api(`/api/challenges/${id}/leave`, { method: 'POST' });
-    toast('👋 You left the challenge.');
+    toast('You left the challenge.');
     loadChallenges();
   } catch (err) {
-    toast('❌ ' + err.message, true);
+    toast(err.message, true);
   }
 }
 
@@ -264,9 +302,10 @@ export async function loadChallenges() {
     const mine = all.filter(c => c.yourStatus === 'ACCEPTED');
     chList.innerHTML = mine.length
       ? mine.map(c => challengeCard(c, false)).join('')
-      : emptyState('⚔️', 'No challenges yet — invite a friend to compete!');
+      : emptyState('', 'No challenges yet. Invite a friend to compete.',
+          '<button type="button" class="btn btn-sec btn-sm" data-action="open-modal" data-modal="modal-create-challenge">New challenge</button>');
   } catch (err) {
-    chList.innerHTML = `<div class="error-state" style="grid-column:1/-1">Couldn't load challenges: ${escapeHtml(err.message)}</div>`;
+    chList.innerHTML = `<div class="error-state">Couldn't load challenges: ${escapeHtml(err.message)}</div>`;
   }
 }
 
@@ -295,10 +334,10 @@ export async function handleCreateChallenge(e) {
     await api('/api/challenges', { method: 'POST', body: JSON.stringify(payload) });
     closeModal('modal-create-challenge');
     document.getElementById('form-create-challenge').reset();
-    toast('⚔️ Challenge sent!');
+    toast('Challenge sent');
     loadChallenges();
   } catch (err) {
-    toast('❌ ' + err.message, true);
+    toast(err.message, true);
   } finally {
     btn.disabled = false; btn.textContent = 'Send Challenge';
   }
@@ -310,10 +349,10 @@ export async function respondChallenge(id, accept) {
       method: 'POST',
       body: JSON.stringify({ userId: session.currentUser.id, accept })
     });
-    toast(accept ? '✅ Challenge accepted! Game on.' : '👋 Challenge declined.');
+    toast(accept ? 'Challenge accepted. Game on.' : 'Challenge declined.');
     loadChallenges();
   } catch (err) {
-    toast('❌ ' + err.message, true);
+    toast(err.message, true);
   }
 }
 
@@ -329,17 +368,17 @@ export async function cancelChallenge(id) {
   if (!ok) return;
   try {
     await api(`/api/challenges/${id}/cancel?userId=${session.currentUser.id}`, { method: 'DELETE' });
-    toast('🗑 Challenge cancelled.');
+    toast('Challenge cancelled.');
     loadChallenges();
   } catch (err) {
-    toast('❌ ' + err.message, true);
+    toast(err.message, true);
   }
 }
 
 /** Shows score history + all-time head-to-head record for a specific challenge. */
 export async function openChallengeDetail(challengeId) {
   document.getElementById('cd-title').textContent = 'Loading…';
-  document.getElementById('cd-content').innerHTML = `<div class="loading-state"><div class="spinner"></div></div>`;
+  document.getElementById('cd-content').innerHTML = `<div class="loading-state">Loading…</div>`;
   openModal('modal-challenge-detail');
 
   try {
@@ -358,31 +397,20 @@ export async function openChallengeDetail(challengeId) {
         : Promise.resolve(null)
     ]);
 
-    let html = `<h3 class="clbl">Standings</h3>${standingsList(c)}`;
+    let html = `<h3 class="mini-ttl">Standings</h3>${standingsList(c)}`;
 
     if (leaderboard.length) {
-      html += `<h3 class="clbl">Score History</h3><div class="rl" style="margin-bottom:20px">` +
-        leaderboard.map(l => {
-          // The snapshot carries everyone now, not two columns (PLAN P2-4).
-          const line = (l.standings || [])
-            .map(row => `${escapeHtml(row.name || 'Athlete')}: ${row.score ?? 0}`)
-            .join(' · ');
-          return `
-          <div class="ri">
-            <div class="rmu">${new Date(l.date).toLocaleDateString('en',{day:'numeric',month:'short'})}</div>
-            <div class="rt2">${line || '—'}</div>
-          </div>`;
-        }).join('') + `</div>`;
+      html += `<h3 class="mini-ttl">Score history</h3>${scoreHistoryTable(leaderboard)}`;
     }
 
     if (h2h) {
       html += `
-        <h3 class="clbl">Head-to-Head — All Time vs ${escapeHtml(soleOpponent.name || 'Opponent')}</h3>
-        <div class="pstats" style="grid-template-columns:repeat(3,1fr)">
-          <div class="ps"><div class="psv">${h2h.userAWins ?? 0}</div><div class="psk">Your wins</div></div>
-          <div class="ps"><div class="psv">${h2h.draws ?? 0}</div><div class="psk">Draws</div></div>
-          <div class="ps"><div class="psv">${h2h.userBWins ?? 0}</div><div class="psk">Their wins</div></div>
-        </div>`;
+        <h3 class="mini-ttl">All-time head-to-head with ${escapeHtml(soleOpponent.name || 'your opponent')}</h3>
+        <dl class="body-figs h2h-figs">
+          <div><dt>Your wins</dt><dd>${h2h.userAWins ?? 0}</dd></div>
+          <div><dt>Draws</dt><dd>${h2h.draws ?? 0}</dd></div>
+          <div><dt>Their wins</dt><dd>${h2h.userBWins ?? 0}</dd></div>
+        </dl>`;
     }
     document.getElementById('cd-content').innerHTML = html;
   } catch (err) {

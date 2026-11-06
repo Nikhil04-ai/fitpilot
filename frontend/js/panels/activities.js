@@ -82,7 +82,7 @@ export function activityRow(a) {
   ].join('');
   const named = [label.toLowerCase(), when].filter(Boolean).join(', ');
   return `
-    <div class="ai">
+    <div class="ai logrow">
       <div class="ai-when">${escapeHtml(when)}</div>
       <div class="ai-body">
         <div class="an">${escapeHtml(label)}${a.isPersonalBest ? '<span class="apr" title="Personal record">PR</span>' : ''}</div>

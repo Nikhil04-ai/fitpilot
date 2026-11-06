@@ -226,7 +226,7 @@
             </div>
             <div class="sheet-meta" id="activities-count"></div>
           </div>
-          <div class="ai ai-head" aria-hidden="true">
+          <div class="ai logrow ai-head" aria-hidden="true">
             <span>When</span><span>Session</span>
             <span class="am"><span>Distance</span><span>Time</span><span>Burned</span></span><span></span>
           </div>
@@ -252,7 +252,7 @@
         <div class="ov-grid">
           <section class="sheet log" aria-labelledby="nutrition-meals-ttl">
             <div class="sheet-head"><h3 class="sheet-ttl" id="nutrition-meals-ttl">Today&rsquo;s meals</h3></div>
-            <div class="ai meal ai-head" aria-hidden="true">
+            <div class="ai logrow meal ai-head" aria-hidden="true">
               <span>When</span><span>Meal</span>
               <span class="am"><span>Protein</span><span>Carbs</span><span>Fat</span><span>Energy</span></span><span></span>
             </div>
@@ -388,29 +388,41 @@
         </section>
       </section>
 
-      <section class="panel" id="panel-challenges">
-        <div class="sec-head" style="display:flex;justify-content:space-between;align-items:flex-end">
-          <div><h2 class="sec-ttl">Challenges</h2><div class="sec-sub">Battle friends across calories, workouts, duration, and streaks.</div></div>
-          <button class="btn btn-prim btn-sm" data-action="open-modal" data-modal="modal-create-challenge">+ New Challenge</button>
+      <!-- Challenges: invites waiting on you first (shown only when there are some), then
+           your challenges as standings, with the friends you can challenge beside them. -->
+      <section class="panel" id="panel-challenges" aria-labelledby="challenges-ttl">
+        <div class="sheet-head page-head">
+          <div>
+            <h2 class="sheet-ttl" id="challenges-ttl">Your challenges</h2>
+            <div class="sec-sub">Battle friends across calories, workouts, duration and streaks.</div>
+          </div>
+          <button type="button" class="btn btn-sec btn-sm" data-action="open-modal" data-modal="modal-create-challenge">New challenge</button>
         </div>
-        <div id="invites-section" style="display:none;margin-bottom:24px">
-          <h3 class="clbl" style="margin-left:2px">Pending Invites</h3>
+        <section class="sheet invites-sheet" id="invites-section" style="display:none" aria-labelledby="invites-ttl">
+          <div class="sheet-head"><h3 class="sheet-ttl" id="invites-ttl">Waiting on you</h3></div>
           <div class="cg" id="invites-list"></div>
-        </div>
+        </section>
 
-        <div class="card" style="margin-bottom:24px">
-          <h3 class="clbl">Friends</h3>
-          <div class="field-hint" style="margin-top:0">Add people by the address they signed up with, then challenge them by name instead of pasting an ID.</div>
-          <form class="export-row" data-submit="add-friend">
-            <input type="email" id="friend-email" placeholder="their@email.com" required style="flex:1;min-width:200px">
-            <button type="submit" class="btn btn-prim btn-sm" id="add-friend-btn">+ Add friend</button>
-          </form>
-          <div id="friend-invites" style="margin-top:16px"></div>
-          <div class="af" id="friends-list" style="margin-top:16px"><div class="loading-state"><div class="spinner"></div></div></div>
-        </div>
+        <div class="ov-grid">
+          <section class="sheet" aria-labelledby="ch-list-ttl">
+            <div class="sheet-head"><h3 class="sheet-ttl" id="ch-list-ttl">Challenges</h3></div>
+            <div class="cg" id="challenges-list"><div class="loading-state">Loading…</div></div>
+          </section>
 
-        <h3 class="clbl" style="margin-left:2px">Your Challenges</h3>
-        <div class="cg" id="challenges-list"><div class="loading-state"><div class="spinner"></div>Loading…</div></div>
+          <section class="sheet" aria-labelledby="friends-ttl">
+            <div class="sheet-head"><h3 class="sheet-ttl" id="friends-ttl">Friends</h3></div>
+            <p class="field-hint">Add people by the address they signed up with, then challenge them by name instead of pasting an ID.</p>
+            <form class="inline-form friend-form" data-submit="add-friend">
+              <div class="field">
+                <label class="visually-hidden" for="friend-email">Friend&rsquo;s email address</label>
+                <input type="email" id="friend-email" placeholder="their@email.com" required autocomplete="off">
+              </div>
+              <button type="submit" class="btn btn-sec" id="add-friend-btn">Add friend</button>
+            </form>
+            <div id="friend-invites"></div>
+            <div class="af" id="friends-list"><div class="loading-state">Loading…</div></div>
+          </section>
+        </div>
       </section>
 
       <section class="panel" id="panel-recovery">
@@ -856,23 +868,23 @@
         <!-- A multi-select of friends, because a challenge can hold a group now
              (PLAN P2-4). Friends are the only people you can challenge (PLAN P4-4):
              the old paste-an-Athlete-ID box let anyone with your id invite you. -->
-        <select id="ch-opponents" multiple size="4" style="min-height:96px"></select>
-        <div class="field-hint">Hold Ctrl (⌘ on Mac) to pick more than one. Up to 9 others.</div>
+        <select id="ch-opponents" class="multi" multiple size="4" aria-describedby="ch-opponents-hint"></select>
+        <div class="field-hint" id="ch-opponents-hint">Hold Ctrl (⌘ on Mac) to pick more than one. Up to 9 others.</div>
       </div>
       <div class="field">
         <label for="ch-type">Challenge Type</label>
         <select id="ch-type" required>
-          <option value="CALORIES_BURNED">🔥 Most calories burned</option>
-          <option value="WORKOUT_COUNT">💪 Most workouts logged</option>
-          <option value="TOTAL_DURATION">⏱ Most minutes trained</option>
-          <option value="STREAK_LENGTH">⚡ Longest streak</option>
+          <option value="CALORIES_BURNED">Most calories burned</option>
+          <option value="WORKOUT_COUNT">Most workouts logged</option>
+          <option value="TOTAL_DURATION">Most minutes trained</option>
+          <option value="STREAK_LENGTH">Longest streak</option>
         </select>
       </div>
       <div class="field"><label for="ch-title">Title (optional)</label><input type="text" id="ch-title" maxlength="255" placeholder="Week Burn Off"></div>
-      <div class="field"><label for="ch-days">Duration (days)</label><input type="number" id="ch-days" value="7" min="1" max="30"></div>
+      <div class="field"><label for="ch-days">Duration (days)</label><input type="number" id="ch-days" value="7" min="1" max="30" inputmode="numeric"></div>
       <div class="modal-actions">
-        <button type="button" class="btn btn-sec" style="flex:1" data-action="close-modal" data-modal="modal-create-challenge">Cancel</button>
-        <button type="submit" class="btn btn-prim" style="flex:1" id="create-challenge-btn">Send Challenge</button>
+        <button type="button" class="btn btn-sec" data-action="close-modal" data-modal="modal-create-challenge">Cancel</button>
+        <button type="submit" class="btn btn-prim" id="create-challenge-btn">Send Challenge</button>
       </div>
     </form>
   </div>

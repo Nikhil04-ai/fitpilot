@@ -252,13 +252,18 @@ h1, h2, h3 { text-wrap: balance; }
  * One session per ruled row: when, what, the figures, the actions. The same row is
  * the Activities page's list and the overview's recent sessions. */
 .af { display: flex; flex-direction: column; container: log / inline-size; }
+/* Any ruled row in a list (a friend, a notification, a pain entry): its parts in a line. */
 .ai {
-  /* The actions column has a fixed width so the column heads line up with the rows. */
-  display: grid; grid-template-columns: 9.5rem minmax(0, 1fr) auto 7.5rem; gap: var(--space-2xs) var(--space-md);
-  align-items: baseline; padding: var(--space-sm) var(--space-xs); border-bottom: var(--rule-hair) solid var(--color-rule);
+  display: flex; align-items: center; gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-xs); border-bottom: var(--rule-hair) solid var(--color-rule);
   transition: background-color var(--dur-micro) var(--ease-out);
 }
 .ai:hover { background: var(--color-paper-2); }
+.ai > .ai-body { flex: 1; }
+/* A log row (a session, a meal) and its column heads: a grid, so figures line up row to
+   row. Only rows that carry .logrow get it; the plain rows above stay a line. The
+   actions column has a fixed width so the column heads line up with the rows. */
+.logrow { display: grid; grid-template-columns: 9.5rem minmax(0, 1fr) auto 7.5rem; gap: var(--space-2xs) var(--space-md); align-items: baseline; }
 .ai-when { font-size: var(--text-sm); color: var(--color-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .ai-body { min-width: 0; display: flex; flex-direction: column; gap: var(--space-2xs); }
 .an { font-family: var(--font-display); font-weight: 700; font-size: var(--text-lg); text-transform: uppercase; line-height: 1.15; overflow-wrap: anywhere; }
@@ -290,8 +295,8 @@ h1, h2, h3 { text-wrap: balance; }
 .exlist { display: flex; flex-direction: column; gap: var(--space-3xs); margin-top: var(--space-2xs); }
 /* A session's movements run under both the session and its figures, so a line like
    "Romanian Deadlift 3 x 10 @ 60kg ~80kg 1RM PR" stays on one line. */
-.ai > .exlist { grid-column: 2 / 4; grid-row: 2; margin-top: 0; }
-.ai > .ai-acts { grid-column: 4; grid-row: 1 / span 2; }
+.logrow > .exlist { grid-column: 2 / 4; grid-row: 2; margin-top: 0; }
+.logrow > .ai-acts { grid-column: 4; grid-row: 1 / span 2; }
 .exli { display: flex; gap: var(--space-xs); align-items: baseline; flex-wrap: wrap; font-size: var(--text-sm); color: var(--color-ink-2); }
 .exli .exn { font-weight: 500; }
 .exli .exs { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--color-muted); }
@@ -299,14 +304,16 @@ h1, h2, h3 { text-wrap: balance; }
 .exli .expr, .est { font-size: var(--text-xs); font-weight: 600; padding: 0 var(--space-2xs); border-radius: 2px; white-space: nowrap; }
 .exli .expr { background: var(--color-accent); color: var(--color-accent-ink); }
 .est { background: var(--color-warn-soft); color: var(--color-warn); cursor: help; }
-.ai.unread { background: var(--color-paper-2); box-shadow: inset 3px 0 0 var(--color-accent); }
+/* Something waiting on you: a paper step and a heavier name, no side stripe. */
+.ai.unread { background: var(--color-paper-2); }
+.ai.unread .an { font-weight: 800; }
 /* The log's column heads, on the Activities page: sentence case, quiet, never wrapping. */
 .log { container: log / inline-size; }
 .ai-head { padding-block: var(--space-xs); border-bottom-color: var(--color-rule-2); font-size: var(--text-xs); color: var(--color-muted); white-space: nowrap; }
 .ai-head:hover { background: none; }
 .ai-head .am { font-family: var(--font-body); font-weight: 400; color: var(--color-muted); }
 /* A meal in today's log: the time, the meal, then protein / carbs / fat / energy. */
-.ai.meal { grid-template-columns: 4.5rem minmax(0, 1fr) auto 7.5rem; }
+.logrow.meal { grid-template-columns: 4.5rem minmax(0, 1fr) auto 7.5rem; }
 .meal .am { grid-template-columns: 3.75rem 3.75rem 3.25rem 4.5rem; }
 /* Each figure's name: for screen readers always, on screen only once the row stacks
    and the column heads have folded away. */
@@ -384,7 +391,7 @@ h1, h2, h3 { text-wrap: balance; }
 /* ═══ PAGES NOT YET REDONE ═══
  * The rules below keep every other panel on the new palette and scale until its own
  * pass. They restate the old classes in tokens and nothing more. */
-.ps, .pb-card, .chc, .bmap, .ri, .vsp, .stdr, .warnbox { background: var(--color-paper-2); border-radius: var(--radius); }
+.ps, .pb-card, .bmap, .ri, .vsp, .warnbox { background: var(--color-paper-2); border-radius: var(--radius); }
 .av-lg { width: 56px; height: 56px; font-size: var(--text-2xl); margin-bottom: var(--space-sm); }
 .pname { font-size: var(--text-xl); }
 .phandle { font-size: var(--text-sm); color: var(--color-muted); margin-top: var(--space-3xs); }
@@ -420,15 +427,50 @@ h1, h2, h3 { text-wrap: balance; }
 .nt-ic { width: 32px; height: 32px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: var(--radius); background: var(--color-paper-3); font-size: var(--text-sm); }
 .nt-body { font-size: var(--text-sm); color: var(--color-muted); line-height: 1.5; margin-top: var(--space-3xs); }
 
-.std { display: flex; flex-direction: column; gap: var(--space-2xs); margin: var(--space-md) 0; }
-.stdr { display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-xs) var(--space-sm); }
-.stdr.me { box-shadow: inset 3px 0 0 var(--color-accent); }
-.stdr.out { opacity: 0.5; }
-.stdp { width: 20px; flex-shrink: 0; font-size: var(--text-sm); color: var(--color-muted); font-variant-numeric: tabular-nums; }
-.stdn { flex: 1; font-size: var(--text-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.stds { font-family: var(--font-mono); font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
+/* ═══ CHALLENGES ═══
+ * A challenge is a ruled note like an insight: what it is scored on and its status,
+ * the title, the standings as a ranked list, then what you can do. Only a live
+ * challenge's status carries the lime. */
+.invites-sheet { margin-bottom: var(--space-xl); }
+.cg { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: var(--space-lg) var(--space-xl); }
+.cg > .empty-state, .cg > .error-state, .cg > .loading-state { grid-column: 1 / -1; }
+.cg > .card { border-top-width: var(--rule-hair); border-top-color: var(--color-rule); }
+.chc { padding: var(--space-md) 0 0; border-top: var(--rule-hair) solid var(--color-rule); }
+.cbadge { flex-shrink: 0; font-size: var(--text-xs); font-weight: 600; padding: var(--space-3xs) var(--space-xs); border-radius: 2px; background: var(--color-paper-3); color: var(--color-ink-2); }
+.cbadge.bl { background: var(--color-accent); color: var(--color-accent-ink); }
+.cbadge.bd { background: transparent; color: var(--color-muted); box-shadow: inset 0 0 0 var(--rule-hair) var(--color-rule); }
+.ctype { font-size: var(--text-sm); color: var(--color-muted); }
+.ctitle { font-size: var(--text-xl); margin-bottom: var(--space-sm); }
+.std { list-style: none; display: flex; flex-direction: column; margin: 0 0 var(--space-sm); border-top: var(--rule-hair) solid var(--color-rule); }
+.stdr { display: flex; align-items: baseline; gap: var(--space-sm); padding: var(--space-xs) var(--space-xs); border-bottom: var(--rule-hair) solid var(--color-rule); }
+.stdr.me { background: var(--color-paper-2); }
+.stdr.out { color: var(--color-muted); }
+.stdp { width: 1.5rem; flex-shrink: 0; font-family: var(--font-display); font-weight: 800; font-size: var(--text-md); color: var(--color-muted); font-variant-numeric: tabular-nums; }
+.stdr.lead .stdp { color: var(--color-ink); }
+.stdn { flex: 1; min-width: 0; font-size: var(--text-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stdr.me .stdn { font-weight: 600; }
+.std-tag { margin-left: var(--space-2xs); font-size: var(--text-xs); color: var(--color-muted); font-weight: 400; }
+.stds { font-family: var(--font-mono); font-weight: 500; font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
+.stdr.out .stds { font-family: var(--font-body); font-size: var(--text-xs); }
+.cdl b { font-family: var(--font-display); font-weight: 800; color: var(--color-ink); font-size: var(--text-md); }
+.h2h-figs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+/* A friend or a friend request: their initial, name and streak, the actions on them. */
+.person .person-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ai.unread .person-name { font-weight: 800; }
+.friend-form { max-width: none; margin-top: var(--space-sm); }
 .fr { display: flex; align-items: center; gap: var(--space-sm); }
-.fr-av { width: 28px; height: 28px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: var(--radius); background: var(--color-paper-4); font-size: var(--text-xs); font-weight: 600; }
+.fr-av { width: 32px; height: 32px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: var(--radius); background: var(--color-paper-4); font-family: var(--font-display); font-weight: 800; font-size: var(--text-sm); }
+select.multi { min-height: 6rem; }
+/* A data table: sentence-case heads, horizontal rules only, figures right-aligned. */
+.tbl-wrap { overflow-x: auto; margin-bottom: var(--space-md); }
+.tbl { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+.tbl th, .tbl td { padding: var(--space-xs) var(--space-sm) var(--space-xs) 0; border-bottom: var(--rule-hair) solid var(--color-rule); text-align: left; white-space: nowrap; }
+.tbl thead th { font-weight: 500; color: var(--color-muted); border-bottom-color: var(--color-rule-2); }
+.tbl tbody th { font-weight: 400; color: var(--color-ink-2); }
+.tbl .num { text-align: right; font-family: var(--font-mono); font-weight: 500; font-variant-numeric: tabular-nums; }
+.tbl thead .num { font-family: var(--font-body); }
+.modal .mini-ttl { margin: var(--space-md) 0 var(--space-xs); }
+.modal .mini-ttl:first-child { margin-top: 0; }
 
 /* Macros today: one bar split by the energy each macro brings, three steps of the
    lime, and under it each macro's grams, swatch and share. */
@@ -462,21 +504,14 @@ h1, h2, h3 { text-wrap: balance; }
 .exrow .exdel { background: none; border: 0; color: var(--color-muted); padding: var(--space-2xs); border-radius: var(--radius); }
 .exrow .exdel:hover { color: var(--color-error); }
 
-.cg { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-md); }
-.chc { position: relative; padding: var(--space-lg); }
-.cbadge { position: absolute; top: var(--space-md); right: var(--space-md); font-size: var(--text-xs); font-weight: 600; padding: 0 var(--space-xs); border-radius: 2px; background: var(--color-paper-4); color: var(--color-ink-2); }
-.cbadge.bl { background: var(--color-accent); color: var(--color-accent-ink); }
-.cbadge.bp2 { background: var(--color-warn-soft); color: var(--color-warn); }
-.cbadge.bd { background: var(--color-error-soft); color: var(--color-error); }
-.ctype { font-size: var(--text-sm); color: var(--color-muted); margin-bottom: var(--space-xs); }
-.ctitle { font-size: var(--text-xl); margin-bottom: var(--space-md); }
 .vs { display: flex; align-items: center; gap: var(--space-xs); margin-bottom: var(--space-md); }
 .vsp { flex: 1; text-align: center; padding: var(--space-sm) var(--space-xs); }
 .vsav { width: 32px; height: 32px; margin: 0 auto var(--space-xs); font-size: var(--text-sm); }
 .vsn { font-size: var(--text-sm); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vssc { font-family: var(--font-display); font-weight: 800; font-size: var(--text-xl); font-variant-numeric: tabular-nums; }
 .vsdi { font-family: var(--font-display); font-weight: 800; color: var(--color-muted); flex-shrink: 0; }
-.cf { display: flex; justify-content: space-between; align-items: center; gap: var(--space-xs); }
+.cf { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-xs); }
+.cf .cdl { margin-right: auto; }
 .cdl { font-size: var(--text-sm); color: var(--color-muted); }
 
 .rg { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: var(--space-lg); align-items: start; }
@@ -650,13 +685,13 @@ body.modal-open { overflow: hidden; }
    column: when on top, then what, its figures, and its actions kept in view. */
 @container log (max-width: 600px) {
   .ai-head { display: none; }
-  .ai, .ai.meal { grid-template-columns: minmax(0, 1fr) auto; padding-inline: 0; }
-  .ai-when { grid-column: 1 / -1; }
-  .ai-body { grid-column: 1; }
+  .logrow, .logrow.meal { grid-template-columns: minmax(0, 1fr) auto; padding-inline: 0; }
+  .logrow > .ai-when { grid-column: 1 / -1; }
+  .logrow > .ai-body { grid-column: 1; }
   .am { display: flex; gap: var(--space-md); grid-column: 1; grid-row: 3; }
   .am > span:empty { display: none; }
-  .ai > .ai-acts { grid-column: 2; grid-row: 2 / span 2; align-self: start; }
-  .ai > .exlist { grid-column: 1 / -1; grid-row: 4; }
+  .logrow > .ai-acts { grid-column: 2; grid-row: 2 / span 2; align-self: start; }
+  .logrow > .exlist { grid-column: 1 / -1; grid-row: 4; }
   .exli .exn { flex-basis: 100%; }
   .am { flex-wrap: wrap; gap: var(--space-2xs) var(--space-md); }
   .am .k { position: static; width: auto; height: auto; overflow: visible; clip-path: none; font-family: var(--font-body); font-weight: 400; color: var(--color-muted); }
