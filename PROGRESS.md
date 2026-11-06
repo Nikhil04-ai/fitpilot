@@ -1123,3 +1123,32 @@ recast on charcoal with a restrained lime. No backend, API or auth change; no fr
 * **Hallmark sloplint** (static, app scope): 166 findings before; 15 fails and 9 warnings after,
   every fail on a page not yet redone (emoji on the auth, coach and log-workout controls, five
   chart canvases without a label) except one waived false positive.
+
+## Phase 28 — Redesign, step 2: Activities and the workout dialogs (2026-11-06)
+
+* **Page:** one head with a live count ("8 workouts", from `page.totalElements`), column heads
+  over the log that line up with its figure columns and hide when the log stacks, and no second
+  primary button (logging is the topbar's, or the FAB on a phone). The empty state carries its
+  one action.
+* **Log / Edit Workout:** two labels pointed at the wrong control (Exercises at
+  `natural-description` and at `pain-bodypart`); the exercise builder is now a `<fieldset>` with
+  a legend, and each runtime-built exercise input names itself (`aria-label`), as does its remove
+  button. Inputs carry the API's limits (P5-3: duration 1-1440, calories 0-20000, distance
+  0-1000, sets, reps, load), so the browser refuses what the server would. The Manual / Describe
+  it switch is a tablist with `aria-selected` kept in step. Close buttons are labelled.
+* **Copy:** emoji gone from the type lists, tabs, buttons and every toast on the page
+  ("Log It 💪" is "Log workout", "Parse & Log 💬" is "Parse and log").
+* **Shell:** the sidebar is no longer `position: sticky` (only `.main` scrolls, so it never
+  moved; this cleared Hallmark's Floor gate 56, which can't be waived). Dashes out of the wake
+  notice and the meta description.
+
+### Verification
+
+* **Browser** (`act.mjs`, headless Chrome over the DevTools protocol, real backend): 17 checks
+  through the UI, all passing. It logs a workout through the dialog and sees it first in the log
+  with the count up by one, opens Edit prefilled, confirms a 2000-minute duration is refused
+  before any request, and measures that each column head's right edge is within 2px of its
+  column. No console errors or overflow at 1440, 1024, 768 and 390px. The screenshots caught two
+  bugs the first version had (misaligned column heads; exercise heads overlapping at 390), fixed.
+* **Frontend:** 104 passing; every hook in `index.html` at the previous commit kept.
+* **sloplint:** 14 fails left, all on pages not yet redone.

@@ -15,7 +15,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https: http://localhost:* http://127.0.0.1:*; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FitPilot: Guide Your Fitness Journey</title>
-<meta name="description" content="FitPilot — AI-powered fitness tracking. Log workouts, track goals, and get coaching insights.">
+<meta name="description" content="FitPilot: AI-powered fitness tracking. Log workouts, track goals, and get coaching insights.">
 <meta name="color-scheme" content="dark">
 <link rel="icon" href="logo-128.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -36,7 +36,7 @@
   <div class="spinner" aria-hidden="true"></div>
   <div>
     <strong>Waking up the server…</strong>
-    <div class="wake-sub">The free-tier backend sleeps after 15 minutes without visitors and takes 30–60 seconds to start. Your request is still on its way — no need to retry.</div>
+    <div class="wake-sub">The free-tier backend sleeps after 15 minutes without visitors and takes 30 to 60 seconds to start. Your request is still on its way, so there is no need to retry.</div>
   </div>
 </div>
 
@@ -215,13 +215,22 @@
         </div>
       </section>
 
-      <section class="panel" id="panel-activities">
-        <div class="sec-head" style="display:flex;justify-content:space-between;align-items:flex-end">
-          <div><h2 class="sec-ttl">Your Activities</h2><div class="sec-sub">Every workout, automatically tracked and scored.</div></div>
-          <button class="btn btn-prim btn-sm" data-action="open-modal" data-modal="modal-log-activity">+ Log Workout</button>
-        </div>
-        <div class="card">
-          <div class="af" id="activities-list"><div class="loading-state"><div class="spinner"></div>Loading activities…</div></div>
+      <!-- The full training log. Logging lives in the topbar (the FAB on a phone), so the
+           page carries no second primary button. -->
+      <section class="panel" id="panel-activities" aria-labelledby="activities-ttl">
+        <div class="sheet log">
+          <div class="sheet-head">
+            <div>
+              <h2 class="sheet-ttl" id="activities-ttl">Your activities</h2>
+              <div class="sec-sub">Every workout, automatically tracked and scored.</div>
+            </div>
+            <div class="sheet-meta" id="activities-count"></div>
+          </div>
+          <div class="ai ai-head" aria-hidden="true">
+            <span>When</span><span>Session</span>
+            <span class="am"><span>Distance</span><span>Time</span><span>Burned</span></span><span></span>
+          </div>
+          <div class="af" id="activities-list"><div class="loading-state">Loading activities…</div></div>
           <div class="pager" id="activities-pager"></div>
         </div>
       </section>
@@ -453,48 +462,50 @@
 <!-- ═══════════ MODALS ═══════════ -->
 <div class="modal-overlay" id="modal-log-activity">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-log-activity-title">
-    <div class="modal-head"><h2 class="modal-ttl" id="modal-log-activity-title">Log Workout</h2><button class="modal-close" data-action="close-modal" data-modal="modal-log-activity">✕</button></div>
+    <div class="modal-head"><h2 class="modal-ttl" id="modal-log-activity-title">Log Workout</h2><button type="button" class="modal-close" aria-label="Close" data-action="close-modal" data-modal="modal-log-activity">✕</button></div>
 
-    <div class="auth-tabs" style="margin-bottom:18px">
-      <button class="auth-tab on" id="log-tab-manual" data-action="log-tab" data-tab="manual">📝 Manual</button>
-      <button class="auth-tab" id="log-tab-natural" data-action="log-tab" data-tab="natural">💬 Describe it</button>
+    <div class="auth-tabs" role="tablist" aria-label="How to log it">
+      <button type="button" class="auth-tab on" id="log-tab-manual" role="tab" aria-selected="true" aria-controls="form-log-activity" data-action="log-tab" data-tab="manual">Manual</button>
+      <button type="button" class="auth-tab" id="log-tab-natural" role="tab" aria-selected="false" aria-controls="form-log-natural" data-action="log-tab" data-tab="natural">Describe it</button>
     </div>
 
+    <!-- The number limits match the API's (PLAN P5-3), so a value it would refuse is
+         caught here, before the request. -->
     <form id="form-log-activity" data-submit="log-activity">
       <div class="field">
         <label for="act-type">Activity Type</label>
         <select id="act-type" required>
-          <option value="RUNNING">🏃 Running</option>
-          <option value="WALKING">🚶 Walking</option>
-          <option value="CYCLING">🚴 Cycling</option>
-          <option value="SWIMMING">🏊 Swimming</option>
-          <option value="WEIGHT_TRAINING">🏋️ Weight Training</option>
-          <option value="YOGA">🧘 Yoga</option>
-          <option value="HIIT">⚡ HIIT</option>
-          <option value="CARDIO">🏄 Cardio</option>
-          <option value="STRETCHING">🤸 Stretching</option>
-          <option value="OTHER">➕ Other</option>
+          <option value="RUNNING">Running</option>
+          <option value="WALKING">Walking</option>
+          <option value="CYCLING">Cycling</option>
+          <option value="SWIMMING">Swimming</option>
+          <option value="WEIGHT_TRAINING">Weight Training</option>
+          <option value="YOGA">Yoga</option>
+          <option value="HIIT">HIIT</option>
+          <option value="CARDIO">Cardio</option>
+          <option value="STRETCHING">Stretching</option>
+          <option value="OTHER">Other</option>
         </select>
       </div>
       <div class="field-row">
-        <div class="field"><label for="act-duration">Duration (min)</label><input type="number" id="act-duration" required min="1" placeholder="30"></div>
-        <div class="field"><label for="act-calories">Calories (optional)</label><input type="number" id="act-calories" placeholder="Auto-calculated"></div>
+        <div class="field"><label for="act-duration">Duration (min)</label><input type="number" id="act-duration" required min="1" max="1440" inputmode="numeric" placeholder="30"></div>
+        <div class="field"><label for="act-calories">Calories (optional)</label><input type="number" id="act-calories" min="0" max="20000" inputmode="numeric" placeholder="Auto-calculated"></div>
       </div>
       <div class="field-row">
-        <div class="field"><label for="act-distance">Distance (km, optional)</label><input type="number" step="0.01" min="0" id="act-distance" placeholder="5.0"></div>
+        <div class="field"><label for="act-distance">Distance (km, optional)</label><input type="number" step="0.01" min="0" max="1000" inputmode="decimal" id="act-distance" placeholder="5.0"></div>
         <div class="field"><label for="act-notes">Notes (optional)</label><input type="text" id="act-notes" maxlength="1000" placeholder="Felt great today!"></div>
       </div>
 
-      <div class="field">
-        <label for="natural-description">Exercises (optional)</label>
-        <div class="exhead"><span>Movement</span><span>Sets</span><span>Reps</span><span>kg</span><span></span></div>
+      <fieldset class="field exfield">
+        <legend>Exercises (optional)</legend>
+        <div class="exhead" aria-hidden="true"><span>Movement</span><span>Sets</span><span>Reps</span><span>kg</span><span></span></div>
         <div class="exrows" id="act-exercises"></div>
-        <button type="button" class="btn btn-ghost" data-action="add-exercise" data-target="act-exercises">+ Add exercise</button>
-      </div>
+        <button type="button" class="btn-ghost" data-action="add-exercise" data-target="act-exercises">Add exercise</button>
+      </fieldset>
 
       <div class="modal-actions">
-        <button type="button" class="btn btn-sec" style="flex:1" data-action="close-modal" data-modal="modal-log-activity">Cancel</button>
-        <button type="submit" class="btn btn-prim" style="flex:1" id="log-activity-btn">Log It 💪</button>
+        <button type="button" class="btn btn-sec" data-action="close-modal" data-modal="modal-log-activity">Cancel</button>
+        <button type="submit" class="btn btn-prim" id="log-activity-btn">Log workout</button>
       </div>
     </form>
 
@@ -502,11 +513,11 @@
       <div class="field">
         <label for="natural-description">Describe your workout</label>
         <textarea id="natural-description" required maxlength="1000" rows="3" placeholder="I ran 5km in 30 minutes this morning"></textarea>
+        <div class="field-hint">Powered by Gemini. It needs GEMINI_API_KEY configured on the backend to work.</div>
       </div>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:14px">Powered by Gemini — needs GEMINI_API_KEY configured on the backend to work.</div>
       <div class="modal-actions">
-        <button type="button" class="btn btn-sec" style="flex:1" data-action="close-modal" data-modal="modal-log-activity">Cancel</button>
-        <button type="submit" class="btn btn-prim" style="flex:1" id="log-natural-btn">Parse &amp; Log 💬</button>
+        <button type="button" class="btn btn-sec" data-action="close-modal" data-modal="modal-log-activity">Cancel</button>
+        <button type="submit" class="btn btn-prim" id="log-natural-btn">Parse and log</button>
       </div>
     </form>
   </div>
@@ -514,44 +525,44 @@
 
 <div class="modal-overlay" id="modal-edit-activity">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-edit-activity-title">
-    <div class="modal-head"><h2 class="modal-ttl" id="modal-edit-activity-title">Edit Workout</h2><button class="modal-close" data-action="close-modal" data-modal="modal-edit-activity">&#10005;</button></div>
+    <div class="modal-head"><h2 class="modal-ttl" id="modal-edit-activity-title">Edit Workout</h2><button type="button" class="modal-close" aria-label="Close" data-action="close-modal" data-modal="modal-edit-activity">&#10005;</button></div>
     <form id="form-edit-activity" data-submit="edit-activity">
       <input type="hidden" id="edit-act-id">
       <div class="field">
         <label for="edit-act-type">Activity Type</label>
         <select id="edit-act-type" required>
-          <option value="RUNNING">&#127939; Running</option>
-          <option value="WALKING">&#128694; Walking</option>
-          <option value="CYCLING">&#128692; Cycling</option>
-          <option value="SWIMMING">&#127946; Swimming</option>
-          <option value="WEIGHT_TRAINING">&#127947; Weight Training</option>
-          <option value="YOGA">&#129496; Yoga</option>
-          <option value="HIIT">&#9889; HIIT</option>
-          <option value="CARDIO">&#127940; Cardio</option>
-          <option value="STRETCHING">&#129336; Stretching</option>
-          <option value="OTHER">&#10133; Other</option>
+          <option value="RUNNING">Running</option>
+          <option value="WALKING">Walking</option>
+          <option value="CYCLING">Cycling</option>
+          <option value="SWIMMING">Swimming</option>
+          <option value="WEIGHT_TRAINING">Weight Training</option>
+          <option value="YOGA">Yoga</option>
+          <option value="HIIT">HIIT</option>
+          <option value="CARDIO">Cardio</option>
+          <option value="STRETCHING">Stretching</option>
+          <option value="OTHER">Other</option>
         </select>
       </div>
       <div class="field-row">
-        <div class="field"><label for="edit-act-duration">Duration (min)</label><input type="number" id="edit-act-duration" required min="1"></div>
-        <div class="field"><label for="edit-act-calories">Calories</label><input type="number" id="edit-act-calories" placeholder="Leave blank to recalculate"></div>
+        <div class="field"><label for="edit-act-duration">Duration (min)</label><input type="number" id="edit-act-duration" required min="1" max="1440" inputmode="numeric"></div>
+        <div class="field"><label for="edit-act-calories">Calories</label><input type="number" id="edit-act-calories" min="0" max="20000" inputmode="numeric" placeholder="Leave blank to recalculate"></div>
       </div>
       <div class="field-row">
-        <div class="field"><label for="edit-act-distance">Distance (km)</label><input type="number" step="0.01" min="0" id="edit-act-distance" placeholder="5.0"></div>
+        <div class="field"><label for="edit-act-distance">Distance (km)</label><input type="number" step="0.01" min="0" max="1000" inputmode="decimal" id="edit-act-distance" placeholder="5.0"></div>
         <div class="field"><label for="edit-act-notes">Notes</label><input type="text" id="edit-act-notes" maxlength="1000" placeholder="Felt great today!"></div>
       </div>
 
-      <div class="field">
-        <label for="pain-bodypart">Exercises</label>
-        <div class="exhead"><span>Movement</span><span>Sets</span><span>Reps</span><span>kg</span><span></span></div>
+      <fieldset class="field exfield">
+        <legend>Exercises</legend>
+        <div class="exhead" aria-hidden="true"><span>Movement</span><span>Sets</span><span>Reps</span><span>kg</span><span></span></div>
         <div class="exrows" id="edit-act-exercises"></div>
-        <button type="button" class="btn btn-ghost" data-action="add-exercise" data-target="edit-act-exercises">+ Add exercise</button>
-      </div>
+        <button type="button" class="btn-ghost" data-action="add-exercise" data-target="edit-act-exercises">Add exercise</button>
+      </fieldset>
 
-      <div style="font-size:11px;color:var(--muted);margin-bottom:14px">Streaks, personal bests, strength records and goal progress are all rebuilt after an edit.</div>
+      <p class="field-hint">Streaks, personal bests, strength records and goal progress are all rebuilt after an edit.</p>
       <div class="modal-actions">
-        <button type="button" class="btn btn-sec" style="flex:1" data-action="close-modal" data-modal="modal-edit-activity">Cancel</button>
-        <button type="submit" class="btn btn-prim" style="flex:1" id="edit-activity-btn">Save Changes</button>
+        <button type="button" class="btn btn-sec" data-action="close-modal" data-modal="modal-edit-activity">Cancel</button>
+        <button type="submit" class="btn btn-prim" id="edit-activity-btn">Save Changes</button>
       </div>
     </form>
   </div>

@@ -2,7 +2,6 @@
  * nav: the existing sidebar, grouped, text only · signature: the training log, each session a ruled row with its figures · states: loading, empty, error, full
  * axes: dark/display-condensed/chromatic-volt · posture: restrained · contrast: pass · v2.0.0 */
 /* Hallmark · pre-emit critique: P4 H4 E4 S4 R5 V3 · weakest: V, Sport is the only training theme in the catalogue; varied it by recasting on charcoal and leading the overview with the log, not a figure poster */
-/* Hallmark · waive 56 · the sidebar sticks in the page and the topbar inside .main's own scroll box; they never share a scroll container */
 /* Hallmark · dropped the overview's streak ring · it repeated the Day streak figure beside it and the topbar's */
 @import url("./tokens.css");
 @import url("./base.css");
@@ -69,6 +68,9 @@ h1, h2, h3 { text-wrap: balance; }
 .field-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-sm); margin-bottom: var(--space-md); }
 .field-row .field { margin-bottom: 0; }
 .field-row + .field-hint { margin-top: calc(-1 * var(--space-xs)); }
+/* A group of inputs (the exercise builder) is a fieldset; its legend reads as a label. */
+.exfield { border: 0; min-width: 0; }
+.exfield legend { padding: 0; font-size: var(--text-sm); font-weight: 500; color: var(--color-ink-2); margin-bottom: var(--space-2xs); }
 .field-hint, .est-note { font-size: var(--text-sm); color: var(--color-muted); line-height: 1.5; margin-top: var(--space-2xs); }
 .est-note { margin: calc(-1 * var(--space-xs)) 0 var(--space-md); }
 .export-row { display: flex; gap: var(--space-xs); flex-wrap: wrap; align-items: center; margin-top: var(--space-md); }
@@ -91,6 +93,7 @@ h1, h2, h3 { text-wrap: balance; }
 .auth-logo-text { font-size: var(--text-3xl); }
 .auth-tag { font-size: var(--text-sm); color: var(--color-muted); margin-top: var(--space-2xs); }
 .auth-tabs { display: flex; gap: var(--space-2xs); border-bottom: var(--rule-hair) solid var(--color-rule); margin-bottom: var(--space-lg); }
+.modal .auth-tabs { margin-top: calc(-1 * var(--space-xs)); }
 .auth-tab {
   flex: 1; min-height: var(--control-h); background: transparent; border: 0; color: var(--color-muted);
   font-family: var(--font-display); font-size: var(--text-md); font-weight: 700; text-transform: uppercase;
@@ -112,8 +115,10 @@ h1, h2, h3 { text-wrap: balance; }
 #app-shell { display: none; min-height: 100vh; }
 #app-shell.show { display: flex; }
 
+/* Not sticky: the shell is exactly one screen tall and only .main scrolls, so the
+   sidebar never moves anyway. */
 .sidebar {
-  width: var(--sidebar-w); flex-shrink: 0; height: 100vh; position: sticky; top: 0;
+  width: var(--sidebar-w); flex-shrink: 0; height: 100vh;
   display: flex; flex-direction: column; background: var(--color-paper-2); border-right: var(--rule-hair) solid var(--color-rule);
 }
 .sb-logo { display: flex; align-items: center; gap: var(--space-xs); padding: var(--space-md) var(--space-md); min-height: 64px; }
@@ -245,7 +250,8 @@ h1, h2, h3 { text-wrap: balance; }
  * the Activities page's list and the overview's recent sessions. */
 .af { display: flex; flex-direction: column; container: log / inline-size; }
 .ai {
-  display: grid; grid-template-columns: 9.5rem minmax(0, 1fr) auto auto; gap: var(--space-2xs) var(--space-md);
+  /* The actions column has a fixed width so the column heads line up with the rows. */
+  display: grid; grid-template-columns: 9.5rem minmax(0, 1fr) auto 7.5rem; gap: var(--space-2xs) var(--space-md);
   align-items: baseline; padding: var(--space-sm) var(--space-xs); border-bottom: var(--rule-hair) solid var(--color-rule);
   transition: background-color var(--dur-micro) var(--ease-out);
 }
@@ -263,7 +269,7 @@ h1, h2, h3 { text-wrap: balance; }
 .am .u { color: var(--color-muted); margin-left: var(--space-3xs); font-family: var(--font-body); font-weight: 400; }
 /* A personal best is the one thing in a row that earns the lime. */
 .apr { display: inline-block; vertical-align: 0.15em; margin-left: var(--space-xs); padding: 0 var(--space-2xs); border-radius: 2px; background: var(--color-accent); color: var(--color-accent-ink); font-family: var(--font-body); font-size: var(--text-xs); font-weight: 600; text-transform: none; letter-spacing: 0; }
-.ai-acts { display: flex; gap: var(--space-3xs); align-self: center; }
+.ai-acts { display: flex; gap: var(--space-3xs); align-self: center; justify-content: flex-end; }
 .ai-acts button {
   min-height: var(--control-h-sm); padding: 0 var(--space-xs); background: none; border: 0; border-radius: var(--radius);
   color: var(--color-muted); font-size: var(--text-sm);
@@ -291,6 +297,12 @@ h1, h2, h3 { text-wrap: balance; }
 .exli .expr { background: var(--color-accent); color: var(--color-accent-ink); }
 .est { background: var(--color-warn-soft); color: var(--color-warn); cursor: help; }
 .ai.unread { background: var(--color-paper-2); box-shadow: inset 3px 0 0 var(--color-accent); }
+/* The log's column heads, on the Activities page: sentence case, quiet, never wrapping. */
+.log { container: log / inline-size; }
+.ai-head { padding-block: var(--space-xs); border-bottom-color: var(--color-rule-2); font-size: var(--text-xs); color: var(--color-muted); white-space: nowrap; }
+.ai-head:hover { background: none; }
+.ai-head .am { font-family: var(--font-body); font-weight: 400; color: var(--color-muted); }
+.sheet-meta { font-size: var(--text-sm); color: var(--color-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* ═══ GOALS ═══ */
 .gi { padding: var(--space-sm) 0; border-bottom: var(--rule-hair) solid var(--color-rule); }
@@ -408,6 +420,12 @@ h1, h2, h3 { text-wrap: balance; }
 .exrows { display: flex; flex-direction: column; gap: var(--space-xs); margin-bottom: var(--space-xs); }
 .exrow, .exhead { display: grid; grid-template-columns: minmax(0, 1fr) 64px 64px 72px 32px; gap: var(--space-xs); align-items: center; }
 .exhead { font-size: var(--text-xs); color: var(--color-muted); margin-bottom: var(--space-2xs); }
+/* Column heads over no rows say nothing; they appear with the first movement. */
+.exhead:has(+ .exrows:empty) { display: none; }
+@media (max-width: 480px) {
+  .exrow, .exhead { grid-template-columns: minmax(0, 1fr) 48px 48px 56px 32px; gap: var(--space-2xs); }
+  .exhead span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
 .exrow .exdel { background: none; border: 0; color: var(--color-muted); padding: var(--space-2xs); border-radius: var(--radius); }
 .exrow .exdel:hover { color: var(--color-error); }
 
@@ -485,6 +503,7 @@ h1, h2, h3 { text-wrap: balance; }
 }
 .modal-close:hover { color: var(--color-ink); background: var(--color-paper-3); }
 .modal-actions { display: flex; gap: var(--space-xs); margin-top: var(--space-lg); }
+.modal-actions .btn { flex: 1; }
 .confirm-msg { font-size: var(--text-md); color: var(--color-ink-2); line-height: 1.6; }
 body.modal-open { overflow: hidden; }
 
@@ -556,6 +575,7 @@ body.modal-open { overflow: hidden; }
 /* A session restacks by the width of its list, not the screen's, so it holds in any
    column: when on top, then what, its figures, and its actions kept in view. */
 @container log (max-width: 600px) {
+  .ai-head { display: none; }
   .ai { grid-template-columns: minmax(0, 1fr) auto; padding-inline: 0; }
   .ai-when { grid-column: 1 / -1; }
   .ai-body { grid-column: 1; }

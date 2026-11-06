@@ -107,11 +107,11 @@ export async function rateActivity(id, rating) {
     });
     toast(`Rated ${rating}/5`);
     if (res.progressionSuggestion) {
-      setTimeout(() => toast('📈 ' + res.progressionSuggestion), 1200);
+      setTimeout(() => toast(res.progressionSuggestion), 1200);
     }
     loadActivities(currentActivityPage);
   } catch (err) {
-    toast('❌ ' + err.message, true);
+    toast(err.message, true);
   }
 }
 
@@ -124,11 +124,11 @@ export async function deleteActivity(id) {
   if (!ok) return;
   try {
     await api(`/api/activities/${id}`, { method: 'DELETE' });
-    toast('🗑 Workout deleted');
+    toast('Workout deleted');
     loadActivities(currentActivityPage);
     refreshStreakFromProfile();
   } catch (err) {
-    toast('❌ ' + err.message, true);
+    toast(err.message, true);
   }
 }
 
@@ -186,7 +186,7 @@ export async function handleEditActivity(e) {
     loadActivities(currentActivityPage);
     refreshStreakFromProfile();
   } catch (err) {
-    toast('❌ ' + err.message, true);
+    toast(err.message, true);
   } finally {
     btn.disabled = false; btn.textContent = 'Save Changes';
   }
@@ -209,17 +209,23 @@ let currentActivityPage = 0;
 
 export async function loadActivities(page = 0) {
   const el = document.getElementById('activities-list');
+  const count = document.getElementById('activities-count');
   el.innerHTML = skeletonRows(5);
   try {
     const data = await api(`/api/activities?page=${page}&size=10&sort=startTime,desc`);
     const items = data.content || [];
     activityCache = items;
     currentActivityPage = page;
-    el.innerHTML = items.length ? items.map(activityRow).join('') : emptyState('🏃', 'No workouts logged yet.');
+    const total = data.page?.totalElements;
+    if (count) count.textContent = total ? `${total} workout${total === 1 ? '' : 's'}` : '';
+    el.innerHTML = items.length ? items.map(activityRow).join('')
+      : emptyState('', 'No workouts logged yet.',
+          '<button type="button" class="btn btn-sec btn-sm" data-action="open-modal" data-modal="modal-log-activity">Log workout</button>');
     renderPager('activities-pager', page, data.page?.totalPages ?? 1, loadActivities);
   } catch (err) {
     el.innerHTML = `<div class="error-state">Couldn't load activities: ${escapeHtml(err.message)}</div>`;
     document.getElementById('activities-pager').innerHTML = '';
+    if (count) count.textContent = '';
   }
 }
 
@@ -251,15 +257,18 @@ export async function handleLogActivity(e) {
     clearExerciseRows('act-exercises');
     handleActivityLoggedResponse(res);
   } catch (err) {
-    toast('❌ ' + err.message, true);
+    toast(err.message, true);
   } finally {
-    btn.disabled = false; btn.textContent = 'Log It 💪';
+    btn.disabled = false; btn.textContent = 'Log workout';
   }
 }
 
 export function switchLogTab(which) {
-  document.getElementById('log-tab-manual').classList.toggle('on', which === 'manual');
-  document.getElementById('log-tab-natural').classList.toggle('on', which === 'natural');
+  for (const [tab, name] of [['log-tab-manual', 'manual'], ['log-tab-natural', 'natural']]) {
+    const el = document.getElementById(tab);
+    el.classList.toggle('on', which === name);
+    el.setAttribute('aria-selected', String(which === name));
+  }
   document.getElementById('form-log-activity').style.display = which === 'manual'  ? 'block' : 'none';
   document.getElementById('form-log-natural').style.display  = which === 'natural' ? 'block' : 'none';
 }
@@ -280,29 +289,30 @@ export async function handleLogNatural(e) {
     document.getElementById('form-log-natural').reset();
     handleActivityLoggedResponse(res);
   } catch (err) {
-    toast('❌ ' + err.message, true);
+    toast(err.message, true);
   } finally {
-    btn.disabled = false; btn.textContent = 'Parse & Log 💬';
+    btn.disabled = false; btn.textContent = 'Parse and log';
   }
 }
 
 /** Shared success handling for both manual and natural-language activity logging. */
 function handleActivityLoggedResponse(res) {
-  let msg = `${ACT_ICON[res.type]||'🏃'} Workout logged — ${res.caloriesBurned ?? '?'} cal burned!`;
-  if (res.isPersonalBest) msg = `🏆 New personal best! ${res.personalBestMessage || ''}`;
+  const burned = res.caloriesBurned != null ? `, ${res.caloriesBurned} cal burned` : '';
+  let msg = `Workout logged${burned}`;
+  if (res.isPersonalBest) msg = `New personal best. ${res.personalBestMessage || ''}`.trim();
   toast(msg);
 
   if (res.goalAchievements && res.goalAchievements.length) {
-    setTimeout(() => toast('🎉 ' + res.goalAchievements[0]), 1200);
+    setTimeout(() => toast(res.goalAchievements[0]), 1200);
   }
   if (res.muscleRecoveryWarnings && res.muscleRecoveryWarnings.length) {
-    setTimeout(() => toast('⚠️ ' + res.muscleRecoveryWarnings[0], true), 2400);
+    setTimeout(() => toast(res.muscleRecoveryWarnings[0], true), 2400);
   }
   if (res.exercisePersonalBests && res.exercisePersonalBests.length) {
-    setTimeout(() => toast('🏋️ ' + res.exercisePersonalBests[0]), 3600);
+    setTimeout(() => toast('Strength record: ' + res.exercisePersonalBests[0]), 3600);
   }
   if (res.progressionSuggestion) {
-    setTimeout(() => toast('📈 ' + res.progressionSuggestion), 4800);
+    setTimeout(() => toast(res.progressionSuggestion), 4800);
   }
 
   session.currentUser.currentStreak = res.currentStreak;
@@ -332,12 +342,14 @@ export function addExerciseRow(containerId, exercise) {
   const e = exercise || {};
   const row = document.createElement('div');
   row.className = 'exrow';
+  // Placeholders aren't labels: each input names itself for a screen reader, and
+  // carries the API's own limits (PLAN P5-3).
   row.innerHTML = `
-    <input type="text"   class="ex-name"  placeholder="Bench Press" value="${escapeHtml(e.name ?? '')}">
-    <input type="number" class="ex-sets"  placeholder="3"  min="1" value="${e.sets ?? ''}">
-    <input type="number" class="ex-reps"  placeholder="8"  min="1" value="${e.reps ?? ''}">
-    <input type="number" class="ex-weight" placeholder="60" min="0" step="0.5" value="${e.weightKg ?? ''}">
-    <button type="button" class="exdel" title="Remove">✕</button>`;
+    <input type="text"   class="ex-name"  aria-label="Movement" placeholder="Bench Press" maxlength="255" value="${escapeHtml(e.name ?? '')}">
+    <input type="number" class="ex-sets"  aria-label="Sets" placeholder="3"  min="1" max="100" inputmode="numeric" value="${e.sets ?? ''}">
+    <input type="number" class="ex-reps"  aria-label="Reps" placeholder="8"  min="1" max="1000" inputmode="numeric" value="${e.reps ?? ''}">
+    <input type="number" class="ex-weight" aria-label="Weight in kg" placeholder="60" min="0" max="1000" step="0.5" inputmode="decimal" value="${e.weightKg ?? ''}">
+    <button type="button" class="exdel" aria-label="Remove exercise">✕</button>`;
   row.querySelector('.exdel').onclick = () => row.remove();
   container.appendChild(row);
 }
