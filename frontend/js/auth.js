@@ -87,7 +87,7 @@ export async function handleLogin(e) {
   } catch (err) {
     showAuthError(err.message);
   } finally {
-    btn.disabled = false; btn.textContent = '💪 Log In';
+    btn.disabled = false; btn.textContent = 'Log in';
   }
 }
 
@@ -117,7 +117,7 @@ export async function handleRegister(e) {
       throw new Error(msg);
     }
 
-    toast('🎉 Account created! Logging you in…');
+    toast('Account created. Logging you in…');
     document.getElementById('login-email').value = payload.email;
     document.getElementById('login-password').value = payload.password;
     switchAuthTab('login');
@@ -125,7 +125,7 @@ export async function handleRegister(e) {
   } catch (err) {
     showAuthError(err.message);
   } finally {
-    btn.disabled = false; btn.textContent = '🚀 Create Account';
+    btn.disabled = false; btn.textContent = 'Create account';
   }
 }
 

@@ -41,6 +41,11 @@
 </div>
 
 <!-- ═══════════ AUTH SCREEN ═══════════ -->
+<!-- The sign-in screen does one job. On a wide screen the name is set large on its own
+     side and the form sits beside it; on a phone they stack. Nothing here is a claim the
+     product hasn't made: the logo, the name and its line. The text links are buttons,
+     because an <a> with no href is skipped by the keyboard, which left password recovery
+     out of reach of anyone not using a mouse. -->
 <div id="auth-screen">
   <div class="auth-card">
     <div class="auth-logo">
@@ -51,8 +56,8 @@
     </div>
 
     <div class="auth-tabs" role="tablist" aria-label="Log in or sign up">
-      <button class="auth-tab on" id="tab-login" role="tab" aria-selected="true" data-action="auth-tab" data-tab="login">Log In</button>
-      <button class="auth-tab" id="tab-register" role="tab" aria-selected="false" data-action="auth-tab" data-tab="register">Sign Up</button>
+      <button type="button" class="auth-tab on" id="tab-login" role="tab" aria-selected="true" data-action="auth-tab" data-tab="login">Log In</button>
+      <button type="button" class="auth-tab" id="tab-register" role="tab" aria-selected="false" data-action="auth-tab" data-tab="register">Sign Up</button>
     </div>
 
     <div class="auth-error" id="auth-error" role="alert"></div>
@@ -66,9 +71,9 @@
         <label for="login-password">Password</label>
         <input type="password" id="login-password" required placeholder="••••••••" autocomplete="current-password">
       </div>
-      <button type="submit" class="btn btn-prim btn-block" id="login-btn">💪 Log In</button>
-      <div class="auth-hint">No account yet? <a data-action="auth-tab" data-tab="register">Create one</a></div>
-      <div class="auth-hint"><a data-action="auth-tab" data-tab="forgot" id="forgot-link">Forgot your password?</a></div>
+      <button type="submit" class="btn btn-prim btn-block" id="login-btn">Log in</button>
+      <div class="auth-hint">No account yet? <button type="button" class="link-btn" data-action="auth-tab" data-tab="register">Create one</button></div>
+      <div class="auth-hint"><button type="button" class="link-btn" data-action="auth-tab" data-tab="forgot" id="forgot-link">Forgot your password?</button></div>
     </form>
 
     <!-- Step 1 of recovery: ask for a link. Deliberately says the same thing whether
@@ -78,11 +83,9 @@
         <label for="forgot-email">Email</label>
         <input type="email" id="forgot-email" required placeholder="you@example.com" autocomplete="email">
       </div>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:14px">
-        We will send a reset link if an account exists for that address. The link is good for 30 minutes.
-      </div>
+      <p class="field-hint field-gap">We will send a reset link if an account exists for that address. The link is good for 30 minutes.</p>
       <button type="submit" class="btn btn-prim btn-block" id="forgot-btn">Send reset link</button>
-      <div class="auth-hint">Remembered it? <a data-action="auth-tab" data-tab="login">Back to log in</a></div>
+      <div class="auth-hint">Remembered it? <button type="button" class="link-btn" data-action="auth-tab" data-tab="login">Back to log in</button></div>
     </form>
 
     <!-- Step 2: shown when the page is opened from the emailed link (?reset=token). -->
@@ -97,17 +100,18 @@
         <input type="password" id="reset-password2" required minlength="8"
                placeholder="Type it again" autocomplete="new-password">
       </div>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:14px">
-        Setting a new password signs you out on every device.
-      </div>
+      <p class="field-hint field-gap">Setting a new password signs you out on every device.</p>
       <button type="submit" class="btn btn-prim btn-block" id="reset-btn">Set new password</button>
-      <div class="auth-hint"><a data-action="auth-tab" data-tab="login">Back to log in</a></div>
+      <div class="auth-hint"><button type="button" class="link-btn" data-action="auth-tab" data-tab="login">Back to log in</button></div>
     </form>
 
+    <!-- The password rule is the API's: at least 8 characters (it was minlength 6 here,
+         so 6 and 7 passed the browser and failed on the server), at most 72 bytes for
+         BCrypt. The body limits are the API's too (PLAN P4-17). -->
     <form id="form-register" style="display:none" data-submit="register">
       <div class="field-row">
-        <div class="field"><label for="reg-first">First Name</label><input type="text" id="reg-first" maxlength="255" required placeholder="Nikhil"></div>
-        <div class="field"><label for="reg-last">Last Name</label><input type="text" id="reg-last" maxlength="255" placeholder="Mehta"></div>
+        <div class="field"><label for="reg-first">First Name</label><input type="text" id="reg-first" maxlength="255" required placeholder="Nikhil" autocomplete="given-name"></div>
+        <div class="field"><label for="reg-last">Last Name</label><input type="text" id="reg-last" maxlength="255" placeholder="Mehta" autocomplete="family-name"></div>
       </div>
       <div class="field">
         <label for="reg-email">Email</label>
@@ -115,15 +119,15 @@
       </div>
       <div class="field">
         <label for="reg-password">Password</label>
-        <input type="password" id="reg-password" required placeholder="At least 8 characters" autocomplete="new-password" minlength="6">
+        <input type="password" id="reg-password" required placeholder="At least 8 characters" autocomplete="new-password" minlength="8" maxlength="72">
       </div>
       <div class="field-row">
-        <div class="field"><label for="reg-weight">Weight (kg)</label><input type="number" id="reg-weight" placeholder="75" step="0.1"></div>
-        <div class="field"><label for="reg-height">Height (cm)</label><input type="number" id="reg-height" placeholder="175" step="0.1"></div>
+        <div class="field"><label for="reg-weight">Weight (kg)</label><input type="number" id="reg-weight" placeholder="75" step="0.1" min="20" max="500" inputmode="decimal"></div>
+        <div class="field"><label for="reg-height">Height (cm)</label><input type="number" id="reg-height" placeholder="175" step="0.1" min="50" max="275" inputmode="decimal"></div>
       </div>
-      <div class="field"><label for="reg-age">Age</label><input type="number" id="reg-age" placeholder="25"></div>
-      <button type="submit" class="btn btn-prim btn-block" id="register-btn">🚀 Create Account</button>
-      <div class="auth-hint">Already have an account? <a data-action="auth-tab" data-tab="login">Log in</a></div>
+      <div class="field"><label for="reg-age">Age</label><input type="number" id="reg-age" placeholder="25" min="5" max="120" inputmode="numeric"></div>
+      <button type="submit" class="btn btn-prim btn-block" id="register-btn">Create account</button>
+      <div class="auth-hint">Already have an account? <button type="button" class="link-btn" data-action="auth-tab" data-tab="login">Log in</button></div>
     </form>
   </div>
 </div>

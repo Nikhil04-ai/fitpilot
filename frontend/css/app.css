@@ -78,14 +78,36 @@ h1, h2, h3 { text-wrap: balance; }
 .export-row input, .export-row select { width: auto; }
 .export-row select { flex: 1; min-width: 180px; }
 
-/* ═══ AUTH SCREEN ═══ */
-#auth-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: var(--space-2xl) var(--space-md); }
+/* ═══ AUTH SCREEN ═══
+ * One screen, one job. Wide: the name set large on its own side under the bar rule, the
+ * form on a paper step beside it. Narrow: the name shrinks to a heading over the form. */
+#auth-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: var(--space-2xl) var(--gutter); }
 .auth-card {
   width: 100%; max-width: 420px; background: var(--color-paper-2);
   border-top: var(--rule-bar) solid var(--color-rule-2); border-radius: 0 0 var(--radius) var(--radius); padding: var(--space-xl);
 }
 .auth-logo { display: flex; flex-direction: column; align-items: center; margin-bottom: var(--space-lg); }
 .auth-logo img { width: 64px; height: 64px; object-fit: contain; margin-bottom: var(--space-sm); }
+@media (min-width: 961px) {
+  .auth-card {
+    max-width: 920px; display: grid; grid-template-columns: minmax(0, 1fr) 400px; column-gap: var(--space-3xl);
+    background: none; padding: 0; border-radius: 0; border-top-color: var(--color-rule-2);
+  }
+  .auth-card > * { grid-column: 2; }
+  .auth-card > .auth-logo { grid-column: 1; grid-row: 1 / span 8; align-items: flex-start; justify-content: flex-start; padding-top: var(--space-xl); margin: 0; }
+  .auth-card > .auth-tabs { margin-top: var(--space-xl); }
+  .auth-card > form { padding-bottom: var(--space-xl); }
+  /* Scoped to the card so they outrank the base sizes further down the file. */
+  .auth-card .auth-logo-text { font-size: clamp(3.5rem, 6vw, 5.5rem); line-height: 0.92; margin-top: var(--space-md); }
+  .auth-card .auth-tag { font-size: var(--text-lg); color: var(--color-ink-2); margin-top: var(--space-sm); }
+}
+/* A text action inside a sentence: looks like a link, is a button (no href to go to). */
+.link-btn {
+  background: none; border: 0; padding: 0; color: var(--color-ink); font-size: inherit;
+  text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.16em;
+  transition: text-decoration-color var(--dur-micro) var(--ease-out);
+}
+.link-btn:hover { text-decoration-color: var(--color-accent); }
 .auth-logo-fallback, .sb-logo-fallback {
   display: none; align-items: center; justify-content: center; border-radius: var(--radius);
   background: var(--color-paper-4); color: var(--color-ink); font-family: var(--font-display); font-weight: 800;
@@ -109,8 +131,6 @@ h1, h2, h3 { text-wrap: balance; }
 }
 .auth-error.show { display: block; }
 .auth-hint { font-size: var(--text-sm); color: var(--color-muted); text-align: center; margin-top: var(--space-md); }
-.auth-hint a { color: var(--color-ink); cursor: pointer; text-decoration: underline; }
-.auth-hint a:hover { text-decoration-color: var(--color-accent); }
 
 /* ═══ APP SHELL ═══ */
 #app-shell { display: none; min-height: 100vh; }

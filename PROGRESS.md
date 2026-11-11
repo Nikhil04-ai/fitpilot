@@ -1321,3 +1321,41 @@ recast on charcoal with a restrained lime. No backend, API or auth change; no fr
   friend and notification rows being a line rather than the log grid. Two runs that hit the
   login rate limit (the test profile's relaxed limits don't load either) were discarded.
 * **sloplint:** 3 fails left: the two auth buttons and the Pain Log subtitle.
+
+## Phase 35 — Redesign, step 9: the sign-in screen (2026-11-11)
+
+* **Layout:** one screen, one job. Wide: the name set large on its own side under the bar rule,
+  the form on the other (`.auth-card` becomes a two-column grid above 960px). Narrow: the name
+  shrinks to a heading over the form, as before.
+* **Keyboard:** the text links ("Create one", "Forgot your password?", "Back to log in", "Log in")
+  were `<a>` with no `href`, which the Tab key skips, so password recovery was out of reach of
+  anyone not using a mouse. They are `<button type="button" class="link-btn">`, styled as links.
+  The tabs are `type="button"` too.
+* **Sign-up form matches the API:** the password field said "At least 8 characters" but had
+  `minlength="6"`, so 6 and 7 passed the browser and failed on the server. It is now
+  `minlength="8" maxlength="72"` (BCrypt's limit is 72 bytes), and weight, height and age carry
+  the API's limits (20-500 kg, 50-275 cm, 5-120; P4-17), with `autocomplete` on the name fields.
+* **Copy:** no emoji on the auth screen: "Log in", "Create account", and the toast that read
+  "🎉 Account created!" is "Account created." The two hints on the recovery forms are
+  `.field-hint` instead of inline styles.
+
+### Verification
+
+* **Browser** (`auth.mjs` and `reset.mjs`, headless Chrome over the DevTools protocol; backend on
+  in-memory H2 behind the JDBC-line gate, Gemini and mail blanked): 20 checks through the UI
+  pass. `auth.mjs` (10): no emoji on the screen; the name sits beside the form on a wide screen;
+  Tab from the password field reaches the button, "Create one" and "Forgot your password?"; the
+  link shows a focus ring when reached by keyboard; Enter on it opens the recovery step; a typed
+  7-character password is refused and 8 accepted; an age of 300 is refused; signing up through
+  the form lands in the app; a `?reset=` link opens the new-password step. `reset.mjs` (10): a
+  wrong password shows "Invalid email or password" and the button recovers; the reset link is
+  written to the log (no mail key); the token leaves the address bar once the form is open;
+  mismatched passwords are refused; a good reset returns to log in; the old password no longer
+  works and the new one does; the same link cannot be used twice. No horizontal overflow at 1440,
+  1024, 768 and 390px. The only console entries were the 401s and the 400 those checks cause.
+* **Hooks:** every `id`, `data-action`, `data-panel`, `data-modal`, `data-submit` and `for` in
+  `index.html` at the previous commit is still there.
+* **Frontend:** 123 passing. **sloplint:** the last run before this step's final edit had 1 fail,
+  the dash in the Pain Log subtitle, on a page not yet redone.
+* **Not changed:** the Forgot and Reset views still show the Log In / Sign Up tabs with neither
+  selected, as before; they are the tabs' container, not a view of their own.
