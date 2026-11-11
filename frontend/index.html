@@ -347,11 +347,18 @@
         </div>
       </section>
 
-      <section class="panel" id="panel-plans">
-        <div class="sec-head"><h2 class="sec-ttl">Workout Plans</h2><div class="sec-sub">Structured programs — enroll and follow day by day.</div></div>
-        <div id="active-plan-card" style="margin-bottom:24px"></div>
-        <h3 class="clbl" style="margin-left:2px">Available Plans</h3>
-        <div class="cg" id="plans-list"><div class="loading-state" style="grid-column:1/-1"><div class="spinner"></div>Loading plans…</div></div>
+      <section class="panel" id="panel-plans" aria-labelledby="plans-ttl">
+        <div class="sheet-head page-head">
+          <div>
+            <h2 class="sheet-ttl" id="plans-ttl">Workout plans</h2>
+            <div class="sec-sub">Structured programs. Enroll in one and follow it day by day.</div>
+          </div>
+        </div>
+        <section class="sheet plan-sheet" id="active-plan-card" aria-labelledby="active-plan-ttl" hidden></section>
+        <section class="sheet" aria-labelledby="plans-list-ttl">
+          <div class="sheet-head"><h3 class="sheet-ttl" id="plans-list-ttl">Available plans</h3></div>
+          <div class="cg" id="plans-list"><div class="loading-state">Loading plans…</div></div>
+        </section>
       </section>
 
       <!-- Stats & Insights: the last 30 days in figures, the volume behind them, when you

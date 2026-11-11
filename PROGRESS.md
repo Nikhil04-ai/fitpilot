@@ -1400,3 +1400,47 @@ recast on charcoal with a restrained lime. No backend, API or auth change; no fr
   wrong reason (a grid cell's box fills its column whatever the text alignment); it now measures
   the digit itself and fails, as it should, with the old right alignment forced back in.
 * **sloplint:** 1 fail left, the dash in the Workout Plans subtitle, a page not yet redone.
+
+## Phase 37 — Redesign, step 11: Workout Plans (2026-11-12)
+
+* **Page:** the title and its line, then two sheets. "Active plan" opens the page when you are on
+  one (it is hidden when you are not): the plan's goal and difficulty, its name, "2 of 7 days
+  done" with the percentage and a bar (`role="progressbar"`, with its value and name), and beside
+  it today's workout. "Available plans" follows, as ruled notes in the Challenges grid.
+* **Today's workout** is the activity in condensed capitals with its minutes beside it ("Walking
+  30 min"), then the instructions; a rest day reads "Rest day". It carried a person emoji, a
+  dash between activity and minutes, and a tick on the button. "Mark today complete" is
+  secondary, as every in-page button is: the topbar's Log workout stays the one primary.
+* **A plan card** says what it trains for and how hard it is in words ("Weight loss",
+  "Beginner"; it showed the enum as "// weight loss" and a lime badge for Beginner), then its
+  title, description, length and Enroll. The plan you are on carries the lime "Active" badge in
+  place of Enroll, because only what is in play is lime. Footers are pinned to the card bottom so
+  a row of cards lines up whatever the description length.
+* **Switching asks first (behaviour change).** Enrolling ends the plan you are on server-side with
+  no warning, so a click on Enroll threw away your progress. With a plan active, Enroll now opens
+  "Switch plans?" naming the plan and what is lost; Cancel leaves it alone. A first enrolment
+  asks nothing. `data-name` on the button carries the plan name for the toast.
+* **Copy:** the subtitle had a dash; every toast lost its emoji (the cross on errors, the tick,
+  the party popper), and an enrolment toast names the plan.
+* Not changed: a plan finished by its last day leaves the active sheet when the page reloads,
+  because the server returns only active enrolments. The "Plan complete" note renders if one is
+  ever returned. The seeded flexibility plan's instructions contain a dash and a range dash
+  ("Hips and hamstrings — hold each stretch 30–45 seconds"); that is server seed data and is
+  shown as written, and existing databases are already seeded.
+
+### Verification
+
+* **Unit:** `tests/plans.test.mjs` (13 tests): the card in words, its button and badge, plural and
+  escaping, the active plan's figures and bar, a work day, a rest day, a finished plan, and the
+  page against a fake server (hidden with no plan, first enrolment asks nothing, Active moves to
+  the enrolled card, switching asks and sends nothing until yes, a no leaves the plan alone).
+  Frontend 143 passing.
+* **Browser** (`plans.mjs`, headless Chrome, H2 backend behind the JDBC-line gate): 22 checks
+  pass: no plan, enrolling, completing day 1 (day 2 of 7, 14%, the bar's fill measured at 14%),
+  a second press the same day showing the server's reason as an error toast, the switch question
+  with Cancel and with Switch plan (day 1 of 14, the badge moving), Enter on a focused Enroll
+  opening the question, two columns at 1440 and one at 390, the footer alignment (it fails with
+  the pinning removed), and no emoji or inline style. The only console line is the deliberate
+  400 from the second press.
+* **sloplint:** the Workout Plans dash is gone; 1 fail left, in the Muscle Recovery subtitle, a
+  page not yet redone.

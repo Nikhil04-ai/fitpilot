@@ -100,7 +100,7 @@ registerActions('click', {
   'generate-digest':  () => generateDigestNow(),
   'generate-insight': () => generateRecommendationNow(),
   // panels/plans
-  'enroll-plan':       el => enrollInPlan(el.dataset.id),
+  'enroll-plan':       el => enrollInPlan(el.dataset.id, el.dataset.name),
   'complete-plan-day': () => completeTodayPlan(),
   // panels/insights
   'check-plateau':  () => checkPlateau(),

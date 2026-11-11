@@ -543,6 +543,21 @@ select.multi { min-height: 6rem; }
 .cf .cdl { margin-right: auto; }
 .cdl { font-size: var(--text-sm); color: var(--color-muted); }
 
+/* ═══ WORKOUT PLANS ═══
+ * The plan you are on opens the page: where you are in it beside today's workout. The
+ * plans to choose from are ruled notes like the challenges. */
+.plan-sheet { margin-bottom: var(--space-xl); }
+.plan-now { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: var(--space-lg) var(--space-xl); align-items: start; }
+.plan-prog .pname { font-size: var(--text-2xl); margin-bottom: var(--space-md); }
+.plan-today { margin-bottom: var(--space-md); }
+.plan-act { font-family: var(--font-display); font-weight: 800; font-size: var(--text-2xl); line-height: 1.1; text-transform: uppercase; }
+.plan-act .u { margin-left: var(--space-xs); font-family: var(--font-body); font-weight: 400; font-size: var(--text-md); text-transform: none; color: var(--color-muted); font-variant-numeric: tabular-nums; }
+.plan-ins { margin-top: var(--space-xs); font-size: var(--text-md); color: var(--color-ink-2); line-height: 1.6; max-width: 60ch; }
+/* Cards in a row share a height, so each footer is pinned to the bottom and they line up. */
+.plan-card { display: flex; flex-direction: column; }
+.plan-card .cf { margin-top: auto; }
+.plan-desc { margin-bottom: var(--space-md); font-size: var(--text-sm); color: var(--color-muted); line-height: 1.6; }
+
 .rg { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: var(--space-lg); align-items: start; }
 .bmap { padding: var(--space-lg); display: flex; flex-direction: column; align-items: center; }
 .leg { display: flex; gap: var(--space-md); justify-content: center; flex-wrap: wrap; margin-top: var(--space-md); }
