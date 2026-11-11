@@ -1,5 +1,5 @@
 import { session } from '../state.js';
-import { emptyState, escapeHtml, skeletonRows } from '../util.js';
+import { emptyState, escapeHtml, shortDate, skeletonRows } from '../util.js';
 import { closeModal, renderPager, toast } from '../ui.js';
 import { api } from '../api.js';
 
@@ -8,33 +8,53 @@ import { api } from '../api.js';
 // ═══════════════════════════════════════════════════════════════════════
 
 const BODY_PART_LABEL = {
-  LEFT_KNEE:'Left Knee', RIGHT_KNEE:'Right Knee', LEFT_SHOULDER:'Left Shoulder', RIGHT_SHOULDER:'Right Shoulder',
-  LOWER_BACK:'Lower Back', UPPER_BACK:'Upper Back', LEFT_ANKLE:'Left Ankle', RIGHT_ANKLE:'Right Ankle',
+  LEFT_KNEE:'Left knee', RIGHT_KNEE:'Right knee', LEFT_SHOULDER:'Left shoulder', RIGHT_SHOULDER:'Right shoulder',
+  LOWER_BACK:'Lower back', UPPER_BACK:'Upper back', LEFT_ANKLE:'Left ankle', RIGHT_ANKLE:'Right ankle',
   NECK:'Neck', HIPS:'Hips', OTHER:'Other'
 };
-const SEVERITY_COLOR = { 1:'var(--cyan)', 2:'var(--cyan)', 3:'var(--gold)', 4:'var(--gold)', 5:'var(--red)' };
+// The words the Log Pain form offers for each step of the 1 to 5 scale.
+const SEVERITY_WORD = { 1:'mild', 2:'noticeable', 3:'moderate', 4:'significant', 5:'severe' };
 
-function painRow(p) {
-  const color = SEVERITY_COLOR[p.severity] || 'var(--muted)';
-  const date = p.loggedAt ? new Date(p.loggedAt).toLocaleDateString('en', { day: 'numeric', month: 'short' }) : '';
+/**
+ * One entry, as a row of the log: when, where, then how bad.
+ *
+ * Severity is a figure and a word rather than a coloured dot, so it can be read down
+ * a column and a dot's colour is not the only thing saying it. Its name is visually
+ * hidden until the row stacks, as on the meal rows, and always read by a screen reader.
+ */
+export function painRow(p) {
+  const when = p.loggedAt ? shortDate(p.loggedAt) : '';
+  const part = BODY_PART_LABEL[p.bodyPart] || p.bodyPart || 'Unspecified';
+  const word = SEVERITY_WORD[p.severity];
   return `
-    <div class="ai">
-      <div class="ad" style="background:${color};box-shadow:0 0 6px ${color}"></div>
-      <div class="an">${BODY_PART_LABEL[p.bodyPart] || p.bodyPart} — severity ${p.severity}/5${p.description ? ' · ' + escapeHtml(p.description) : ''}</div>
-      <div class="am">${date}</div>
+    <div class="ai logrow pain">
+      <div class="ai-when">${escapeHtml(when)}</div>
+      <div class="ai-body">
+        <div class="an">${escapeHtml(part)}</div>
+        ${p.description ? `<div class="ai-note">${escapeHtml(p.description)}</div>` : ''}
+      </div>
+      <div class="am"><span><span class="k">Severity </span>${escapeHtml(p.severity)} <span class="u">of 5${word ? ', ' + word : ''}</span></span></div>
     </div>`;
+}
+
+/**
+ * The recurring-pain alerts, as one warm band. They are the server's sentences, so
+ * they are shown as written; a warning is the one thing on this page that earns colour.
+ */
+export function patternsNote(patterns) {
+  if (!patterns || !patterns.length) return '';
+  return `<div class="note note-warn"><strong>Pattern detected.</strong><ul class="ac-list">${patterns.map(p => `<li>${escapeHtml(p)}</li>`).join('')}</ul></div>`;
 }
 
 export async function loadPainLog(page = 0) {
   const warnEl = document.getElementById('pain-warnings');
   const listEl = document.getElementById('pain-list');
+  const count = document.getElementById('pain-count');
   listEl.innerHTML = skeletonRows(4);
 
   try {
     const patterns = await api(`/api/pain-log/patterns/${session.currentUser.id}`);
-    warnEl.innerHTML = patterns.length
-      ? patterns.map(p => `<div class="warnbox" style="margin-bottom:12px"><div class="wtt">⚠ Pattern Detected</div><div class="wtb">${escapeHtml(p)}</div></div>`).join('')
-      : '';
+    warnEl.innerHTML = patternsNote(patterns);
   } catch (err) {
     warnEl.innerHTML = '';
   }
@@ -44,10 +64,16 @@ export async function loadPainLog(page = 0) {
     // response and be sorted here, growing with every entry (PLAN P3-3).
     const res = await api(`/api/pain-log/${session.currentUser.id}?page=${page}&size=15`);
     const rows = res.content || [];
-    listEl.innerHTML = rows.length ? rows.map(painRow).join('') : emptyState('🩹', 'No pain logged — hopefully it stays that way!');
+    const total = res.page?.totalElements;
+    if (count) count.textContent = total ? `${total} ${total === 1 ? 'entry' : 'entries'}` : '';
+    listEl.innerHTML = rows.length ? rows.map(painRow).join('')
+      : emptyState('', 'No pain logged.',
+          '<button type="button" class="btn btn-sec btn-sm" data-action="open-modal" data-modal="modal-log-pain">Log pain</button>');
     renderPager('pain-pager', page, res.page?.totalPages ?? 1, loadPainLog);
   } catch (err) {
     listEl.innerHTML = `<div class="error-state">Couldn't load pain history: ${escapeHtml(err.message)}</div>`;
+    document.getElementById('pain-pager').innerHTML = '';
+    if (count) count.textContent = '';
   }
 }
 
@@ -66,11 +92,11 @@ export async function handleLogPain(e) {
     await api('/api/pain-log', { method: 'POST', body: JSON.stringify(payload) });
     closeModal('modal-log-pain');
     document.getElementById('form-log-pain').reset();
-    toast('🩹 Pain logged. Take care of yourself!');
+    toast('Pain logged. Take care of yourself.');
     loadPainLog();
   } catch (err) {
-    toast('❌ ' + err.message, true);
+    toast(err.message, true);
   } finally {
-    btn.disabled = false; btn.textContent = 'Log It';
+    btn.disabled = false; btn.textContent = 'Log pain';
   }
 }

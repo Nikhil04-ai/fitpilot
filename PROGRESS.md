@@ -1359,3 +1359,44 @@ recast on charcoal with a restrained lime. No backend, API or auth change; no fr
   the dash in the Pain Log subtitle, on a page not yet redone.
 * **Not changed:** the Forgot and Reset views still show the Log In / Sign Up tabs with neither
   selected, as before; they are the tabs' container, not a view of their own.
+
+## Phase 36 — Redesign, step 10: Pain Log (2026-11-11)
+
+* **Page:** one sheet in the Activities page's shape: the title and its line, a count ("18
+  entries", from `page.totalElements`) beside "Log pain", then the log. Log pain is secondary
+  (the topbar's Log workout stays the one primary). The empty state is one sentence and the same
+  button.
+* **An entry is a log row** (`.logrow.pain`, the shared grid): when, the body part in condensed
+  capitals with its description under it, then severity. Severity was a coloured dot with a
+  glow, cyan, gold or red, and the sentence "Left Knee — severity 4/5 · Sharp on the descent".
+  It is now a figure and a word ("4 of 5, significant", the words the Log Pain form offers), in a
+  column the head lines up with, left-aligned so the figures start at one edge: right-aligned,
+  the figure moved with the length of its word. Its name ("Severity") is visually hidden until the
+  row stacks, as on the meal rows, and always read by a screen reader. Column heads fold away in
+  a narrow list, by the list's width.
+* **Patterns** (3 or more reports of one body part in 21 days) are one warm band, "Pattern
+  detected." and a list item each, in the Coach's style, replacing a red box with a side stripe
+  and a warning glyph per alert. A warning is the one thing on the page that is coloured.
+  `.warnbox`, `.wtt` and `.wtb` are gone from the CSS; nothing else used them.
+* **Dialog and copy:** the severity options read "1: Mild" and so on (they had dashes), the
+  button is "Log pain" (was "Log It"), the two inline `flex:1` styles are gone, and no toast has
+  an emoji (the error toast no longer prefixes a cross). A failed history load clears the pager
+  and the count.
+* The entries are records: there is still no edit or delete for pain, so the row has no actions.
+
+### Verification
+
+* **Unit:** `tests/pain.test.mjs` (7 tests) on `painRow` and `patternsNote`: the row's parts, the
+  word at each step of the scale, no emoji, dot, dash or inline style, no empty note, an unknown
+  severity or body part still rendering, free text and server sentences escaped. Frontend 130
+  passing.
+* **Browser** (`pain.mjs`, headless Chrome, H2 backend behind the JDBC-line gate; an account with
+  18 entries and an empty one): 17 checks pass. It reads 15 rows on page 1 and the 3 oldest on
+  page 2; one note with both recurring pains; a description holding `<img onerror>` shown as text;
+  the column heads within 2px of the rows; logging a neck entry through the dialog (count 18 to
+  19, dialog closed, the entry on the list); the stacked layout at 390px (heads hidden, each row
+  naming its severity); the empty state's button opening the dialog; and no console errors or
+  overflow at 1440, 1024, 768 and 390px. A first version of the alignment check passed for the
+  wrong reason (a grid cell's box fills its column whatever the text alignment); it now measures
+  the digit itself and fails, as it should, with the old right alignment forced back in.
+* **sloplint:** 1 fail left, the dash in the Workout Plans subtitle, a page not yet redone.

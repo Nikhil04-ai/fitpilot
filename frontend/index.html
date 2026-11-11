@@ -326,13 +326,25 @@
         </section>
       </section>
 
-      <section class="panel" id="panel-pain">
-        <div class="sec-head" style="display:flex;justify-content:space-between;align-items:flex-end">
-          <div><h2 class="sec-ttl">Pain Log</h2><div class="sec-sub">Track discomfort early — patterns get flagged before they become injuries.</div></div>
-          <button class="btn btn-prim btn-sm" data-action="open-modal" data-modal="modal-log-pain">+ Log Pain</button>
+      <section class="panel" id="panel-pain" aria-labelledby="pain-ttl">
+        <div class="sheet log">
+          <div class="sheet-head">
+            <div>
+              <h2 class="sheet-ttl" id="pain-ttl">Pain log</h2>
+              <div class="sec-sub">Log discomfort early, and a pain that keeps coming back is flagged before it becomes an injury.</div>
+            </div>
+            <div class="head-acts">
+              <span class="sheet-meta" id="pain-count"></span>
+              <button type="button" class="btn btn-sec btn-sm" data-action="open-modal" data-modal="modal-log-pain">Log pain</button>
+            </div>
+          </div>
+          <div id="pain-warnings" aria-live="polite"></div>
+          <div class="ai logrow pain ai-head" aria-hidden="true">
+            <span>When</span><span>Body part</span><span class="am"><span>Severity</span></span>
+          </div>
+          <div class="af" id="pain-list"><div class="loading-state">Loading pain history…</div></div>
+          <div class="pager" id="pain-pager"></div>
         </div>
-        <div id="pain-warnings"></div>
-        <div class="card"><div id="pain-list"><div class="loading-state"><div class="spinner"></div>Loading…</div></div><div class="pager" id="pain-pager"></div></div>
       </section>
 
       <section class="panel" id="panel-plans">
@@ -662,19 +674,19 @@
         </select>
       </div>
       <div class="field">
-        <label for="pain-severity">Severity (1 = mild, 5 = severe)</label>
+        <label for="pain-severity">Severity (1 is mild, 5 is severe)</label>
         <select id="pain-severity" required>
-          <option value="1">1 — Mild</option>
-          <option value="2">2 — Noticeable</option>
-          <option value="3">3 — Moderate</option>
-          <option value="4">4 — Significant</option>
-          <option value="5">5 — Severe</option>
+          <option value="1">1: Mild</option>
+          <option value="2">2: Noticeable</option>
+          <option value="3">3: Moderate</option>
+          <option value="4">4: Significant</option>
+          <option value="5">5: Severe</option>
         </select>
       </div>
       <div class="field"><label for="pain-description">Description (optional)</label><input type="text" id="pain-description" maxlength="255" placeholder="Sharp pain after running downhill"></div>
       <div class="modal-actions">
-        <button type="button" class="btn btn-sec" style="flex:1" data-action="close-modal" data-modal="modal-log-pain">Cancel</button>
-        <button type="submit" class="btn btn-prim" style="flex:1" id="log-pain-btn">Log It</button>
+        <button type="button" class="btn btn-sec" data-action="close-modal" data-modal="modal-log-pain">Cancel</button>
+        <button type="submit" class="btn btn-prim" id="log-pain-btn">Log pain</button>
       </div>
     </form>
   </div>
