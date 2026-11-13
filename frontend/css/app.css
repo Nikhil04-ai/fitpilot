@@ -420,7 +420,7 @@ h1, h2, h3 { text-wrap: balance; }
 /* ═══ PAGES NOT YET REDONE ═══
  * The rules below keep every other panel on the new palette and scale until its own
  * pass. They restate the old classes in tokens and nothing more. */
-.ps, .pb-card, .vsp { background: var(--color-paper-2); border-radius: var(--radius); }
+.ps, .vsp { background: var(--color-paper-2); border-radius: var(--radius); }
 .av-lg { width: 56px; height: 56px; font-size: var(--text-2xl); margin-bottom: var(--space-sm); }
 .pname { font-size: var(--text-xl); }
 .phandle { font-size: var(--text-sm); color: var(--color-muted); margin-top: var(--space-3xs); }
@@ -515,11 +515,15 @@ select.multi { min-height: 6rem; }
 .mk-pct { display: block; font-size: var(--text-xs); font-variant-numeric: tabular-nums; }
 .mdot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
 
-.pb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-md); }
-.pb-card { padding: var(--space-md); }
-.pb-type { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; font-size: var(--text-md); margin-bottom: var(--space-xs); }
-.pb-row { display: flex; justify-content: space-between; font-size: var(--text-sm); margin-bottom: var(--space-2xs); }
-.pb-val { font-variant-numeric: tabular-nums; font-weight: 600; }
+/* ═══ PERSONAL BESTS ═══ */
+/* A record row: the activity or movement, then its records as right-aligned figures with
+   the unit muted beside each, so the figures read down a column like a results sheet. */
+.logrow.pb { grid-template-columns: minmax(0, 1fr) auto; }
+.pb-act .am { grid-template-columns: 6.5rem 7.5rem 6rem; }
+.pb-mov .am { grid-template-columns: 8rem 6rem 7rem 6rem; }
+/* An empty cell still gets a line box, so the figures' shared baseline doesn't come from
+   an empty first cell and push a row (a bodyweight lift) taller than the others. */
+.pb .am > span:empty::before { content: "\200b"; }
 
 .exrows { display: flex; flex-direction: column; gap: var(--space-xs); margin-bottom: var(--space-xs); }
 .exrow, .exhead { display: grid; grid-template-columns: minmax(0, 1fr) 64px 64px 72px 32px; gap: var(--space-xs); align-items: center; }
@@ -722,9 +726,11 @@ body.modal-open { overflow: hidden; }
    column: when on top, then what, its figures, and its actions kept in view. */
 @container log (max-width: 600px) {
   .ai-head { display: none; }
-  .logrow, .logrow.meal, .logrow.pain, .logrow.rec { grid-template-columns: minmax(0, 1fr) auto; padding-inline: 0; }
+  .logrow, .logrow.meal, .logrow.pain, .logrow.rec, .logrow.pb { grid-template-columns: minmax(0, 1fr) auto; padding-inline: 0; }
   .logrow > .ai-when { grid-column: 1 / -1; }
   .logrow > .ai-body { grid-column: 1; }
+  /* A record row has no "when", so its figures sit directly under its name. */
+  .logrow.pb > .am { grid-row: 2; }
   .am { display: flex; gap: var(--space-md); grid-column: 1; grid-row: 3; }
   .am > span:empty { display: none; }
   .logrow > .ai-acts { grid-column: 2; grid-row: 2 / span 2; align-self: start; }

@@ -1494,3 +1494,53 @@ recast on charcoal with a restrained lime. No backend, API or auth change; no fr
   columns widened and the head's left alone, "Rest left" lands at 1296 against 1248.
 * **sloplint:** not re-run this session. The one
   failure the last run reported, the dash in this page's subtitle, is gone by inspection.
+
+## Phase 39 — Redesign, step 13: Personal Bests (2026-11-13)
+
+* **Page:** the title and its line, then two sheets in the Pain Log's row shape: "By activity" and
+  "By movement". It was two grids of cards, each a name with label-and-value pairs, under
+  headings with inline styles, with an emoji per activity and "🏆" and "🏋️" on the empty states.
+* **A record is a row.** An activity row is the type in condensed capitals, then Longest (min), Most
+  calories (cal) and Furthest (km). A movement row is the movement, then Heaviest ("65 kg x 5"),
+  Est. 1RM, Best volume and Most reps. Figures are right-aligned with a muted unit beside each,
+  and the column heads sit over them. A record a row doesn't have (distance for yoga; load, 1RM and
+  volume for a pull-up) leaves its cell empty: the cards printed dashes for the first and
+  filtered the rows out for the second, which made the cards uneven. Zero is still a value and is
+  shown. Each figure's name is visually hidden until the row stacks (under 600px of list width), as
+  on the pain rows, and always read by a screen reader.
+* **Order:** activities by name (the API gives no order, so the cards could move between visits);
+  movements as the server sends them, strongest estimated 1RM first.
+* **No dates.** `achievedAt` exists on both records, but it is one time per row (the latest record
+  of any kind, not each figure's) and it is the server's clock when a record broke or the
+  workout's start time after an edit rebuilt it, so a "when" column would not mean one thing.
+  It would be a small addition if wanted.
+* **Copy:** "By Exercise" is "By movement", which is what the rows are. The empty states are one
+  sentence each; only the first has a Log workout button, since the second is the same action.
+  Type names read as words ("Weight training"). `ACT_ICON` (the emoji table) is removed from
+  `activities.js`; this page was its only user.
+* **Fixed on the way:** a row whose first cells are empty (a bodyweight lift) came out 3px taller
+  than the rest, because the figures' shared baseline came from an empty cell. Empty cells now
+  hold a zero-width line box.
+* **CSS:** `.pb-grid`, `.pb-card`, `.pb-type`, `.pb-row` and `.pb-val` are gone. No backend or API
+  change.
+
+### Verification
+
+* **Unit:** `tests/bests.test.mjs` (9 tests): an activity row's name and figures, an empty cell for
+  a missing distance (no dash, zero or "null"), zero shown as a value, type names, a lift's
+  heaviest set with reps and its 1RM and volume, a bodyweight movement with only reps, a load with
+  no rep count, the name fallbacks, and no emoji, dash or inline style with names escaped.
+  Frontend 160 passing.
+* **Browser** (`bests.mjs`, headless Chrome, H2 backend behind the JDBC-line gate; an account that
+  logged a run, a yoga session and a lifting session with bench press, pull-ups and a curl whose
+  name holds `<b>`, and an empty account): 13 checks pass. They cover the empty states and the
+  button opening the dialog, the titles, the activity rows in name order with 48 min, 540 cal and
+  10.2 km for the run and empty cells for yoga's distance, the movement rows with Bench Press first
+  at "65 kg x 5", 75.8 kg and 1300 kg, Pull-up with only "12 reps", the markup in a name shown as
+  text, no old markup, the heads over the figures in both tables, equal row heights, the stacked
+  layout at 390px (heads hidden, each figure naming itself, the figures directly under the name),
+  and returning to the page not duplicating rows. No console errors and no overflow at 1440, 1024,
+  768 and 390px. Both of the new layout checks were shown to fail: the alignment check with the
+  data rows' columns changed (columns land up to 72px off), and the height check with the
+  baseline fix switched off (rows 48, 48, 48, 48, 48, 51).
+* **sloplint:** not run this session.

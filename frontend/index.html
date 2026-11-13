@@ -289,12 +289,21 @@
         </div>
       </section>
 
-      <section class="panel" id="panel-bests">
-        <div class="sec-head"><h2 class="sec-ttl">Personal Bests</h2><div class="sec-sub">Your top record for every activity type, and for every movement you lift.</div></div>
-        <h3 class="clbl" style="margin-left:2px">By Activity</h3>
-        <div id="bests-list" style="margin-bottom:24px"><div class="loading-state"><div class="spinner"></div>Loading records…</div></div>
-        <h3 class="clbl" style="margin-left:2px">By Exercise</h3>
-        <div id="exercise-bests-list"><div class="loading-state"><div class="spinner"></div>Loading records…</div></div>
+      <section class="panel" id="panel-bests" aria-labelledby="bests-ttl">
+        <div class="sheet-head page-head">
+          <div>
+            <h2 class="sheet-ttl" id="bests-ttl">Personal bests</h2>
+            <div class="sec-sub">Your top record for every activity you train, and for every movement you lift.</div>
+          </div>
+        </div>
+        <section class="sheet log" aria-labelledby="bests-act-ttl">
+          <div class="sheet-head"><h3 class="sheet-ttl" id="bests-act-ttl">By activity</h3></div>
+          <div id="bests-list"><div class="loading-state">Loading records…</div></div>
+        </section>
+        <section class="sheet log section-gap" aria-labelledby="bests-mov-ttl">
+          <div class="sheet-head"><h3 class="sheet-ttl" id="bests-mov-ttl">By movement</h3></div>
+          <div id="exercise-bests-list"><div class="loading-state">Loading records…</div></div>
+        </section>
       </section>
 
       <!-- AI Coach: the week as a short report (its headline, the narrative, what it

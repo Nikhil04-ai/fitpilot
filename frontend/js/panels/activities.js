@@ -8,11 +8,6 @@ import { panelLoaders } from '../nav.js';
 // ACTIVITIES
 // ═══════════════════════════════════════════════════════════════════════
 
-export const ACT_ICON = {
-  RUNNING:'🏃', WALKING:'🚶', CYCLING:'🚴', SWIMMING:'🏊', WEIGHT_TRAINING:'🏋️',
-  YOGA:'🧘', HIIT:'⚡', CARDIO:'🏄', STRETCHING:'🤸', OTHER:'➕'
-};
-
 /** Labels for the metrics Gemini extracts, so a parsed "5km" is actually shown. */
 const METRIC_LABEL = {
   distance_km: v => `${v} km`,
