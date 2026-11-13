@@ -1444,3 +1444,53 @@ recast on charcoal with a restrained lime. No backend, API or auth change; no fr
   400 from the second press.
 * **sloplint:** the Workout Plans dash is gone; 1 fail left, in the Muscle Recovery subtitle, a
   page not yet redone.
+
+## Phase 38 — Redesign, step 12: Muscle Recovery (2026-11-13)
+
+* **Page:** one sheet in the Pain Log's shape: the title and its line, three figures in a ruled row
+  ("4 Recovered", "1 Recovering", "4 Need rest"), then the groups as log rows: when the muscle was
+  last worked, its name in condensed capitals, its state in a word, and the rest left. It was a
+  box holding one sentence and a legend of three coloured squares, then a list with a square per
+  row and "Fully recovered ✓". The legend is gone: each row says its state in words, so a colour
+  is no longer the only thing saying it.
+* **Colour:** only "Needs rest" (more than half the window still ahead) is coloured, in the warn
+  tone; "Recovering" and "Recovered" are plain ink. Lime stays off the page, as nothing here is a
+  record or an action in play.
+* **Rest left** is a figure and a muted unit ("38 h of 48 h"), in a column the head lines up with.
+  A recovered group has none left, so its cell is empty, not a zero. Its name is visually hidden
+  until the row stacks (under 600px of list width), as on the pain rows, and always read by a
+  screen reader. The heads fold away in a narrow list.
+* **Order:** most rest still to take first, then the most recently worked (the old sort left ties
+  in database order).
+* **Copy:** the subtitle said "48-hour recovery windows", which is only the default (each group
+  carries its own `recommendedRestHours`), and had a dash; it now says what the page is for. The
+  empty state is one sentence and a "Log workout" button, with no shield emoji. A group with no
+  last-worked time reads as recovered and shows no date, rather than being dated 1970.
+* **CSS:** `.rg`, `.bmap`, `.leg`, `.li`, `.ld`, `.rd`, `.rl`, `.ri`, `.rmu` and `.rt2` are gone;
+  nothing else used them. No backend or API change.
+* **Known, not changed:** the page measures "rest left" in the browser's clock, but the server
+  stamps a workout's muscles with its own `LocalDateTime.now()` (and the recalculation after an edit
+  uses the workout's start time, which the browser sent in its own local time). A server in another
+  time zone than the browser skews the figure by the offset. Render runs in UTC, so a deployed
+  instance read from India would show about 5.5 h too much or too little rest. The fix is on the
+  server (return an offset or an instant), so it is left for a decision.
+
+### Verification
+
+* **Unit:** `tests/recovery.test.mjs` (8 tests): the three states and their boundaries (exactly
+  half left is still "recovering"), rest left never negative and defaulting to 48 h, a null or
+  unparseable last-worked time, the sort and its tie-break, the row's parts, only "needs rest"
+  coloured and an empty cell for a recovered group, no emoji, tick, dot, dash or inline style with
+  an unknown muscle escaped, and the summary's counts. Frontend 151 passing.
+* **Browser** (`recovery.mjs`, headless Chrome, H2 backend behind the JDBC-line gate; an account
+  with nine muscle groups in three states, made by logging a run, a ride and a swim and editing one
+  so the recalculation dated them 10, 30 and 70 hours back, and an empty account): 12 checks pass.
+  They cover the empty state and its button opening the dialog, the figures (4, 1, 4), the nine rows in
+  order, "38 h of 48 h" on the four needs-rest rows and 18 h on Glutes, the muscles named in words,
+  only the needs-rest rows being warn-coloured, no old markup, the heads within 2px of their
+  columns, the stacked layout at 390px (heads hidden, each row naming Status and Rest left, three
+  figures still across), and returning to the page not duplicating anything. No console errors and
+  no overflow at 1440, 1024, 768 and 390px. The alignment check was shown to fail: with the rows'
+  columns widened and the head's left alone, "Rest left" lands at 1296 against 1248.
+* **sloplint:** not re-run this session. The one
+  failure the last run reported, the dash in this page's subtitle, is gone by inspection.

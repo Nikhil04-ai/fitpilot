@@ -420,7 +420,7 @@ h1, h2, h3 { text-wrap: balance; }
 /* ═══ PAGES NOT YET REDONE ═══
  * The rules below keep every other panel on the new palette and scale until its own
  * pass. They restate the old classes in tokens and nothing more. */
-.ps, .pb-card, .bmap, .ri, .vsp { background: var(--color-paper-2); border-radius: var(--radius); }
+.ps, .pb-card, .vsp { background: var(--color-paper-2); border-radius: var(--radius); }
 .av-lg { width: 56px; height: 56px; font-size: var(--text-2xl); margin-bottom: var(--space-sm); }
 .pname { font-size: var(--text-xl); }
 .phandle { font-size: var(--text-sm); color: var(--color-muted); margin-top: var(--space-3xs); }
@@ -558,18 +558,14 @@ select.multi { min-height: 6rem; }
 .plan-card .cf { margin-top: auto; }
 .plan-desc { margin-bottom: var(--space-md); font-size: var(--text-sm); color: var(--color-muted); line-height: 1.6; }
 
-.rg { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: var(--space-lg); align-items: start; }
-.bmap { padding: var(--space-lg); display: flex; flex-direction: column; align-items: center; }
-.leg { display: flex; gap: var(--space-md); justify-content: center; flex-wrap: wrap; margin-top: var(--space-md); }
-.li { display: flex; align-items: center; gap: var(--space-2xs); font-size: var(--text-sm); color: var(--color-ink-2); }
-.ld, .rd { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
-.ld.f, .rd.f { background: var(--color-accent); }
-.ld.m, .rd.m { background: var(--color-warn); }
-.ld.s, .rd.s { background: var(--color-error); }
-.rl { display: flex; flex-direction: column; gap: var(--space-xs); }
-.ri { display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm) var(--space-md); }
-.rmu { flex: 1; font-size: var(--text-sm); font-weight: 500; }
-.rt2 { font-size: var(--text-sm); color: var(--color-muted); font-variant-numeric: tabular-nums; }
+/* ═══ MUSCLE RECOVERY ═══ */
+/* A muscle group: when it was last worked, its name, then its state and the rest left.
+   No actions column: a row is a reading, not a record you edit. */
+.logrow.rec { grid-template-columns: 9.5rem minmax(0, 1fr) 14rem; }
+.rec .am { grid-template-columns: 7rem 6.5rem; text-align: left; }
+.rec-state { font-family: var(--font-body); font-weight: 500; color: var(--color-ink-2); }
+/* The one coloured thing on the page: a muscle with more than half its rest still to take. */
+.rec-state.warn { color: var(--color-warn); }
 
 /* ═══ HEALTH ═══ */
 .figs-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -710,7 +706,7 @@ body.modal-open { overflow: hidden; }
 @media (max-width: 1000px) {
   .gcol-260 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .g3, .g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .rg, .g2 { grid-template-columns: minmax(0, 1fr); }
+  .g2 { grid-template-columns: minmax(0, 1fr); }
 }
 /* Under 60rem the sidebar is a drawer behind the menu button, so a tablet gets the
    full width for the log. */
@@ -726,7 +722,7 @@ body.modal-open { overflow: hidden; }
    column: when on top, then what, its figures, and its actions kept in view. */
 @container log (max-width: 600px) {
   .ai-head { display: none; }
-  .logrow, .logrow.meal, .logrow.pain { grid-template-columns: minmax(0, 1fr) auto; padding-inline: 0; }
+  .logrow, .logrow.meal, .logrow.pain, .logrow.rec { grid-template-columns: minmax(0, 1fr) auto; padding-inline: 0; }
   .logrow > .ai-when { grid-column: 1 / -1; }
   .logrow > .ai-body { grid-column: 1; }
   .am { display: flex; gap: var(--space-md); grid-column: 1; grid-row: 3; }
