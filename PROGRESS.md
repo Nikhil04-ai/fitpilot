@@ -1544,3 +1544,48 @@ recast on charcoal with a restrained lime. No backend, API or auth change; no fr
   data rows' columns changed (columns land up to 72px off), and the height check with the
   baseline fix switched off (rows 48, 48, 48, 48, 48, 51).
 * **sloplint:** not run this session.
+
+## Phase 40 — Redesign, step 14: Notifications (2026-11-14)
+
+* **Page:** one sheet: the title and its line, "2 unread" beside "Mark all read", then the feed.
+  It was a card of rows each led by a tile holding an emoji (a clipboard, a chart, crossed swords, a
+  target, a bell), with "→" and "✓" as the buttons and an inline-styled header.
+* **A notification is a log row:** when, then its title in the body face (it is a sentence the
+  server wrote, not a name, so it does not get the condensed capitals), its text, its kind in words
+  ("Weekly digest", "Plateau", "Challenge result", "Goal deadline"; a general or unknown one carries
+  none), and the actions as words: "Open" where there is somewhere to go, "Mark read" while unread.
+  The buttons are named for their notification ("Open: Friend request from Ann Notes") and lost
+  their `title` attributes, which said the same thing less well.
+* **Unread** is the paper step and a heavier title it already had, plus "Unread." said to a
+  screen reader, so it never rests on the weight alone. The count is words beside the button, kept
+  current by `refreshUnreadCount()`, so it moves with the bell and the sidebar badge (marking one
+  read, Open, Mark all read, the 60s poll) and says nothing when nothing is waiting.
+* **Sidebar badge:** `#notif-badge` is hidden with the `hidden` attribute, not an inline style.
+  `#invite-badge` on Challenges still uses one; it belongs to that page's code (`social.js`).
+* **Copy:** no toast has an emoji or a cross or tick prefix ("Marked 3 as read", errors as the
+  server wrote them). The empty state is one sentence with no icon. A failed load clears the pager.
+* **CSS:** `.nt-ic` and `.nt-body` are gone; `.nt-ttl` and `.logrow.nt` are new, on the shared row.
+* **Selenium suite:** `c_notifications` found the buttons by `title="Open"` and
+  `title="Mark read"`; it now uses `data-action`. **Not run** (it needs the whole app up, and is
+  left for the end-of-redesign pass).
+
+### Verification
+
+* **Unit:** `tests/notifications.test.mjs` (10 tests): the row's parts, a kind label for each type
+  and none for general or unknown, unread as class, bold title and screen-reader words (and read as
+  none of them), Open only where there is a target, buttons named and escaped, no emoji, arrow,
+  tick, title attribute or inline style, free text escaped; and the page against a fake server:
+  the count, bell and sidebar badge agreeing, nothing unread hiding the bell and badge, 99+, an
+  empty feed, marking one read posting to its id, a failure shown plain, and Mark all read. Frontend
+  170 passing.
+* **Browser** (`notifs.mjs`, headless Chrome, H2 backend behind the JDBC-line gate; three friend
+  requests left three real unread notifications, one from a sender named `<b>Mal</b>`, and an empty
+  account): 17 checks pass. They cover the empty state with the bell and badge hidden, the three
+  counts agreeing, the rows, the markup in a name shown as text, titles in the body face, button
+  names, no old markup, marking one read (count 2), unread against read (the paper step and weight),
+  the when and actions columns lining up, the stacked layout at 390px, Open landing on Challenges and
+  the bell dropping to 1, Enter on a focused Mark read hiding the bell, two new arrivals on top, and
+  Mark all read ("Marked 2 as read", every unread state gone). No console errors and no overflow at
+  1440, 1024, 768 and 390px. The alignment check was shown to fail: with the actions pushed 24px
+  on unread rows, their right edges land at 1376 against 1400.
+* **sloplint:** not run this session.

@@ -159,7 +159,7 @@
       <button class="sb-link" data-panel="ai" data-action="nav">AI Coach</button>
       <div class="sb-group" aria-hidden="true">People</div>
       <button class="sb-link" data-panel="challenges" data-action="nav">Challenges<span class="sb-badge" id="invite-badge" style="display:none">0</span></button>
-      <button class="sb-link" data-panel="notifications" data-action="nav">Notifications<span class="sb-badge" id="notif-badge" style="display:none">0</span></button>
+      <button class="sb-link" data-panel="notifications" data-action="nav">Notifications<span class="sb-badge" id="notif-badge" hidden>0</span></button>
       <button class="sb-link" data-panel="profile" data-action="nav">Profile</button>
     </nav>
     <div class="sb-user">
@@ -506,13 +506,19 @@
         </section>
       </section>
 
-      <section class="panel" id="panel-notifications">
-        <div class="sec-head" style="display:flex;justify-content:space-between;align-items:flex-end">
-          <div><h2 class="sec-ttl">Notifications</h2><div class="sec-sub">What FitPilot worked out while you weren&#39;t looking.</div></div>
-          <button class="btn btn-sec btn-sm" data-action="mark-all-read" id="mark-all-read-btn">Mark all read</button>
-        </div>
-        <div class="card">
-          <div class="af" id="notif-list"><div class="loading-state"><div class="spinner"></div>Loading…</div></div>
+      <section class="panel" id="panel-notifications" aria-labelledby="notif-ttl">
+        <div class="sheet">
+          <div class="sheet-head">
+            <div>
+              <h2 class="sheet-ttl" id="notif-ttl">Notifications</h2>
+              <div class="sec-sub">What FitPilot worked out while you weren&#39;t looking.</div>
+            </div>
+            <div class="head-acts">
+              <span class="sheet-meta" id="notif-count" aria-live="polite"></span>
+              <button type="button" class="btn btn-sec btn-sm" data-action="mark-all-read" id="mark-all-read-btn">Mark all read</button>
+            </div>
+          </div>
+          <div class="af" id="notif-list"><div class="loading-state">Loading…</div></div>
           <div class="pager" id="notif-pager"></div>
         </div>
       </section>

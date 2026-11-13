@@ -8,9 +8,11 @@ import { nav, panelLoaders } from '../nav.js';
 // NOTIFICATIONS  (PLAN P2-2)
 // ═══════════════════════════════════════════════════════════════════════
 
-const NOTIF_ICON = {
-  WEEKLY_DIGEST: '📋', PLATEAU: '📉', CHALLENGE_RESULT: '⚔️',
-  GOAL_DEADLINE: '🎯', GENERAL: '🔔'
+// What each kind of notification is about, in words. A general one is not about anything in
+// particular, so it carries no label; neither does a kind this page doesn't know yet.
+const KIND_LABEL = {
+  WEEKLY_DIGEST: 'Weekly digest', PLATEAU: 'Plateau', CHALLENGE_RESULT: 'Challenge result',
+  GOAL_DEADLINE: 'Goal deadline'
 };
 
 let notifPage = 0;
@@ -27,10 +29,13 @@ export async function refreshUnreadCount() {
     const { unread } = await api('/api/notifications/unread-count');
     const bell = document.getElementById('bell-count');
     const badge = document.getElementById('notif-badge');
+    const count = document.getElementById('notif-count');
     const label = unread > 99 ? '99+' : String(unread);
 
     if (bell) { bell.textContent = label; bell.hidden = !unread; }
-    if (badge) { badge.textContent = label; badge.style.display = unread ? '' : 'none'; }
+    if (badge) { badge.textContent = label; badge.hidden = !unread; }
+    // The page's own count, in words; nothing is said when nothing is waiting.
+    if (count) count.textContent = unread ? `${label} unread` : '';
   } catch (_) {
     // A failed count is not worth a toast — the feed itself still works.
   }
@@ -71,32 +76,39 @@ export async function loadNotifications(page = 0) {
 
     el.innerHTML = items.length
       ? items.map(notificationRow).join('')
-      : emptyState('🔔', 'Nothing yet. Digests, plateau warnings and challenge results land here.');
+      : emptyState('', 'Nothing yet. Digests, plateau warnings and challenge results land here.');
 
     renderPager('notif-pager', page, res.page?.totalPages ?? 1, loadNotifications);
     refreshUnreadCount();
   } catch (err) {
     el.innerHTML = `<div class="error-state">Couldn't load notifications: ${escapeHtml(err.message)}</div>`;
+    document.getElementById('notif-pager').innerHTML = '';
   }
 }
 
-function notificationRow(n) {
-  const icon = NOTIF_ICON[n.type] || '🔔';
+/**
+ * One notification, as a row of the feed: when, then what it says, then what you can do.
+ *
+ * Unread is a paper step and a heavier title (`.ai.unread`), and is also said in words to a
+ * screen reader, so it never rests on the weight alone. The buttons are named for their
+ * notification, as the workout rows' are. Only the id goes in the data attributes: titles and
+ * bodies are free text, and the handlers look up what they need by id (AGENT.md §8).
+ */
+export function notificationRow(n) {
   const when = n.createdAt ? shortDate(n.createdAt) : '';
-
-  // Only the id goes on the buttons. Titles and bodies are free text, and the
-  // handlers look up what they need by id (AGENT.md §8).
+  const kind = KIND_LABEL[n.type] || '';
+  const named = escapeHtml(n.title || 'notification');
   return `
-    <div class="ai ${n.isRead ? '' : 'unread'}">
-      <div class="nt-ic">${icon}</div>
+    <div class="ai logrow nt${n.isRead ? '' : ' unread'}">
+      <div class="ai-when">${escapeHtml(when)}</div>
       <div class="ai-body">
-        <div class="an">${escapeHtml(n.title || '')}</div>
-        ${n.body ? `<div class="nt-body">${escapeHtml(n.body)}</div>` : ''}
-        <div class="ai-sub"><span>${escapeHtml(when)}</span></div>
+        <div class="nt-ttl">${n.isRead ? '' : '<span class="visually-hidden">Unread. </span>'}${escapeHtml(n.title || '')}</div>
+        ${n.body ? `<div class="ai-note">${escapeHtml(n.body)}</div>` : ''}
+        ${kind ? `<div class="ai-sub">${escapeHtml(kind)}</div>` : ''}
       </div>
       <div class="ai-acts">
-        ${n.targetPanel ? `<button title="Open" data-action="open-notification" data-id="${n.id}">→</button>` : ''}
-        ${n.isRead ? '' : `<button title="Mark read" data-action="mark-notification-read" data-id="${n.id}">✓</button>`}
+        ${n.targetPanel ? `<button type="button" data-action="open-notification" data-id="${n.id}" aria-label="Open: ${named}">Open</button>` : ''}
+        ${n.isRead ? '' : `<button type="button" data-action="mark-notification-read" data-id="${n.id}" aria-label="Mark read: ${named}">Mark read</button>`}
       </div>
     </div>`;
 }
@@ -122,7 +134,7 @@ export async function markNotificationRead(id, opts = {}) {
     refreshUnreadCount();
     return updated;
   } catch (err) {
-    toast('❌ ' + err.message, true);
+    toast(err.message, true);
     return null;
   }
 }
@@ -132,10 +144,10 @@ export async function markAllNotificationsRead() {
   btn.disabled = true;
   try {
     const { marked } = await api('/api/notifications/read-all', { method: 'POST' });
-    toast(marked ? `✅ Marked ${marked} as read` : 'Nothing unread');
+    toast(marked ? `Marked ${marked} as read` : 'Nothing unread');
     loadNotifications(notifPage);
   } catch (err) {
-    toast('❌ ' + err.message, true);
+    toast(err.message, true);
   } finally {
     btn.disabled = false;
   }

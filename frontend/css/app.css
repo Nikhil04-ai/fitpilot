@@ -453,8 +453,15 @@ h1, h2, h3 { text-wrap: balance; }
 .dg-fact span { font-size: var(--text-xs); color: var(--color-muted); }
 .dg-src { font-size: var(--text-xs); font-weight: 600; padding: var(--space-3xs) var(--space-xs); border-radius: 2px; white-space: nowrap; background: var(--color-paper-3); color: var(--color-ink-2); }
 
-.nt-ic { width: 32px; height: 32px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: var(--radius); background: var(--color-paper-3); font-size: var(--text-sm); }
-.nt-body { font-size: var(--text-sm); color: var(--color-muted); line-height: 1.5; margin-top: var(--space-3xs); }
+/* ═══ NOTIFICATIONS ═══ */
+/* A notification: when, what it says, then what you can do with it. The title is a sentence
+   the server wrote, so it is set in the body face, not the condensed capitals a name gets. */
+.logrow.nt { grid-template-columns: 9.5rem minmax(0, 1fr) auto; }
+.logrow.nt > .ai-acts { grid-column: 3; grid-row: 1; }
+.nt-ttl { font-weight: 500; font-size: var(--text-md); line-height: 1.35; overflow-wrap: anywhere; }
+.ai.unread .nt-ttl { font-weight: 700; }
+/* The count of what is waiting, beside Mark all read. */
+#notif-count:empty { display: none; }
 
 /* ═══ CHALLENGES ═══
  * A challenge is a ruled note like an insight: what it is scored on and its status,
@@ -726,7 +733,7 @@ body.modal-open { overflow: hidden; }
    column: when on top, then what, its figures, and its actions kept in view. */
 @container log (max-width: 600px) {
   .ai-head { display: none; }
-  .logrow, .logrow.meal, .logrow.pain, .logrow.rec, .logrow.pb { grid-template-columns: minmax(0, 1fr) auto; padding-inline: 0; }
+  .logrow, .logrow.meal, .logrow.pain, .logrow.rec, .logrow.pb, .logrow.nt { grid-template-columns: minmax(0, 1fr) auto; padding-inline: 0; }
   .logrow > .ai-when { grid-column: 1 / -1; }
   .logrow > .ai-body { grid-column: 1; }
   /* A record row has no "when", so its figures sit directly under its name. */
