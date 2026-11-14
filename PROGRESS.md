@@ -1644,3 +1644,30 @@ recast on charcoal with a restrained lime. No backend, API or auth change; no fr
   from the wrong-password step, and no overflow at 1440, 1024, 768 and 390px. The alignment check
   was shown to fail: with one button pushed 30px, the right edges land at 1408, 1378 and 1408.
 * **sloplint:** not run this session.
+
+## Phase 42 — Redesign, end-of-redesign pass (2026-11-15)
+
+All fourteen panels and the sign-in screen are redone (Phases 27 to 41). This pass ran the
+checks the page-by-page phases left for the end.
+
+* **Selenium suite: 31 of 31.** First run: 19 passed, 12 failed. Every failure was the suite, not
+  the app: it still looked for things the redesign removed. Fixed in
+  `frontend/tests/e2e/regression_selenium.py`:
+  * primary buttons found by `.btn-prim` and labels like "New Goal" (the page actions are
+    `btn-sec` now, with sentence-case text); they are found by `data-action` / `data-modal`;
+  * row actions found by `button[title="Edit"]`; the row buttons carry `aria-label` and a
+    `data-action`, so the suite uses `data-action` (and the button's text for friend rows);
+  * the auth links were `<a>`, now `button.link-btn`; the logout button lost its `title`;
+  * text compared case-sensitively against `.text`, which is the *rendered* text, and titles are
+    uppercased by CSS (`BEA'S BURN-OFF`); those comparisons now lower-case both sides;
+  * "45 min" is now a figure and a unit in two spans, so the check allows either spacing;
+  * the water toast reads "300 ml of water logged" (it was "+300ml").
+  Two further failures were cascades (a challenge left pending by the one before).
+* **Not exercised:** the plans check skipped itself ("no plans seeded"): the run used in-memory H2
+  with Flyway off, so the four system plans don't exist. Its two selectors were updated
+  (`[data-action="enroll-plan"]`, `[data-action="complete-plan-day"]`) but have not been driven.
+* **Backend:** 614 passing, 0 failing. **Frontend:** 180 passing, 0 failing.
+* **Run against** in-memory H2 (the JDBC line was checked before anything ran), no Gemini or mail
+  key, so nothing touched the local MySQL.
+* **sloplint:** still not run. The linter isn't in the repo or installed here; its source is
+  github.com/nutlope/hallmark (`skills/hallmark/scripts/sloplint.mjs`, run with `--scope app`).

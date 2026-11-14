@@ -28,6 +28,7 @@ import http.server
 import json
 import os
 import pathlib
+import re
 import socketserver
 import sys
 import tempfile
@@ -330,13 +331,13 @@ class Suite:
         self.check('browser console: no JS errors or CSP violations', self.c_console)
 
     def c_auth_tabs(self):
-        self.click_text('#form-login .auth-hint a', 'Create one')
+        self.click_text('#form-login .auth-hint .link-btn', 'Create one')
         self.visible('#form-register')
-        self.click_text('#form-register .auth-hint a', 'Log in')
+        self.click_text('#form-register .auth-hint .link-btn', 'Log in')
         self.visible('#form-login')
         self.click('#forgot-link')
         self.visible('#form-forgot')
-        self.click_text('#form-forgot .auth-hint a', 'Back to log in')
+        self.click_text('#form-forgot .auth-hint .link-btn', 'Back to log in')
         self.visible('#form-login')
         self.click('#tab-register')
         self.visible('#form-register')
@@ -444,7 +445,7 @@ class Suite:
         self.toast('Rated 4/5')
         self.settled('activities')
 
-        self.click('#activities-list .ai-acts button[title="Edit"]')
+        self.click('#activities-list .ai-acts button[data-action="edit-activity"]')
         self.visible('#modal-edit-activity.show')
         assert self.css('#edit-act-duration').get_attribute('value') == '30'
         assert self.css('#edit-act-notes').get_attribute('value') == "Leg day — it's fine"
@@ -453,14 +454,15 @@ class Suite:
         self.click('#edit-activity-btn')
         self.toast('Workout updated')
         self.settled('activities')
-        assert '45 min' in self.css('#activities-list .ai').text
+        # the unit is its own span now, so the rendered text may or may not have a space
+        assert re.search(r'45\s*min', self.css('#activities-list .ai').text, re.I), self.css('#activities-list .ai').text
 
-        self.click('#activities-list .ai-acts button[title="Delete"]')
+        self.click('#activities-list .ai-acts button[data-action="delete-activity"]')
         self.answer_confirm(False)
         time.sleep(0.5)
         assert len(rows()) == 1, 'cancel must keep the workout'
         self.clear_toast()
-        self.click('#activities-list .ai-acts button[title="Delete"]')
+        self.click('#activities-list .ai-acts button[data-action="delete-activity"]')
         self.answer_confirm(True)
         self.toast('Workout deleted')
         self.settled('activities')
@@ -468,7 +470,7 @@ class Suite:
 
     def c_goals(self):
         self.nav('goals')
-        self.click_text('#panel-goals .btn-prim', 'New Goal')
+        self.click('#panel-goals [data-action="create-goal"]')
         self.visible('#modal-create-goal.show')
         Select(self.css('#goal-type')).select_by_value('TARGET_WEIGHT')
         hint = self.css('#goal-target-hint').text
@@ -502,7 +504,7 @@ class Suite:
 
     def c_nutrition(self):
         self.nav('nutrition')
-        self.click_text('#panel-nutrition .btn-prim', 'Log Meal')
+        self.click('#panel-nutrition [data-modal="modal-log-meal"]')
         self.visible('#modal-log-meal.show')
         self.click('#meal-tab-natural')
         self.visible('#form-log-meal-natural')
@@ -515,7 +517,7 @@ class Suite:
         self.toast('Meal logged')
         self.settled('nutrition')
 
-        self.click('#nutrition-meals .ai-acts button[title="Edit"]')
+        self.click('#nutrition-meals .ai-acts button[data-action="edit-meal"]')
         self.visible('#modal-edit-meal.show')
         assert self.css('#edit-meal-description').get_attribute('value') == "Oats 'n' berries"
         self.type('#edit-meal-calories', 500)
@@ -525,7 +527,7 @@ class Suite:
         self.settled('nutrition')
 
         self.clear_toast()
-        self.click('#nutrition-meals .ai-acts button[title="Delete"]')
+        self.click('#nutrition-meals .ai-acts button[data-action="delete-meal"]')
         self.answer_confirm(True)
         self.toast('Meal removed')
 
@@ -536,7 +538,7 @@ class Suite:
                                  {'bodyPart': 'NECK', 'severity': 2, 'description': f'seed {i}'})
             assert s == 200, (s, b)
         self.nav('pain')
-        self.click_text('#panel-pain .btn-prim', 'Log Pain')
+        self.click('#panel-pain [data-modal="modal-log-pain"]')
         self.visible('#modal-log-pain.show')
         self.type('#pain-description', 'from the modal')
         self.clear_toast()
@@ -556,12 +558,12 @@ class Suite:
         self.nav('health')
         self.type('#water-amount', 300)
         self.clear_toast()
-        self.click_text('#water-content .btn-prim', 'Add')
-        return self.toast('+300ml')
+        self.click('#water-content [data-action="log-water"]')
+        return self.toast('300 ml of water logged')
 
     def c_plans(self):
         self.nav('plans')
-        enroll = self.all('#plans-list .cjb')
+        enroll = self.all('#plans-list [data-action="enroll-plan"]')
         if not enroll:
             return 'no plans seeded on this database; skipped'
         self.clear_toast()
@@ -569,13 +571,13 @@ class Suite:
         self.toast('Enrolled')
         self.settled('plans')
         self.clear_toast()
-        self.click_text('#active-plan-card .btn-prim', 'Mark Today Complete')
+        self.click('#active-plan-card [data-action="complete-plan-day"]')
         return self.toast('Day complete')
 
     def c_plateau(self):
         self.nav('insights')
         before = self.css('#plateau-result').text
-        self.click_text('#panel-insights .btn-prim', 'Check')
+        self.click('#panel-insights [data-action="check-plateau"]')
         WebDriverWait(self.d, 15).until(lambda d: self.css('#plateau-result').text not in (before, '', 'Checking…')
                                         and not self.all('#plateau-result .spinner'))
         return self.css('#plateau-result').text[:60]
@@ -614,7 +616,7 @@ class Suite:
 
         def act(name, title):
             row = next(r for r in self.all('#friend-invites .ai') if name in r.text)
-            self.press(row.find_element(By.CSS_SELECTOR, f'button[title="{title}"]'))
+            self.press(row.find_element(By.XPATH, f'.//button[normalize-space(.)="{title}"]'))
 
         self.clear_toast()
         act('Bea', 'Accept')
@@ -639,12 +641,12 @@ class Suite:
         act('Eve', 'Accept')
         WebDriverWait(self.d, 10).until(lambda d: len(self.all('#friends-list .ai')) == 3)
         eve = lambda: [r for r in self.all('#friends-list .ai') if 'Eve' in r.text]
-        self.press(eve()[0].find_element(By.CSS_SELECTOR, 'button[title="Remove"]'))
+        self.press(eve()[0].find_element(By.XPATH, './/button[normalize-space(.)="Remove"]'))
         self.answer_confirm(False)
         time.sleep(0.5)
         assert eve(), 'cancel must keep the friend'
         self.clear_toast()
-        self.press(eve()[0].find_element(By.CSS_SELECTOR, 'button[title="Remove"]'))
+        self.press(eve()[0].find_element(By.XPATH, './/button[normalize-space(.)="Remove"]'))
         self.answer_confirm(True)
         self.toast('Friend removed')
         WebDriverWait(self.d, 10).until(lambda d: not eve())
@@ -652,7 +654,7 @@ class Suite:
 
     def c_challenge_cancel(self):
         self.nav('challenges')
-        self.click_text('#panel-challenges .btn-prim', 'New Challenge')
+        self.click('#panel-challenges [data-modal="modal-create-challenge"]')
         self.visible('#modal-create-challenge.show')
         Select(self.css('#ch-opponents')).select_by_value(self.b_id)
         self.type('#ch-title', "Bea's burn-off")
@@ -660,7 +662,7 @@ class Suite:
         self.click('#create-challenge-btn')
         self.toast('Challenge sent')
         self.settled('challenges')
-        card = lambda: [c for c in self.all('#challenges-list .chc') if "Bea's burn-off" in c.text]
+        card = lambda: [c for c in self.all('#challenges-list .chc') if "bea's burn-off" in c.text.lower()]
         WebDriverWait(self.d, 10).until(lambda d: card())
 
         self.press(card()[0].find_element(By.CSS_SELECTOR, '.g-del'))
@@ -691,7 +693,7 @@ class Suite:
         self.visible('#app-shell.show')
         self.nav('challenges')
         self.visible('#invites-section')
-        inv = lambda t: [c for c in self.all('#invites-list .chc') if t in c.text]
+        inv = lambda t: [c for c in self.all('#invites-list .chc') if t.lower() in c.text.lower()]
         WebDriverWait(self.d, 10).until(lambda d: inv('Cal invites') and inv('Bea invites'))
         assert self.css('#invite-badge').text == '2'
 
@@ -704,11 +706,11 @@ class Suite:
         self.toast('accepted')
         self.settled('challenges')
 
-        mine = lambda: [c for c in self.all('#challenges-list .chc') if 'Bea invites' in c.text]
+        mine = lambda: [c for c in self.all('#challenges-list .chc') if 'bea invites' in c.text.lower()]
         WebDriverWait(self.d, 10).until(lambda d: mine())
         self.press(mine()[0].find_element(By.XPATH, ".//button[contains(., 'Details')]"))
         self.visible('#modal-challenge-detail.show')
-        WebDriverWait(self.d, 10).until(lambda d: self.css('#cd-title').text == 'Bea invites')
+        WebDriverWait(self.d, 10).until(lambda d: self.css('#cd-title').text.lower() == 'bea invites')
         self.click('#modal-challenge-detail .modal-close')
         self.gone('#modal-challenge-detail.show')
 
@@ -785,7 +787,7 @@ class Suite:
     def c_toast_dismiss(self):
         self.nav('health')
         self.type('#water-amount', 100)
-        self.click_text('#water-content .btn-prim', 'Add')
+        self.click('#water-content [data-action="log-water"]')
         self.visible('#toast.on')
         self.click('#toast .toast-close')
         WebDriverWait(self.d, 5).until(lambda d: 'on' not in self.css('#toast').get_attribute('class'))
@@ -816,7 +818,7 @@ class Suite:
         self.visible('#panel-plans.on')
 
     def c_logout_login(self):
-        self.click('.sb-logout[title="Log out"]')
+        self.click('.sb-logout')
         self.visible('#auth-screen')
         assert self.local('fp_accessToken') is None
         assert '#' not in self.d.current_url, 'panel hash dropped on logout'

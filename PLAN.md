@@ -58,6 +58,11 @@ priority order, so priorities aren't re-derived from scratch every session.
 > **Status, 2026-11-06:** P5-18 is fixed, so every P5 item is done. A workout can't start
 > more than a day in the future (`PROGRESS.md` Phase 26). Backend suite: **614 passing**.
 
+> **Status, 2026-11-15:** the frontend redesign is finished: all fourteen panels and the
+> sign-in screen (`PROGRESS.md` Phases 27 to 42). Selenium suite **31 of 31**, frontend **180**,
+> backend **614** passing. Open: the sloplint pass (not run), and the plans Selenium check, which
+> needs the seeded plans (run against MySQL, or with Flyway on).
+
 ## Priority key
 
 | | Meaning |
