@@ -1589,3 +1589,58 @@ recast on charcoal with a restrained lime. No backend, API or auth change; no fr
   1440, 1024, 768 and 390px. The alignment check was shown to fail: with the actions pushed 24px
   on unread rows, their right edges land at 1376 against 1400.
 * **sloplint:** not run this session.
+
+## Phase 41 — Redesign, step 15: Profile (2026-11-14)
+
+* **Page:** the title and its line, then three sheets: "Your details" and "Password" side by side,
+  and "Your data" full width below. It was a "Profile Settings" header over three cards, each headed
+  by an uppercase label, with full-width buttons (one primary, one secondary), an inline margin,
+  `&mdash;` in the export blurb and a "⬇" on every export button. The topbar now says "Profile" too,
+  the word the page uses (it said "Profile Settings").
+* **Details:** the same five fields, now with the API's limits as `min` and `max` (weight 20 to
+  500 kg, height 50 to 275 cm, age 5 to 120, from P4-17), so a value the server would refuse is
+  caught in the form. The browser is only the first check; the server still refuses. A line says what
+  the figures are for ("set your calorie estimates and your BMI").
+* **Password:** the fields say what they are (`autocomplete` `current-password` and `new-password`, so a
+  password manager can help) and the hint says the one consequence that matters: it "signs you out on
+  every other device" (this device stays in, with the fresh pair the server returns, P4-3).
+* **Your data** is a ruled list: each way to take your data is a row with what it is and one
+  button ("Everything, as CSV files", "Everything, as one file", "One kind of data, as CSV" with its
+  picker), and the buttons share one right edge. The labels still name the file type, so the
+  Selenium suite finds them by ".json" and ".csv".
+* **Buttons:** all five are secondary, as on every other page, so the topbar's Log workout stays the
+  one primary. The two forms' buttons disable while they work ("Saving…", "Changing…") and come
+  back in a `finally`, so a second press can't send the same change twice and a failure never leaves a
+  dead button. (Neither was true before.)
+* **Copy:** no toast has an emoji, arrow, tick, cross or lock ("Profile updated.", the server's own
+  words on an error, "Downloaded fitpilot-export-2026-11-14.json").
+* **CSS:** `.clbl` and `.export-row` are gone (this page was their last user); `.xrows`, `.xrow`,
+  `.xname` and `.xnote` are new. No backend or API change.
+* **Selenium suite:** `c_profile` found the CSV button by "One dataset"; it now uses "Download .csv".
+  **Not run** (left for the end-of-redesign pass).
+
+### Verification
+
+* **Unit:** `tests/profile.test.mjs` (10 tests), the first this page has had: loading fills the form
+  and keeps the session user current; the picker comes from the server, in words, with an unknown
+  kind keeping its key; a failed load; saving sends the typed values with a blank number as null and
+  updates the sidebar name; the save button disabled while saving and restored after success or
+  failure; changing the password storing the fresh pair, clearing the form and naming the other
+  devices; a refused change keeping the tokens; each download going to its own path with a dated
+  name and the blob freed after the click; a failed download; and "Preparing" said before the request.
+  Frontend 180 passing.
+* **Browser** (`profile.mjs`, headless Chrome, H2 backend behind the JDBC-line gate, downloads into
+  a scratch folder): 23 checks pass. They cover the three sheets and titles, no emoji, dash,
+  inline style or old markup, the form filled from the server, the limits and `autocomplete` on the
+  fields, the picker's ten kinds in words, five secondary buttons, the two-column layout with level
+  tops and a full-width data sheet, the export buttons on one right edge; saving (toast, sidebar
+  name, button restored, the server holding the new values); a weight of 5 refused by the form
+  itself; a wrong current password (the server's words, as an error, the typed text kept, the button
+  back); a real change (fields cleared, a new token pair stored, the tab still signed in, the old
+  password refused by the server and the new one accepted); real downloads (the JSON holding the
+  workout, a real zip, the CSV of the chosen dataset with both pain entries, "Downloaded <name>"
+  said plain, Enter on a focused button downloading); the phone layout (sheets stacked, buttons on
+  screen, the select fitting); and the topbar title. No console errors beyond the one deliberate 400
+  from the wrong-password step, and no overflow at 1440, 1024, 768 and 390px. The alignment check
+  was shown to fail: with one button pushed 30px, the right edges land at 1408, 1378 and 1408.
+* **sloplint:** not run this session.

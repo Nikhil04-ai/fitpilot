@@ -40,7 +40,7 @@ const panelTitles = {
   notifications: 'Notifications',
   bests: 'Personal Bests', ai: 'AI Coach', pain: 'Pain Log', plans: 'Workout Plans',
   insights: 'Stats & Insights', challenges: 'Challenges', recovery: 'Muscle Recovery',
-  health: 'Health Tracking', profile: 'Profile Settings'
+  health: 'Health Tracking', profile: 'Profile'
 };
 
 // ── Panel load scheduling ─────────────────────────────────────────────

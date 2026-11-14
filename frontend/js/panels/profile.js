@@ -66,7 +66,7 @@ export async function downloadExport(format) {
     ? `fitpilot-${dataset}-${today()}.csv`
     : `fitpilot-export-${today()}.${format}`;
 
-  toast('⬇ Preparing your export…');
+  toast('Preparing your export…');
   try {
     const res = await api(path, { raw: true });
     const blob = await res.blob();
@@ -82,9 +82,9 @@ export async function downloadExport(format) {
     // life of the tab, which for a few years of training data is not nothing.
     URL.revokeObjectURL(url);
 
-    toast(`✅ Downloaded ${name}`);
+    toast(`Downloaded ${name}`);
   } catch (err) {
-    toast('❌ ' + err.message, true);
+    toast(err.message, true);
   }
 }
 
@@ -105,12 +105,15 @@ export async function loadProfile() {
     document.getElementById('prof-height').value = p.height ?? '';
     document.getElementById('prof-age').value    = p.age ?? '';
   } catch (err) {
-    toast('❌ Could not load profile: ' + err.message, true);
+    toast('Could not load profile: ' + err.message, true);
   }
 }
 
 export async function handleUpdateProfile(e) {
   e.preventDefault();
+  // Disabled while it saves, so a second press can't send the same change twice.
+  const btn = document.getElementById('save-profile-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
   const payload = {
     firstName: document.getElementById('prof-first').value.trim(),
     lastName:  document.getElementById('prof-last').value.trim(),
@@ -123,15 +126,19 @@ export async function handleUpdateProfile(e) {
     session.currentUser = { ...session.currentUser, ...p };
     localStorage.setItem('fp_user', JSON.stringify(session.currentUser));
     document.getElementById('sb-uname').textContent = [p.firstName, p.lastName].filter(Boolean).join(' ');
-    toast('✅ Profile updated!');
+    toast('Profile updated.');
   } catch (err) {
-    toast('❌ ' + err.message, true);
+    toast(err.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save changes';
   }
   return false;
 }
 
 export async function handleChangePassword(e) {
   e.preventDefault();
+  const btn = document.getElementById('change-password-btn');
+  btn.disabled = true; btn.textContent = 'Changing…';
   const payload = {
     currentPassword: document.getElementById('pwd-current').value,
     newPassword: document.getElementById('pwd-new').value
@@ -143,9 +150,11 @@ export async function handleChangePassword(e) {
     // the next time its access token lapsed.
     if (res && res.refreshToken) storeTokens(res.accessToken, res.refreshToken);
     document.getElementById('form-password').reset();
-    toast('🔒 Password changed. Other devices have been signed out.');
+    toast('Password changed. Other devices have been signed out.');
   } catch (err) {
-    toast('❌ ' + err.message, true);
+    toast(err.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Change password';
   }
   return false;
 }

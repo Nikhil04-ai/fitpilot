@@ -523,50 +523,67 @@
         </div>
       </section>
 
-      <section class="panel" id="panel-profile">
-        <div class="sec-head"><h2 class="sec-ttl">Profile Settings</h2></div>
+      <!-- Profile: your details, your password, and a copy of your data. The number limits on the
+           details match the API's (PLAN P4-17), so a value it would refuse is caught here. -->
+      <section class="panel" id="panel-profile" aria-labelledby="profile-ttl">
+        <div class="sheet-head page-head">
+          <div>
+            <h2 class="sheet-ttl" id="profile-ttl">Profile</h2>
+            <div class="sec-sub">Your details, your password, and a copy of your data.</div>
+          </div>
+        </div>
         <div class="grid g2">
-          <div class="card">
-            <h3 class="clbl">Edit Profile</h3>
+          <section class="sheet" aria-labelledby="prof-details-ttl">
+            <div class="sheet-head"><h3 class="sheet-ttl" id="prof-details-ttl">Your details</h3></div>
             <form id="form-profile" data-submit="update-profile">
               <div class="field-row">
-                <div class="field"><label for="prof-first">First Name</label><input type="text" id="prof-first" maxlength="255"></div>
-                <div class="field"><label for="prof-last">Last Name</label><input type="text" id="prof-last" maxlength="255"></div>
+                <div class="field"><label for="prof-first">First name</label><input type="text" id="prof-first" maxlength="255" autocomplete="given-name"></div>
+                <div class="field"><label for="prof-last">Last name</label><input type="text" id="prof-last" maxlength="255" autocomplete="family-name"></div>
               </div>
               <div class="field-row">
-                <div class="field"><label for="prof-weight">Weight (kg)</label><input type="number" id="prof-weight" step="0.1"></div>
-                <div class="field"><label for="prof-height">Height (cm)</label><input type="number" id="prof-height" step="0.1"></div>
+                <div class="field"><label for="prof-weight">Weight (kg)</label><input type="number" id="prof-weight" step="0.1" min="20" max="500" inputmode="decimal"></div>
+                <div class="field"><label for="prof-height">Height (cm)</label><input type="number" id="prof-height" step="0.1" min="50" max="275" inputmode="decimal"></div>
               </div>
-              <div class="field"><label for="prof-age">Age</label><input type="number" id="prof-age"></div>
-              <button type="submit" class="btn btn-prim btn-block">Save Changes</button>
+              <div class="field"><label for="prof-age">Age</label><input type="number" id="prof-age" min="5" max="120" inputmode="numeric"></div>
+              <p class="field-hint" id="prof-hint">Weight, height and age set your calorie estimates and your BMI.</p>
+              <button type="submit" class="btn btn-sec" id="save-profile-btn">Save changes</button>
             </form>
-          </div>
-          <div class="card">
-            <h3 class="clbl">Change Password</h3>
+          </section>
+          <section class="sheet" aria-labelledby="prof-pw-ttl">
+            <div class="sheet-head"><h3 class="sheet-ttl" id="prof-pw-ttl">Password</h3></div>
             <form id="form-password" data-submit="change-password">
-              <div class="field"><label for="pwd-current">Current Password</label><input type="password" id="pwd-current" required></div>
-              <div class="field"><label for="pwd-new">New Password</label><input type="password" id="pwd-new" required minlength="8"></div>
-              <button type="submit" class="btn btn-sec btn-block">Update Password</button>
+              <div class="field"><label for="pwd-current">Current password</label><input type="password" id="pwd-current" required autocomplete="current-password"></div>
+              <div class="field"><label for="pwd-new">New password</label><input type="password" id="pwd-new" required minlength="8" autocomplete="new-password" aria-describedby="pwd-hint"></div>
+              <p class="field-hint" id="pwd-hint">At least 8 characters. Changing it signs you out on every other device.</p>
+              <button type="submit" class="btn btn-sec" id="change-password-btn">Change password</button>
             </form>
-          </div>
+          </section>
         </div>
-              <div class="card" style="margin-top:18px">
-          <h3 class="clbl">Export Your Data</h3>
-          <div class="field-hint" style="margin-top:0">
-            Everything FitPilot holds on you &mdash; workouts, movements, meals, goals, body metrics,
-            sleep, water, pain logs and records. The archive is one CSV per dataset; the JSON is the
-            same data in one file. Neither contains your password.
+        <section class="sheet section-gap" aria-labelledby="prof-data-ttl">
+          <div class="sheet-head"><h3 class="sheet-ttl" id="prof-data-ttl">Your data</h3></div>
+          <p class="field-hint xnote">Everything FitPilot holds on you: workouts, movements, meals, goals, body metrics, sleep, water, pain logs and records. Neither file holds your password.</p>
+          <div class="xrows">
+            <div class="xrow">
+              <div class="xbody"><div class="xname">Everything, as CSV files</div><div class="xnote">One file for each kind of data, together in a zip.</div></div>
+              <button type="button" class="btn btn-sec btn-sm" data-action="export" data-format="zip">Download .zip</button>
+            </div>
+            <div class="xrow">
+              <div class="xbody"><div class="xname">Everything, as one file</div><div class="xnote">The same data as JSON.</div></div>
+              <button type="button" class="btn btn-sec btn-sm" data-action="export" data-format="json">Download .json</button>
+            </div>
+            <div class="xrow">
+              <div class="xbody">
+                <div class="xname">One kind of data, as CSV</div>
+                <div class="field">
+                  <label class="visually-hidden" for="export-dataset">Kind of data to download as CSV</label>
+                  <select id="export-dataset"></select>
+                </div>
+              </div>
+              <button type="button" class="btn btn-sec btn-sm" data-action="export" data-format="csv">Download .csv</button>
+            </div>
           </div>
-          <div class="export-row">
-            <button class="btn btn-prim btn-sm" data-action="export" data-format="zip">⬇ Everything (.zip of CSVs)</button>
-            <button class="btn btn-sec btn-sm" data-action="export" data-format="json">⬇ Everything (.json)</button>
-          </div>
-          <div class="export-row">
-            <select id="export-dataset" aria-label="Dataset to export as CSV"></select>
-            <button class="btn btn-ghost btn-sm" data-action="export" data-format="csv">⬇ One dataset (.csv)</button>
-          </div>
-        </div>
-</section>
+        </section>
+      </section>
 
     </div>
   </main>

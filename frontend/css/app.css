@@ -53,18 +53,18 @@ h1, h2, h3 { text-wrap: balance; }
 /* ═══ FORMS ═══ */
 .field { margin-bottom: var(--space-md); }
 .field label { display: block; font-size: var(--text-sm); font-weight: 500; color: var(--color-ink-2); margin-bottom: var(--space-2xs); }
-.field input, .field select, .field textarea, .export-row input, .export-row select, .exrow input {
+.field input, .field select, .field textarea, .exrow input {
   width: 100%; min-height: var(--control-h); padding: var(--space-xs) var(--space-sm);
   background: var(--color-paper-3); color: var(--color-ink); border: var(--rule-hair) solid var(--color-rule);
   border-radius: var(--radius); font-size: var(--text-md);
   transition: border-color var(--dur-micro) var(--ease-out);
 }
 .field textarea { resize: vertical; line-height: 1.5; }
-.field input::placeholder, .field textarea::placeholder, .export-row input::placeholder, .exrow input::placeholder { color: var(--color-muted); opacity: 1; }
+.field input::placeholder, .field textarea::placeholder, .exrow input::placeholder { color: var(--color-muted); opacity: 1; }
 .field input:hover, .field select:hover, .field textarea:hover { border-color: var(--color-paper-4); }
 /* The ring is an outline, never a border change, so nothing shifts on focus. */
 .field input:focus, .field select:focus, .field textarea:focus,
-.export-row input:focus, .export-row select:focus, .exrow input:focus { outline: 2px solid var(--color-focus); outline-offset: -1px; }
+.exrow input:focus { outline: 2px solid var(--color-focus); outline-offset: -1px; }
 .field-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-sm); margin-bottom: var(--space-md); }
 .field-row .field { margin-bottom: 0; }
 .field-row-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -74,9 +74,15 @@ h1, h2, h3 { text-wrap: balance; }
 .exfield legend { padding: 0; font-size: var(--text-sm); font-weight: 500; color: var(--color-ink-2); margin-bottom: var(--space-2xs); }
 .field-hint, .est-note { font-size: var(--text-sm); color: var(--color-muted); line-height: 1.5; margin-top: var(--space-2xs); }
 .est-note { margin: calc(-1 * var(--space-xs)) 0 var(--space-md); }
-.export-row { display: flex; gap: var(--space-xs); flex-wrap: wrap; align-items: center; margin-top: var(--space-md); }
-.export-row input, .export-row select { width: auto; }
-.export-row select { flex: 1; min-width: 180px; }
+/* Profile: the hint under a form's last field sits close to it and clear of the button. */
+#form-profile .field-hint, #form-password .field-hint { margin: calc(-1 * var(--space-xs)) 0 var(--space-md); }
+/* The export list: each way to take your data is a ruled row, what it is and one button. */
+.xnote { font-size: var(--text-sm); color: var(--color-muted); line-height: 1.5; }
+p.xnote { max-width: 60ch; margin: 0 0 var(--space-md); }
+.xrows { border-top: var(--rule-hair) solid var(--color-rule); }
+.xrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-md); align-items: center; padding: var(--space-sm) 0; border-bottom: var(--rule-hair) solid var(--color-rule); }
+.xname { font-weight: 600; }
+.xrow .field { max-width: 22rem; margin: var(--space-xs) 0 0; }
 
 /* ═══ AUTH SCREEN ═══
  * One screen, one job. Wide: the name set large on its own side under the bar rule, the
@@ -222,7 +228,6 @@ h1, h2, h3 { text-wrap: balance; }
 .sheet-head, .card-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-sm); min-height: var(--control-h-sm); margin-bottom: var(--space-sm); }
 .sheet-head:has(.sec-sub) { align-items: flex-start; }
 .sheet-ttl { font-size: var(--text-lg); }
-.clbl { font-family: var(--font-display); font-weight: 700; font-size: var(--text-lg); text-transform: uppercase; line-height: 1.1; margin-bottom: var(--space-sm); }
 .sec-head { margin-bottom: var(--space-lg); }
 .sec-ttl { font-size: var(--text-3xl); }
 .sec-sub { font-size: var(--text-sm); color: var(--color-muted); margin-top: var(--space-2xs); }

@@ -757,7 +757,7 @@ class Suite:
         WebDriverWait(self.d, 10).until(lambda d: len(self.all('#export-dataset option')) > 1)
         Select(self.css('#export-dataset')).select_by_value('pain')
         self.clear_toast()
-        self.click_text('#panel-profile .btn', 'One dataset')
+        self.click_text('#panel-profile .btn', 'Download .csv')
         self.toast('Downloaded')
 
         def finished(_):
