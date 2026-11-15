@@ -1733,3 +1733,42 @@ process and file-write use before running, and without `--before` it writes noth
   `coach.test.mjs` (the note with no toast, a `500` still toasting, the note cleared by the next
   attempt). The Selenium coach check now waits for the note and asserts there was no toast;
   suite **31 of 31**. Run on in-memory H2 (JDBC line and `Email is OFF` checked first).
+
+## Phase 44 — Observation O-4: a workout with no duration says so (2026-11-16)
+
+A natural-language workout often leaves the time out ("ran 5k", "bench 3x8 at 60kg"). It is saved
+with `duration = null`, so no calories are derived and it adds nothing to duration or calorie
+goals and challenges. Nothing told the person, and the duration cell on the row was just empty.
+
+* **Decision: say it, don't guess it.** Three options were weighed.
+  * *Estimate a duration from the distance:* rejected. A made-up figure would feed calories,
+    `CALORIES_BURNED` challenges (which decide winners) and the longest-session personal best with a
+    number the person never gave. The project's rule elsewhere is the same one: rest days are
+    explicit zeros, and a calorie figure keeps its provenance.
+  * *Refuse the log:* rejected. "ran 5k" is a real workout, and it should still count for the
+    streak, the workout count, the distance record and any exercise records.
+  * *Save as described and say what is missing:* done.
+* **What changed, all in `frontend/js/panels/activities.js`; no backend or API change.**
+  * `noDurationNote()` returns the sentence, or `null` when there is a duration.
+  * The save toast, for both the manual and the natural-language form, appends it: "Workout
+    logged. No duration, so it won't count toward duration or calorie goals. Use Edit to add one."
+    After a personal-best message it joins with one full stop, whether or not that message already
+    ended in one.
+  * The row carries a chip, "No duration, not counted in goals", so the explanation outlasts the
+    3.5 s toast. It appears on the Activities page and the overview's recent list.
+* **The fix is one step, and it works.** The edit form requires a duration, and the server derives
+  the calories when a duration is added to a row with none (`ActivityService.editedCalories`:
+  `wasCalculated` is true when the stored figure is null). Driven in Chrome as a new account: a
+  5 km run saved with no duration showed the chip and empty Time and Burned cells; Edit with 30
+  minutes showed 30 min and 343 cal (70 kg profile), and the chip was gone.
+* **Side effect to know about:** because that field is `required`, a row with no duration can't be
+  saved from the edit form (to change only its notes, say) without entering one.
+* **Not driven live:** the natural-language route itself. It needs a Gemini key, and the runs here
+  use none so the real key in `local.properties` is never used. The same kind of workout was saved
+  through `POST /api/activities` with a distance and no duration, which is what the parser produces
+  for "ran 5k". The toast is covered by driving the real `handleLogNatural` in the unit tests.
+* **Not covered:** a workout with a duration but no calories because the profile has no weight.
+  That is a different cause and still shows an empty Burned cell with no explanation.
+* **Tests:** frontend **189** passing (was 184), the five new ones in `tests/activities.test.mjs`
+  (the helper, the row chip, the toast with and without a duration, and with a personal best).
+  Selenium **31 of 31**. Run on in-memory H2 (JDBC line and `Email is OFF` checked first).

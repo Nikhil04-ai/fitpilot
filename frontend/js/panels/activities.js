@@ -55,6 +55,21 @@ function rowFigure(value, unit) {
 }
 
 /**
+ * What to tell the person about a workout that has no duration, or null when it has one.
+ *
+ * Describing a workout in words ("ran 5k", "bench 3x8 at 60kg") often leaves the time
+ * out. It is saved as said and not given a made-up duration: a guessed figure would feed
+ * calories, calorie challenges and the longest-session record with a number nobody
+ * gave (PLAN O-4). The cost is that it adds nothing to duration or calorie goals, so
+ * that is said, and Edit is where the figure goes.
+ */
+export function noDurationNote(a) {
+  return a && a.duration == null
+    ? 'No duration, so it won’t count toward duration or calorie goals. Use Edit to add one.'
+    : null;
+}
+
+/**
  * One session in the training log: when, what, its figures, its actions. The same
  * row is the overview's recent list and the Activities page.
  *
@@ -69,7 +84,11 @@ export function activityRow(a) {
     ? `<span class="ai-chip">${trimNumber(a.totalVolume)} kg total</span>` : '';
   // distanceKm has its own column now, so it must not also be rendered out of the
   // metrics blob — old rows still carry it there and it would appear twice.
-  const sub = [metricChips(a.additionalMetrics), volume, ratingStars(a)].filter(Boolean).join('');
+  // The empty duration cell says nothing about why it is empty, and the toast that
+  // explained it is long gone by the time the row is looked at again.
+  const noDuration = a.duration == null
+    ? '<span class="ai-chip" title="Use Edit to add a duration">No duration, not counted in goals</span>' : '';
+  const sub = [noDuration, metricChips(a.additionalMetrics), volume, ratingStars(a)].filter(Boolean).join('');
   const figures = [
     rowFigure(a.distanceKm != null ? trimNumber(a.distanceKm) : null, 'km'),
     rowFigure(a.duration, 'min'),
@@ -295,7 +314,9 @@ function handleActivityLoggedResponse(res) {
   const burned = res.caloriesBurned != null ? `, ${res.caloriesBurned} cal burned` : '';
   let msg = `Workout logged${burned}`;
   if (res.isPersonalBest) msg = `New personal best. ${res.personalBestMessage || ''}`.trim();
-  toast(msg);
+  const missing = noDurationNote(res);
+  // A personal-best message may or may not already end in a full stop.
+  toast(missing ? `${/[.!?]$/.test(msg) ? msg : msg + '.'} ${missing}` : msg);
 
   if (res.goalAchievements && res.goalAchievements.length) {
     setTimeout(() => toast(res.goalAchievements[0]), 1200);

@@ -69,6 +69,10 @@ priority order, so priorities aren't re-derived from scratch every session.
 >
 > **Status, 2026-11-16 (later):** O-2 and O-3 are closed (`PROGRESS.md` Phase 43). Frontend
 > **184** passing, Selenium **31 of 31**, backend unchanged at 614.
+>
+> **Status, 2026-11-16 (later still):** O-4 is handled (`PROGRESS.md` Phase 44). Frontend **189**
+> passing, Selenium **31 of 31**, backend unchanged at 614. Only O-5 and O-6 are left, and both
+> want a decision rather than a fix.
 
 ## Priority key
 
@@ -538,7 +542,7 @@ has a test that fails on the code before the fix. A struck-through row is fixed.
 | ~~O-1~~ | ~~The Activities list is ordered by when a workout was *entered* (`sort=createdAt,desc`, sent explicitly by the frontend), so a backdated workout appears above today's. `API.md`'s endpoint index calls it "newest first". Ordering by `startTime` would read more naturally.~~ **Changed 2026-10-17** (`PROGRESS.md` Phase 25). Workouts are listed by when they happened, newest first, on the Activities panel, the Overview and the API default. | Live: a workout dated two days ago, entered last, listed first |
 | ~~O-2~~ | ~~At phone width the header's "0 day streak" pill wraps onto two lines. Cosmetic; no horizontal scroll.~~ **Fixed in the redesign (`PROGRESS.md` Phase 27), recorded here 2026-11-16.** `white-space: nowrap` on the pill. Re-measured in Chrome at a true 390 px viewport: the label is one box inside the number's height, and the page does not scroll sideways. | Screenshot at 390 px |
 | ~~O-3~~ | ~~For someone with no workouts last week, the Weekly Digest button answers with an error-styled toast ("⚠️ ❌ Nothing was logged in the week of …"), though that is the normal state for a new user. The UI can only build last week's digest; the API also accepts the current week (`weekStart`).~~ **Fixed 2026-11-16** (`PROGRESS.md` Phase 43). The server's message is shown as a plain note above the digest, with no toast. A real failure keeps the error toast. The API is unchanged: it still answers `400`. The UI still builds only last week's digest. | Live, in Chrome and over HTTP |
-| O-4 | A natural-language workout with no stated duration ("ran 5k", "bench 3x8 at 60kg") is saved with no duration and no calories, so it adds nothing to duration or calorie goals and challenges. | Live, with Gemini |
+| ~~O-4~~ | ~~A natural-language workout with no stated duration ("ran 5k", "bench 3x8 at 60kg") is saved with no duration and no calories, so it adds nothing to duration or calorie goals and challenges.~~ **Handled 2026-11-16** (`PROGRESS.md` Phase 44), by saying so rather than by guessing a duration. The workout is still saved as described, and still counts as a workout (streak, workout count, distance and exercise records). The save toast and a chip on the row say it won't count toward duration or calorie goals, and Edit is where the duration goes: saving it derives the calories. | Live, with Gemini |
 | O-5 | Reloading with an expired access token made two refresh calls, both 200, and the session survived. The cause was not investigated; no harm was seen. | Live, in Chrome |
 | O-6 | Access tokens last 48 hours and sit in `localStorage`. Acceptable only because the XSS defences hold (all HTML sinks escaped, CSP without `unsafe-inline` for scripts), which the audit confirmed. | Code review; HTML-in-a-name test in Chrome |
 
@@ -571,7 +575,7 @@ it:
    - ~~**P5-18:** refuse a workout dated in the future.~~ **Fixed 2026-11-06**
      (`PROGRESS.md` Phase 26).
    - **Observations:** ~~O-1~~ changed 2026-10-17. ~~O-2~~ and ~~O-3~~ fixed (2026-11-16).
-     O-4 to O-6 still want a decision.
+     ~~O-4~~ handled (2026-11-16). O-5 and O-6 still want a decision.
 
 Done earlier:
 
