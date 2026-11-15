@@ -77,6 +77,10 @@ priority order, so priorities aren't re-derived from scratch every session.
 > **Status, 2026-11-16 (end of day):** the empty Burned cell for a profile with no weight is
 > fixed (O-7, `PROGRESS.md` Phase 45). Frontend **193** passing, Selenium **31 of 31**, backend
 > unchanged at 614.
+>
+> **Status, 2026-11-16 (docs pass):** `README.md`, `ARCHITECTURE.md` and `AGENT.md` were checked
+> against the code and corrected (`PROGRESS.md` Phase 46). The same check turned up one open code
+> item, O-8: a meal's date is not validated.
 
 ## Priority key
 
@@ -550,6 +554,7 @@ has a test that fails on the code before the fix. A struck-through row is fixed.
 | O-5 | Reloading with an expired access token made two refresh calls, both 200, and the session survived. The cause was not investigated; no harm was seen. | Live, in Chrome |
 | O-6 | Access tokens last 48 hours and sit in `localStorage`. Acceptable only because the XSS defences hold (all HTML sinks escaped, CSP without `unsafe-inline` for scripts), which the audit confirmed. | Code review; HTML-in-a-name test in Chrome |
 | ~~O-7~~ | ~~A workout with a duration but no calories, because the profile has no weight, shows an empty Burned cell with no explanation.~~ Found 2026-11-16 while fixing O-4; **fixed the same day** (`PROGRESS.md` Phase 45). Weight is optional at sign-up and on the profile form, and calories are worked out from it, so without one they are left empty rather than invented. The save toast and a chip on the row now name the cause and where to fix it: add the weight in Profile, then use Edit on the workout (a blank calorie field re-derives it). Already-saved workouts are not back-filled when a weight is added; each is repaired by its own Edit. | Live, in Chrome, as a user who left weight blank |
+| **O-8** | **Open.** A meal's `loggedAt` is stored without a date check, on create (`NutritionService.java:84`) and on edit (`:180`). A workout's start time (P5-18) and a sleep night (P5-8) are refused when more than a day ahead; a meal dated 2099, or 1900, is accepted and counted in that day's intake, which the goals and the weekly digest read. Found 2026-11-16 while checking the docs against the code. Low severity, since the UI probably always sends the current time (unchecked), but the API accepts it. The fix is the same shape as P5-18: one `InputChecks` method, called on both paths, with a test. | Code reading; not run |
 
 ---
 
@@ -580,7 +585,8 @@ it:
    - ~~**P5-18:** refuse a workout dated in the future.~~ **Fixed 2026-11-06**
      (`PROGRESS.md` Phase 26).
    - **Observations:** ~~O-1~~ changed 2026-10-17. ~~O-2~~ and ~~O-3~~ fixed (2026-11-16).
-     ~~O-4~~ handled (2026-11-16). O-5 and O-6 still want a decision.
+     ~~O-4~~ handled and ~~O-7~~ fixed (2026-11-16). O-5 and O-6 still want a decision. **O-8**
+     (meal dates are not checked) is open and small.
 
 Done earlier:
 

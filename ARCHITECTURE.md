@@ -54,19 +54,21 @@ Controller  →  Service  →  Repository  →  Database
 
 | Group | Entities |
 |---|---|
-| Auth & identity | `User`, `UserRole` (enum), `RefreshToken` |
-| Activity tracking | `Activity`, `ActivityType` (enum), `PersonalBest` |
+| Auth & identity | `User`, `UserRole` (enum), `RefreshToken`, `PasswordResetToken` |
+| Activity tracking | `Activity`, `ActivityType` (enum), `Exercise` (sets, reps and load under an activity), `PersonalBest`, `ExercisePersonalBest` (per-movement records) |
 | Muscle recovery | `MuscleRecovery`, `MuscleGroup` (enum) |
-| Goals | `Goal`, `GoalType` (enum) |
+| Goals | `Goal`, `GoalType` (enum), `GoalPeriod` (enum), `GoalDirection` (enum) |
+| Nutrition | `MealLog`, `MealType` (enum) |
 | Pain tracking | `PainLog`, `BodyPart` (enum) |
-| Challenges | `Challenge`, `ChallengeType` (enum), `ChallengeStatus` (enum), `ChallengeLeaderboardEntry` |
+| Friends & challenges | `Friendship`, `FriendshipStatus` (enum), `Challenge`, `ChallengeType` (enum), `ChallengeStatus` (enum), `ChallengeParticipant`, `ParticipantStatus` (enum), `ChallengeLeaderboardEntry` |
 | Workout plans | `WorkoutPlan`, `WorkoutPlanDay`, `UserPlanEnrollment` |
-| AI coaching | `Recommendation` |
+| AI coaching | `Recommendation`, `WeeklyDigest` |
+| Notifications | `Notification`, `NotificationType` (enum) |
 | Health tracking | `BodyMetricsLog` (BMI history), `WaterLog`, `SleepLog` |
 
 All entities use `@GeneratedValue(strategy = GenerationType.UUID)` string primary keys, not auto-increment longs — this was a deliberate early choice so IDs are safe to expose in the API and can't be enumerated.
 
-`spring.jpa.hibernate.ddl-auto=update` — schema is generated/updated from entities automatically. There are no manual migration scripts. This is fine for a solo project at this scale; if this ever needs real migrations (multiple environments, rollback safety), replace with Flyway/Liquibase — see `PLAN.md` P1-2.
+**The schema belongs to Flyway, not to Hibernate.** `db/migration/V<n>__*.sql` (plus Java migrations in `src/main/java/db/migration/` where MySQL and H2 spell the SQL differently) builds it on first start, and `spring.jpa.hibernate.ddl-auto=validate`. A mapping change with no matching migration therefore fails at startup, naming the column, instead of the database being silently altered underneath you. SQL that only MySQL accepts goes in `db/vendor/mysql`, never nested under `db/migration`, which shares one version number sequence with it. `FlywayMigrationTest` runs the migrations on H2 in MySQL mode with `validate`, which is what proves the migrations and the entities agree. `ddl-auto=update` is what once left three foreign keys pointing at a dropped table (`AGENT.md` §10); it was replaced in `PLAN.md` P1-2.
 
 ## Frontend architecture
 
@@ -96,4 +98,4 @@ Single-page app, but not built with a framework — deliberately, since the app 
 - **Frontend** — GitHub Pages, served directly from the `/frontend` folder on push to `main`.
 - **Profile** — `render.yaml` sets `SPRING_PROFILES_ACTIVE=prod` (`application-prod.properties`): no SQL logging, no Swagger, CORS for `FRONTEND_URL` only, and `ProductionSettingsCheck` stops startup without an `https` `FRONTEND_URL`, `MAIL_API_KEY` and `MAIL_FROM`.
 - **CORS** — the backend's `FRONTEND_URL` env var must be set to the deployed frontend's address (e.g. `https://name.github.io/fitpilot`) for it to be allowed to call the deployed backend. `SecurityConfig` allows its origin, dropping any path; reset links use the whole address.
-- **CI** — GitHub Actions (`.github/workflows/ci.yml`) runs on every push touching `backend/**`: builds, runs the full test suite against H2, generates coverage, and (on `main` only) builds the Docker image and runs a real container smoke test against `/actuator/health`.
+- **CI** — GitHub Actions (`.github/workflows/ci.yml`) runs on a push to `main` or `develop`, and on a pull request to `main`, that touches `backend/**`, `frontend/**` or the workflow itself. Two test jobs run side by side: the frontend unit tests (`node --test`, no npm) and the backend build with the full test suite against H2 and a coverage report. On a push to `main`, once the backend job passes, a third job builds the Docker image and runs a real container smoke test against `/actuator/health`. The Selenium suite is not in CI: it needs a running backend and Chrome, so it is run by hand.

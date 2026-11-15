@@ -1804,3 +1804,42 @@ calories showed an empty Burned cell with no explanation.
 * **Tests:** frontend **193** passing (was 189), four new in `tests/activities.test.mjs` (the
   helper including zero as a value, the row chip and that it never doubles up with the duration
   chip, and the toast with and without a duration). Selenium **31 of 31**.
+
+## Phase 46 — The docs checked against the code (2026-11-16)
+
+Asked whether anything was left besides deployment, the answer was taken from the documents
+rather than from memory: `PLAN.md`, `ARCHITECTURE.md`, `README.md` and `CLAUDE.md` read in full;
+`AGENT.md`, `API.md` and `PROGRESS.md` searched for unresolved notes, with each hit read. No PDF
+is in the repo, and none was opened from outside it.
+
+* **`ARCHITECTURE.md`** said the schema is built by `ddl-auto=update` with "no manual migration
+  scripts", which contradicted `CLAUDE.md` rule 6. It now says what is true: Flyway owns the
+  schema, `ddl-auto` is `validate`, MySQL-only SQL goes in `db/vendor/mysql`, and
+  `FlywayMigrationTest` is what proves the migrations and the entities agree. Its schema table
+  listed none of `Exercise`, `ExercisePersonalBest`, `MealLog`, `WeeklyDigest`, `Notification`,
+  `Friendship`, `ChallengeParticipant` or `PasswordResetToken`, nor their enums; it now does,
+  checked against the `@Entity` classes in `model/`. The CI paragraph described a backend-only
+  trigger; it now matches `ci.yml` (frontend job, backend job, Docker job on `main`, and that
+  Selenium is not in CI).
+* **`README.md`** said "128 tests" and listed features from before Phase 9. It now gives the
+  measured counts, lists the features that exist (exercise logging and records, the weekly
+  digest, meal logging, nutrition goals, friends and group challenges, notifications, export,
+  password reset), names Flyway and Chart.js, shows the frontend and Selenium test commands, and
+  points to the other documents. Swagger is described as local-only, as it is under `prod`.
+* **`AGENT.md` §11 step 5** told a contributor to add handlers to "the `window` list in
+  `js/main.js`" and named a CSS class, `.clbl`, that no longer exists anywhere. It now describes
+  the `registerActions` lists and the building blocks panels really share (`.sheet`, `.figs`,
+  `.logrow`, `.note`, `emptyState()`, tokens from `tokens.css`). Two claims in the new text were
+  checked: `app.css` and `base.css` contain no literal colours, and the classes exist. §8 of the
+  same file was already correct.
+* **Counts checked, not copied.** The backend suite was run (`./mvnw test`, keys blanked): the
+  XML reports give **614 tests, 0 failures, 0 errors, 0 skipped** over 65 suites, all written
+  during the run. A first total taken from the `.txt` reports came to 469 and was wrong; the
+  XML, which is the authoritative record, agrees with the 614 already in `PLAN.md`. Frontend
+  193 passing (run earlier today, no frontend code has changed since).
+* **Found, not fixed: O-8.** A meal's `loggedAt` has no date check on create or edit, unlike a
+  workout's start time (P5-18) and a sleep night (P5-8). Recorded in `PLAN.md` as open.
+* **Not done, and not from the docs:** the unverified items the documents themselves list as
+  "not covered" are unchanged. P4-18's dead-session `409` is tested for every `GET` route, not
+  for write routes; real email delivery and the deployed environment (Phase 18) have never been
+  exercised.

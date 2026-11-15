@@ -4,39 +4,47 @@ An AI-powered fitness tracking platform with a Spring Boot backend and a vanilla
 
 ## Tech Stack
 
-**Backend:** Java 21 · Spring Boot 4.1 · Spring Security (JWT) · Hibernate/JPA · MySQL · Gemini AI · Docker
-**Frontend:** Vanilla HTML/CSS/JS (no build step, no framework)
-**Testing:** JUnit 5 · Mockito · H2 (in-memory test DB) · 128 tests
+**Backend:** Java 21 · Spring Boot 4.1 · Spring Security (JWT) · Hibernate/JPA · Flyway · MySQL · Gemini AI · Docker
+**Frontend:** Vanilla HTML/CSS/JS as native ES modules (no build step, no framework), with Chart.js from a CDN
+**Testing:** JUnit 5 · Mockito · H2 (in-memory test DB), 614 backend tests · Node's built-in test runner, 193 frontend tests · a Selenium browser suite, 31 checks
 **CI/CD:** GitHub Actions
 
 ## Features
 
-- JWT authentication with refresh tokens
-- Auto calorie calculation (MET-based formula)
+- JWT authentication with refresh tokens, and password reset by emailed link
+- Auto calorie calculation (MET-based formula, from the weight on your profile)
 - Activity streak tracking with personal bests
-- AI-powered coaching recommendations (Gemini)
-- Natural language activity logging ("I ran 5km in 30 minutes")
+- Exercise-level logging (sets, reps and load), with per-movement records and an estimated one-rep max
+- AI-powered coaching: per-workout recommendations and a weekly digest (Gemini)
+- Natural language logging for workouts and meals ("I ran 5km in 30 minutes")
+- Nutrition: meals with macros, and goals for daily calories, protein and body weight
 - Muscle recovery tracking (48-hour windows per muscle group)
 - Pain point logging with injury pattern detection
 - Structured workout plans (enroll, track daily progress)
-- Weekly/monthly stats, peak workout time, plateau detection
-- 1-on-1 fitness challenges (calories, workouts, duration, streaks)
+- Weekly/monthly stats with charts, peak workout time, plateau detection
+- Friends, and challenges for up to 10 people (calories, workouts, duration, streaks)
+- In-app notifications for digests, plateaus and challenge results
 - BMI, hydration, and sleep tracking
-- Rate limiting, pagination, and full API documentation (Swagger)
+- Data export as JSON, CSV or a zip of everything
+- Rate limiting, pagination, and a full API reference (`API.md`; Swagger when run locally)
 
 ## Project Structure
 
 ```
 fitpilot/
 ├── backend/          Spring Boot REST API
-│   ├── src/
+│   ├── src/          (database schema: src/main/resources/db/migration, owned by Flyway)
 │   ├── pom.xml
 │   └── Dockerfile
 ├── frontend/          Static HTML/CSS/JS client
 │   ├── index.html
-│   └── js/            Native ES modules (main.js is the entry point)
+│   ├── css/           tokens.css, base.css, app.css
+│   ├── js/            Native ES modules (main.js is the entry point, one module per panel in js/panels/)
+│   └── tests/         Unit tests, and a Selenium suite in tests/e2e/
 ├── render.yaml        Render deployment blueprint
-└── .github/workflows/ CI pipeline (build, test, coverage, Docker)
+├── .github/workflows/ CI pipeline (frontend and backend tests, coverage, Docker smoke test)
+└── *.md               ARCHITECTURE (system design), API (every endpoint), AGENT (conventions and
+                       gotchas), PLAN (what is left), PROGRESS (what was built), CLAUDE (start here)
 ```
 
 ## Running Locally
@@ -80,10 +88,16 @@ link carrying it used to send visitors' passwords and tokens to whatever host it
 
 ```bash
 cd backend
-./mvnw test
+./mvnw test        # uses an H2 in-memory database, so no MySQL is needed
+
+cd frontend
+node --test "tests/*.test.mjs"   # Node's built-in runner: no npm, no install
 ```
 
-Uses H2 in-memory database — no MySQL needed for tests.
+There is also a Selenium suite that drives the real app in headless Chrome
+(`frontend/tests/e2e/regression_selenium.py`). It needs a running backend, so it is not part
+of CI; its docstring has the setup. Point it only at a local backend: it creates throwaway
+accounts.
 
 ## Configuration
 
