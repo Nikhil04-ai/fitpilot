@@ -47,9 +47,16 @@ public class WorkoutPlanController {
         return ResponseEntity.ok(workoutPlanService.getActivePlan(accountGuard.requireSelf(userId)));
     }
 
-    /** Mark today's workout as done — advances to next day */
+    /**
+     * Mark today's workout as done — advances to next day.
+     *
+     * <p>{@code accountGuard}, like the read above it: the service only looks the
+     * enrollment up by user id, never the user, so for a deleted account it answered
+     * from whatever enrollment was left ("already complete", or "no active plan")
+     * instead of the 409 the frontend recovers from (PLAN P4-18).
+     */
     @PostMapping("/active/{userId}/complete-day")
     public ResponseEntity<Map<String, Object>> completeDay(@PathVariable String userId) {
-        return ResponseEntity.ok(workoutPlanService.completeTodaysDay(CurrentUser.requireSelf(userId)));
+        return ResponseEntity.ok(workoutPlanService.completeTodaysDay(accountGuard.requireSelf(userId)));
     }
 }

@@ -49,8 +49,13 @@ public class NotificationController {
         return ResponseEntity.ok(notificationService.markRead(CurrentUser.id(), notificationId));
     }
 
+    /**
+     * {@code accountGuard}, like the badge above it: marking a feed read touches no user
+     * row, so for a deleted account it answered {@code 200 {"marked":0}}, a success the
+     * frontend had no reason to question (PLAN P4-18).
+     */
     @PostMapping("/read-all")
     public ResponseEntity<Map<String, Object>> markAllRead() {
-        return ResponseEntity.ok(Map.of("marked", notificationService.markAllRead(CurrentUser.id())));
+        return ResponseEntity.ok(Map.of("marked", notificationService.markAllRead(accountGuard.requireCurrent())));
     }
 }

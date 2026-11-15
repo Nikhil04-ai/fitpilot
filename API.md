@@ -105,8 +105,19 @@ matches on the phrase `account that no longer exists`.
 Every `GET` route that depends on who is asking returns it, and an automated test finds
 those routes from the running app and checks each one. Only routes whose answer is the
 same for everyone are exempt: `GET /api/plans`, `GET /api/plans/{planId}` and
-`GET /api/export/datasets`. Write routes (`POST`, `PUT`, `DELETE`) are not covered by that
-test; they return it where they look the user up, which most do.
+`GET /api/export/datasets`.
+
+Write routes (`POST`, `PUT`, `DELETE`) are checked the same way, apart from `/api/auth/**`,
+which is how a session starts and ends. Of the 32 that depend on the caller, the 16 that act
+on the caller themselves (log a workout, a meal or a goal, update the profile, enroll in a
+plan, mark notifications read, and so on) return the 409. The 14 that name a record in the
+path (an activity, a goal, a friendship, a challenge, a meal, a notification) are about a
+record that doesn't exist either after a reset, so they answer with an ordinary refusal and
+never with a success. The two natural-language routes call Gemini before they look the user
+up, so a dead session spends one AI request before it gets the 409. Two write routes did not
+return it until 2026-11-16: `POST /api/notifications/read-all` answered `200` with
+`{"marked":0}`, and `POST /api/plans/active/{userId}/complete-day` answered from whatever
+enrollment was left over.
 
 ### Error bodies
 
@@ -1617,6 +1628,7 @@ Marks the current plan day as done and advances to the next. This is allowed at 
 - **Errors:**
   - `400` `"No active plan. Enroll in a plan first."`
   - `400` `"Today's workout is already marked complete. Come back tomorrow."`
+  - `409`: the account-gone 409 (see Conventions). Checked first, before either `400`.
 
 ---
 
@@ -2089,6 +2101,7 @@ Marks every unread notification as read in a single statement.
   ```json
   { "marked": 5 }
   ```
+- **Errors:** `409`, the account-gone 409 (see Conventions). It used to answer `200` with `{"marked":0}` for a deleted account.
 
 ---
 

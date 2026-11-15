@@ -1878,3 +1878,57 @@ nutrition goals and the weekly digest read.
   `README.md`'s test count updated to match.
 * **Side effect of proving it:** the check was removed with `git stash` for the proof run and
   restored with `git stash pop`; the stash is empty and both call sites are back (2 calls).
+
+## Phase 48 — P4-18 finished: every write route, against a deleted account (2026-11-16)
+
+P4-18 fixed 21 reads that answered `200` to an account that no longer existed, and recorded the
+writes as "not covered: most already look the user up". Only `POST /api/activities` had ever been
+tried. `DeadSessionWritesIntegrationTest` does the rest.
+
+* **How it works.** The write routes are discovered from Spring's handler mapping (38; the six
+  under `/api/auth/` are exempt, leaving 32), and every one must be classified, because a write
+  needs a body and a read does not:
+  * **BODY (16):** sent a valid body. A live account must never get the 409 or a `500` (a
+    control pass, with the bodies required to be valid: the eleven that can succeed for a new
+    account must return `2xx` and the other five only avoid a 409 or a 500), and a deleted one must get the 409 with the phrase the frontend
+    matches. The password route is run last in the control, because it retires every token; the
+    session is renewed by logging in again.
+  * **RECORD (14):** the path names a record (an activity, a goal, a friendship, a challenge, a
+    meal, a notification). After a reset that record doesn't exist either, so an ordinary refusal
+    is the right answer and a 409 is not demanded; it must never succeed and never be a `500`.
+  * **AI (2):** the two natural-language routes. With no Gemini key they refuse before any lookup,
+    so only "never succeeds, never a 500" can be asserted.
+  * **A write route in none of these fails the test** until `bodyRoutes()` says what it should be
+    sent, so a new endpoint can't go unchecked the way the reads did. Entries for routes that no
+    longer exist fail it too, and floors on each class stop a misclassification from emptying a
+    check unnoticed.
+* **Two real gaps, both writes that returned a success to a deleted account.** Both are controllers
+  that used plain `CurrentUser` where their sibling read used `AccountGuard`, and whose service
+  never looks the user up:
+  * `POST /api/notifications/read-all` answered `200 {"marked":0}`.
+  * `POST /api/plans/active/{userId}/complete-day` answered from whatever enrollment was left over
+    (`400 "Today's workout is already marked complete"`), never the 409.
+  Each is a one-line change to `accountGuard.requireCurrent()` / `requireSelf(userId)`. The other
+  14 body routes already returned the 409. Both failed the new test before the fix; the first
+  run's list hid the first entry (my grep matched line starts), so the count was found to be two
+  only after reading the whole assertion message.
+* **A third finding, not fixed here: O-9.** The test's first run got an error object where it
+  expected the plan list. `GET /api/plans` serialises each plan's lazy `days` after its transaction
+  ends, so it only works because production sets `open-in-view=true`; under the `test` profile
+  (`false`) it is a `500`. The same fault was fixed for `getPlanDetail` in P4-19. The test reads
+  the plan id from the table instead. Recorded in `PLAN.md` as open.
+* **The earlier unexplained skip is probably this.** Phase 45 said the first Selenium run's "no
+  plans seeded" was a guess about a startup race. With O-9 a better-supported cause is that the run
+  used `profiles=test`, so the plan list call failed and the panel showed none. That session's run
+  arguments were not recorded, so this is inferred, not proved. Nothing in the app was wrong then
+  that is not also wrong now under that profile.
+* **Not covered:** a RECORD route is only tried with an id that doesn't exist. A dead account that
+  still owns real rows (the account deleted but its activities left behind) is not exercised, and
+  that is not what a database reset produces. The natural-language routes, with a Gemini key, call
+  Gemini before looking the user up, so a dead session spends one AI request before its 409; that
+  is documented in `API.md`, not changed.
+* **Docs:** `API.md`'s "account-gone 409" section said write routes weren't covered; it now says
+  what is true, and the two routes' entries list the `409`. `AGENT.md` §5 said "every service loads
+  the user before it writes anything", which this disproved; it now says so and names both tests.
+* **Tests:** backend **617** passing (was 616), 66 suites, 0 failures, 0 errors, totalled from the
+  XML reports written during the run. `README.md`'s count updated.
