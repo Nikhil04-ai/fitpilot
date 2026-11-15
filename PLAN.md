@@ -66,6 +66,9 @@ priority order, so priorities aren't re-derived from scratch every session.
 > **31 of 31 with nothing skipped** (`PROGRESS.md` Phase 42). The system plans are seeded at
 > startup, so they exist on H2 with Flyway off. The sloplint pass has been run too: 0 FAIL, and 3
 > WARN left on purpose (`PROGRESS.md` Phase 42). The redesign has nothing left open.
+>
+> **Status, 2026-11-16 (later):** O-2 and O-3 are closed (`PROGRESS.md` Phase 43). Frontend
+> **184** passing, Selenium **31 of 31**, backend unchanged at 614.
 
 ## Priority key
 
@@ -533,8 +536,8 @@ has a test that fails on the code before the fix. A struck-through row is fixed.
 | | Observation | Evidence |
 |---|---|---|
 | ~~O-1~~ | ~~The Activities list is ordered by when a workout was *entered* (`sort=createdAt,desc`, sent explicitly by the frontend), so a backdated workout appears above today's. `API.md`'s endpoint index calls it "newest first". Ordering by `startTime` would read more naturally.~~ **Changed 2026-10-17** (`PROGRESS.md` Phase 25). Workouts are listed by when they happened, newest first, on the Activities panel, the Overview and the API default. | Live: a workout dated two days ago, entered last, listed first |
-| O-2 | At phone width the header's "0 day streak" pill wraps onto two lines. Cosmetic; no horizontal scroll. | Screenshot at 390 px |
-| O-3 | For someone with no workouts last week, the Weekly Digest button answers with an error-styled toast ("⚠️ ❌ Nothing was logged in the week of …"), though that is the normal state for a new user. The UI can only build last week's digest; the API also accepts the current week (`weekStart`). | Live, in Chrome and over HTTP |
+| ~~O-2~~ | ~~At phone width the header's "0 day streak" pill wraps onto two lines. Cosmetic; no horizontal scroll.~~ **Fixed in the redesign (`PROGRESS.md` Phase 27), recorded here 2026-11-16.** `white-space: nowrap` on the pill. Re-measured in Chrome at a true 390 px viewport: the label is one box inside the number's height, and the page does not scroll sideways. | Screenshot at 390 px |
+| ~~O-3~~ | ~~For someone with no workouts last week, the Weekly Digest button answers with an error-styled toast ("⚠️ ❌ Nothing was logged in the week of …"), though that is the normal state for a new user. The UI can only build last week's digest; the API also accepts the current week (`weekStart`).~~ **Fixed 2026-11-16** (`PROGRESS.md` Phase 43). The server's message is shown as a plain note above the digest, with no toast. A real failure keeps the error toast. The API is unchanged: it still answers `400`. The UI still builds only last week's digest. | Live, in Chrome and over HTTP |
 | O-4 | A natural-language workout with no stated duration ("ran 5k", "bench 3x8 at 60kg") is saved with no duration and no calories, so it adds nothing to duration or calorie goals and challenges. | Live, with Gemini |
 | O-5 | Reloading with an expired access token made two refresh calls, both 200, and the session survived. The cause was not investigated; no harm was seen. | Live, in Chrome |
 | O-6 | Access tokens last 48 hours and sit in `localStorage`. Acceptable only because the XSS defences hold (all HTML sinks escaped, CSP without `unsafe-inline` for scripts), which the audit confirmed. | Code review; HTML-in-a-name test in Chrome |
@@ -567,7 +570,8 @@ it:
    - ~~The smaller open items P5-12, P5-13 and P5-17~~ **All fixed 2026-10-16.**
    - ~~**P5-18:** refuse a workout dated in the future.~~ **Fixed 2026-11-06**
      (`PROGRESS.md` Phase 26).
-   - **Observations:** ~~O-1~~ changed 2026-10-17. O-2 to O-6 still want a decision.
+   - **Observations:** ~~O-1~~ changed 2026-10-17. ~~O-2~~ and ~~O-3~~ fixed (2026-11-16).
+     O-4 to O-6 still want a decision.
 
 Done earlier:
 

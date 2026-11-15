@@ -72,6 +72,13 @@ test('an error response throws the backend\'s message', async () => {
   await assert.rejects(api('/api/activities', { method: 'POST' }), /Duration must be positive/);
 });
 
+test('the error carries the HTTP status, so a caller can tell a refusal from a fault', async () => {
+  scriptFetch(jsonResponse(400, { error: 'Nothing to summarise' }));
+  await assert.rejects(api('/api/digest/generate', { method: 'POST' }), { status: 400 });
+  scriptFetch(jsonResponse(500, { error: 'Something went wrong' }));
+  await assert.rejects(api('/api/digest/generate', { method: 'POST' }), { status: 500 });
+});
+
 test('an error with no JSON body still gives a readable message', async () => {
   scriptFetch(jsonResponse(502));
   await assert.rejects(api('/api/x'), /Request failed \(502\)/);

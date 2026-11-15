@@ -586,9 +586,14 @@ class Suite:
         self.nav('ai')
         self.clear_toast()
         self.click('#gen-digest-btn')
-        # A brand-new account has no finished week to summarise, and says so.
-        t1 = self.toast('Digest ready', 'nothing to summarise')
+        # A brand-new account has no finished week to summarise. That is the normal state, so
+        # it is said as a note above the digest, not as an error toast (PLAN O-3).
+        t1 = WebDriverWait(self.d, 20).until(
+            lambda d: (self.css('#digest-note').text if 'nothing to summarise' in self.css('#digest-note').text.lower() else False))
         WebDriverWait(self.d, 15).until(lambda d: self.css('#gen-digest-btn').is_enabled())
+        assert self.css('#digest-note').is_displayed(), 'the note is not visible'
+        assert self.d.execute_script("return document.getElementById('tmsg').textContent") == '', \
+            'an empty week raised a toast'
         self.settled('ai')
         self.clear_toast()
         self.click('#gen-insight-btn')

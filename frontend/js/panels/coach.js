@@ -133,18 +133,31 @@ function digestFacts(data) {
   ).join('')}</div>`;
 }
 
+/** Says something about the digest above its card, or clears it when given nothing. */
+function setDigestNote(text) {
+  const note = document.getElementById('digest-note');
+  note.textContent = text || '';
+  note.hidden = !text;
+}
+
 export async function generateDigestNow() {
   const btn = document.getElementById('gen-digest-btn');
   btn.disabled = true; btn.textContent = 'Thinking…';
   const el = document.getElementById('digest-card');
   el.innerHTML = skeletonLines(4);
+  setDigestNote('');
 
   try {
     const digest = await api('/api/digest/generate', { method: 'POST' });
     renderDigest(el, digest);
     toast(digest.aiGenerated ? 'Weekly digest ready' : 'Digest ready, from your own figures');
   } catch (err) {
-    toast(err.message, true);
+    // This button sends no week, so the one 400 it can earn is the server saying last
+    // week had nothing in it. That is the normal state for a new account, not a fault:
+    // say it where the digest would be instead of in a red toast (PLAN O-3). Anything
+    // else (a 5xx, no network) is a real failure and keeps the error toast.
+    if (err.status === 400) setDigestNote(err.message);
+    else toast(err.message, true);
     // The button failing shouldn't also wipe whatever was already on screen.
     loadWeeklyDigest();
   } finally {

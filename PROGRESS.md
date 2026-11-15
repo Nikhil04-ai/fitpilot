@@ -1706,3 +1706,30 @@ process and file-write use before running, and without `--before` it writes noth
   is not scanned, so text built in the panel modules is not covered. The `--render` tier (browser
   checks, needs a second script) was not run.
 * Frontend tests: 180 passing after the edits.
+
+## Phase 43 — Observations O-2 and O-3 (2026-11-16)
+
+* **O-2 (the streak pill wraps at phone width) was already fixed.** Phase 27 put `white-space:
+  nowrap` on `.streak-pill`; `PLAN.md` still listed it as open. Re-measured rather than trusted:
+  in Chrome at a true 390 px viewport (CDP device-metrics override; headless Chrome won't go below
+  about 500 px by window size alone, so a plain window-size probe measured the wrong width), the
+  label is one box inside the number's vertical range, `white-space` is `nowrap`, and the page
+  doesn't scroll sideways. No code change.
+* **O-3 (an empty digest week shown as an error) is fixed, in the frontend only.** The API still
+  answers `400` with `"Nothing was logged in the week of …"`; that is documented in `API.md` and
+  tested in the backend, so it was left alone.
+  * `api()` now puts the HTTP status on the error it throws (`err.status`). `message` is unchanged.
+  * "Write last week's digest" sends no week, so the one `400` it can earn is an empty week. It is
+    shown as a plain note (`#digest-note`) above the digest card, in the server's own words, and no
+    toast is raised. Anything else, a `5xx` or no network, keeps the red toast. The note is cleared
+    by the next attempt, and a failing attempt still doesn't wipe a digest already on screen.
+  * Checked by looking, as a brand-new account in Chrome at 390 px: before, a red toast with a "!";
+    after, no toast and the note under the header.
+* **Decision worth keeping:** a `400` from this button is treated as "nothing to summarise" because
+  the button sends nothing that could be invalid. If a body (for example `weekStart`) is ever
+  added to it, a validation `400` would also show as this note, and the check should move to the
+  message or to a dedicated status.
+* **Tests:** frontend **184** passing (was 180): one for `err.status` in `api.test.mjs`, three in
+  `coach.test.mjs` (the note with no toast, a `500` still toasting, the note cleared by the next
+  attempt). The Selenium coach check now waits for the note and asserts there was no toast;
+  suite **31 of 31**. Run on in-memory H2 (JDBC line and `Email is OFF` checked first).

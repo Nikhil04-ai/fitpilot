@@ -443,6 +443,8 @@ p.xnote { max-width: 60ch; margin: 0 0 var(--space-md); }
 /* The weekly digest reads as a short report: the headline set large in the display face
    (sentence case, being a sentence), the week under it, then the narrative at a reading
    measure, the two lists side by side, and the figures it was written from. */
+/* Said above the card when a week has nothing in it: a plain note, not a failure (PLAN O-3). */
+.dg-note { margin: 0 0 var(--space-sm); }
 .dg-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-md); flex-wrap: wrap; }
 .dg-hl { font-family: var(--font-display); font-weight: 700; font-size: var(--text-2xl); line-height: 1.15; max-width: 32ch; text-wrap: balance; }
 .dg-week { font-size: var(--text-sm); color: var(--color-muted); white-space: nowrap; margin-top: var(--space-2xs); }

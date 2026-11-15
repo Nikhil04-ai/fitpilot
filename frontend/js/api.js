@@ -91,7 +91,11 @@ export async function api(path, options = {}) {
       forceSessionExpired(msg);
     }
 
-    throw new Error(msg);
+    // The status rides on the error so a caller can tell "the server refused this
+    // request" (4xx, say what it said) from "something broke" (5xx, network).
+    const failure = new Error(msg);
+    failure.status = res.status;
+    throw failure;
   }
 
   // Any successful write invalidates the panel freshness cache. Doing it here
