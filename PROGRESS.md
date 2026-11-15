@@ -1663,11 +1663,46 @@ checks the page-by-page phases left for the end.
   * "45 min" is now a figure and a unit in two spans, so the check allows either spacing;
   * the water toast reads "300 ml of water logged" (it was "+300ml").
   Two further failures were cascades (a challenge left pending by the one before).
-* **Not exercised:** the plans check skipped itself ("no plans seeded"): the run used in-memory H2
-  with Flyway off, so the four system plans don't exist. Its two selectors were updated
-  (`[data-action="enroll-plan"]`, `[data-action="complete-plan-day"]`) but have not been driven.
+* **Not exercised (closed 2026-11-16, see below):** the plans check skipped itself ("no plans
+  seeded"). Its two selectors were updated (`[data-action="enroll-plan"]`,
+  `[data-action="complete-plan-day"]`) but had not been driven.
 * **Backend:** 614 passing, 0 failing. **Frontend:** 180 passing, 0 failing.
 * **Run against** in-memory H2 (the JDBC line was checked before anything ran), no Gemini or mail
   key, so nothing touched the local MySQL.
-* **sloplint:** still not run. The linter isn't in the repo or installed here; its source is
-  github.com/nutlope/hallmark (`skills/hallmark/scripts/sloplint.mjs`, run with `--scope app`).
+* **sloplint:** not run in this pass; run 2026-11-16, see below. The linter isn't in the repo; its
+  source is github.com/nutlope/hallmark (`skills/hallmark/scripts/sloplint.mjs`).
+
+### The plans check, driven (2026-11-16)
+
+* **31 of 31, nothing skipped.** Run against in-memory H2 with Flyway off (the JDBC line and
+  `Email is OFF` were checked before anything ran), no Gemini or mail key. "plans: enroll and
+  complete a day" passed with the updated selectors: enrolling in a system plan, then completing
+  day 1 ("Day complete. On to day 2.").
+* **The reason given above for the earlier skip was wrong.** The four system plans are seeded by
+  `WorkoutPlanService.seedSystemPlans()` on `ApplicationReadyEvent`, not by a migration (no `V<n>`
+  file inserts plans), so Flyway being off does not remove them. Today they were there on H2 with
+  Flyway off. Why the first run found none was not established; the likeliest cause is that the
+  suite reached the Plans panel before the seeding had finished, but that is a guess.
+
+### The sloplint pass (2026-11-16)
+
+Fetched `sloplint.mjs` from github.com/nutlope/hallmark into a scratch directory outside the repo
+(it is a single file with no dependencies, importing only Node built-ins; read for network,
+process and file-write use before running, and without `--before` it writes nothing). Run as
+`node sloplint.mjs frontend --scope app`, without `--render`.
+
+* **First run: 0 FAIL, 5 WARN. After the fixes: 0 FAIL, 3 WARN.**
+* **Fixed:**
+  * gate 41, `.auth-card` has a dark surface and set no text colour. Not a live contrast bug (the
+    card inherits `body`'s `--color-ink`, 95% lightness), but the rule now sets `color:
+    var(--color-ink)` itself, so it doesn't depend on where the card sits.
+  * F1, straight quotes in prose, in two places in `index.html`: the Notifications subtitle and
+    the "Who's competing" label. Now `&rsquo;`. The warning read "x2", and only the first was
+    fixed on the first attempt; a re-run showed the second.
+* **Left alone, on purpose:** F4 (`.btn-prim` and `.btn-danger` are both filled: a destructive
+  button has to be filled), F6 (`.empty-state .es-icon` is an icon, not a figure, so tabular
+  figures don't apply) and F7 (the logo-fallback and avatar placeholders sharing a shape).
+* **Coverage limit:** it reads `.css`, `.html` and framework files only. `frontend/js/**/*.js`
+  is not scanned, so text built in the panel modules is not covered. The `--render` tier (browser
+  checks, needs a second script) was not run.
+* Frontend tests: 180 passing after the edits.
