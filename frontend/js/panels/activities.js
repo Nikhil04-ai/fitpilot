@@ -70,6 +70,21 @@ export function noDurationNote(a) {
 }
 
 /**
+ * The same, for a workout that has a duration but no calories (PLAN O-7).
+ *
+ * Calories are worked out from the duration and the body weight on the profile, and
+ * weight is optional at sign-up and on the profile form. With no weight there is nothing
+ * to work them out from and no sensible default, so the figure is left empty rather than
+ * invented. A workout with a duration and no calories can only mean that, so it can be
+ * said plainly. Nothing else here would explain the empty Burned cell.
+ */
+export function noCaloriesNote(a) {
+  return a && a.duration != null && a.caloriesBurned == null
+    ? 'No calories were worked out, because your profile has no weight. Add it in Profile, then use Edit on this workout.'
+    : null;
+}
+
+/**
  * One session in the training log: when, what, its figures, its actions. The same
  * row is the overview's recent list and the Activities page.
  *
@@ -88,7 +103,9 @@ export function activityRow(a) {
   // explained it is long gone by the time the row is looked at again.
   const noDuration = a.duration == null
     ? '<span class="ai-chip" title="Use Edit to add a duration">No duration, not counted in goals</span>' : '';
-  const sub = [noDuration, metricChips(a.additionalMetrics), volume, ratingStars(a)].filter(Boolean).join('');
+  const noCalories = noCaloriesNote(a)
+    ? '<span class="ai-chip" title="Add your weight in Profile, then use Edit on this workout to work out the calories">No calories, needs your weight in Profile</span>' : '';
+  const sub = [noDuration, noCalories, metricChips(a.additionalMetrics), volume, ratingStars(a)].filter(Boolean).join('');
   const figures = [
     rowFigure(a.distanceKm != null ? trimNumber(a.distanceKm) : null, 'km'),
     rowFigure(a.duration, 'min'),
@@ -314,7 +331,9 @@ function handleActivityLoggedResponse(res) {
   const burned = res.caloriesBurned != null ? `, ${res.caloriesBurned} cal burned` : '';
   let msg = `Workout logged${burned}`;
   if (res.isPersonalBest) msg = `New personal best. ${res.personalBestMessage || ''}`.trim();
-  const missing = noDurationNote(res);
+  // With no duration there is nothing to work calories out from either, so that one is
+  // said first; the weight can only be the reason once there is a duration.
+  const missing = noDurationNote(res) || noCaloriesNote(res);
   // A personal-best message may or may not already end in a full stop.
   toast(missing ? `${/[.!?]$/.test(msg) ? msg : msg + '.'} ${missing}` : msg);
 

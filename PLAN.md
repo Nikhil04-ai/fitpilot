@@ -73,6 +73,10 @@ priority order, so priorities aren't re-derived from scratch every session.
 > **Status, 2026-11-16 (later still):** O-4 is handled (`PROGRESS.md` Phase 44). Frontend **189**
 > passing, Selenium **31 of 31**, backend unchanged at 614. Only O-5 and O-6 are left, and both
 > want a decision rather than a fix.
+>
+> **Status, 2026-11-16 (end of day):** the empty Burned cell for a profile with no weight is
+> fixed (O-7, `PROGRESS.md` Phase 45). Frontend **193** passing, Selenium **31 of 31**, backend
+> unchanged at 614.
 
 ## Priority key
 
@@ -545,6 +549,7 @@ has a test that fails on the code before the fix. A struck-through row is fixed.
 | ~~O-4~~ | ~~A natural-language workout with no stated duration ("ran 5k", "bench 3x8 at 60kg") is saved with no duration and no calories, so it adds nothing to duration or calorie goals and challenges.~~ **Handled 2026-11-16** (`PROGRESS.md` Phase 44), by saying so rather than by guessing a duration. The workout is still saved as described, and still counts as a workout (streak, workout count, distance and exercise records). The save toast and a chip on the row say it won't count toward duration or calorie goals, and Edit is where the duration goes: saving it derives the calories. | Live, with Gemini |
 | O-5 | Reloading with an expired access token made two refresh calls, both 200, and the session survived. The cause was not investigated; no harm was seen. | Live, in Chrome |
 | O-6 | Access tokens last 48 hours and sit in `localStorage`. Acceptable only because the XSS defences hold (all HTML sinks escaped, CSP without `unsafe-inline` for scripts), which the audit confirmed. | Code review; HTML-in-a-name test in Chrome |
+| ~~O-7~~ | ~~A workout with a duration but no calories, because the profile has no weight, shows an empty Burned cell with no explanation.~~ Found 2026-11-16 while fixing O-4; **fixed the same day** (`PROGRESS.md` Phase 45). Weight is optional at sign-up and on the profile form, and calories are worked out from it, so without one they are left empty rather than invented. The save toast and a chip on the row now name the cause and where to fix it: add the weight in Profile, then use Edit on the workout (a blank calorie field re-derives it). Already-saved workouts are not back-filled when a weight is added; each is repaired by its own Edit. | Live, in Chrome, as a user who left weight blank |
 
 ---
 

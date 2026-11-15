@@ -1772,3 +1772,35 @@ goals and challenges. Nothing told the person, and the duration cell on the row 
 * **Tests:** frontend **189** passing (was 184), the five new ones in `tests/activities.test.mjs`
   (the helper, the row chip, the toast with and without a duration, and with a personal best).
   Selenium **31 of 31**. Run on in-memory H2 (JDBC line and `Email is OFF` checked first).
+
+## Phase 45 — O-7: a workout with no calories names the missing weight (2026-11-16)
+
+Found while fixing O-4 and listed then as "not covered": a workout that has a duration but no
+calories showed an empty Burned cell with no explanation.
+
+* **The cause is always one thing.** Calories are `MET x weight x hours`, and
+  `ActivityService.resolveCalories` returns null without a weight on the profile. Weight is
+  optional at sign-up (`#reg-weight` is not `required`) and on the profile form, so a person who
+  skipped it gets no calories on any workout, with no hint why. A blank weight on the profile form
+  means "keep what's there" (`ProfileService`: `if (weight != null) user.setWeight(weight)`), so a
+  profile is weightless only if a weight was never entered.
+* **Decision: say it, don't default it.** A default weight would put an invented number into
+  calories, calorie goals and calorie challenges, the same objection as guessing a duration in
+  Phase 44. Requiring weight at sign-up was not done: it is the person's call to withhold it, and
+  that would change the sign-up contract for something the app can explain instead.
+* **What changed, all in `frontend/js/panels/activities.js`; no backend or API change.**
+  * `noCaloriesNote()` gives the sentence when there is a duration and no calories.
+  * The save toast says it: "Workout logged. No calories were worked out, because your profile has
+    no weight. Add it in Profile, then use Edit on this workout." With no duration the duration
+    note comes first, since calories can't be worked out without one; there is never a second note.
+  * The row carries a chip, "No calories, needs your weight in Profile", with a longer title.
+* **Verified in Chrome on in-memory H2 (JDBC line and `Email is OFF` checked first)**, as a user
+  who registered with no weight: a 30-minute run saved with `caloriesBurned: null`, the row showed
+  the chip with an empty Burned cell; after adding a 70 kg weight in Profile and using Edit with
+  the calorie field blank, the row showed 343 cal and the chip was gone.
+* **Known limit:** adding a weight does not back-fill workouts already saved without calories;
+  each is repaired by its own Edit, which the chip says. A bulk back-fill would be a backend change
+  and was not done.
+* **Tests:** frontend **193** passing (was 189), four new in `tests/activities.test.mjs` (the
+  helper including zero as a value, the row chip and that it never doubles up with the duration
+  chip, and the toast with and without a duration). Selenium **31 of 31**.
