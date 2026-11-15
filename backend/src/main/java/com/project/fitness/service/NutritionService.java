@@ -73,6 +73,9 @@ public class NutritionService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AccountNotFoundException(userId));
 
+        // After the account check, so a dead session still gets its 409 (PLAN O-8).
+        InputChecks.mealTime(request.getLoggedAt());
+
         MealLog meal = MealLog.builder()
                 .user(user)
                 .description(trimmed(request.getDescription()))
@@ -167,6 +170,10 @@ public class NutritionService {
     public MealResponse updateMeal(String requestingUserId, String mealId, MealRequest request) {
         MealLog meal = loadOwned(mealId, requestingUserId);
         User user = meal.getUser();
+
+        // Before anything is changed, and after the ownership check above, so a refused
+        // edit saves nothing and a stranger still gets their 403 (PLAN O-8).
+        InputChecks.mealTime(request.getLoggedAt());
 
         Set<String> clear = request.getClear() == null ? Set.of() : request.getClear();
         for (String field : clear) {

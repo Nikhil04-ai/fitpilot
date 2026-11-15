@@ -81,6 +81,10 @@ priority order, so priorities aren't re-derived from scratch every session.
 > **Status, 2026-11-16 (docs pass):** `README.md`, `ARCHITECTURE.md` and `AGENT.md` were checked
 > against the code and corrected (`PROGRESS.md` Phase 46). The same check turned up one open code
 > item, O-8: a meal's date is not validated.
+>
+> **Status, 2026-11-16 (O-8):** fixed (`PROGRESS.md` Phase 47). A meal can't be dated more than a
+> day ahead. Backend **616** passing (was 614), frontend **193**, Selenium **31 of 31**. No code
+> item is left open besides the decisions O-5 and O-6 and deployment.
 
 ## Priority key
 
@@ -554,7 +558,7 @@ has a test that fails on the code before the fix. A struck-through row is fixed.
 | O-5 | Reloading with an expired access token made two refresh calls, both 200, and the session survived. The cause was not investigated; no harm was seen. | Live, in Chrome |
 | O-6 | Access tokens last 48 hours and sit in `localStorage`. Acceptable only because the XSS defences hold (all HTML sinks escaped, CSP without `unsafe-inline` for scripts), which the audit confirmed. | Code review; HTML-in-a-name test in Chrome |
 | ~~O-7~~ | ~~A workout with a duration but no calories, because the profile has no weight, shows an empty Burned cell with no explanation.~~ Found 2026-11-16 while fixing O-4; **fixed the same day** (`PROGRESS.md` Phase 45). Weight is optional at sign-up and on the profile form, and calories are worked out from it, so without one they are left empty rather than invented. The save toast and a chip on the row now name the cause and where to fix it: add the weight in Profile, then use Edit on the workout (a blank calorie field re-derives it). Already-saved workouts are not back-filled when a weight is added; each is repaired by its own Edit. | Live, in Chrome, as a user who left weight blank |
-| **O-8** | **Open.** A meal's `loggedAt` is stored without a date check, on create (`NutritionService.java:84`) and on edit (`:180`). A workout's start time (P5-18) and a sleep night (P5-8) are refused when more than a day ahead; a meal dated 2099, or 1900, is accepted and counted in that day's intake, which the goals and the weekly digest read. Found 2026-11-16 while checking the docs against the code. Low severity, since the UI probably always sends the current time (unchecked), but the API accepts it. The fix is the same shape as P5-18: one `InputChecks` method, called on both paths, with a test. | Code reading; not run |
+| ~~**O-8**~~ | ~~A meal's `loggedAt` is stored without a date check, on create and on edit. A workout's start time (P5-18) and a sleep night (P5-8) are refused when more than a day ahead; a meal dated 2099 is accepted and counted in that day's intake, which the goals and the weekly digest read.~~ **Fixed 2026-11-16** (`PROGRESS.md` Phase 47), found the same day while checking the docs against the code. `InputChecks.mealTime()` refuses a `loggedAt` more than a day ahead with a `400`, on create and on edit; on edit it runs after the ownership check and before anything changes, so a refused edit saves nothing. **The past is deliberately open**, as it is for workouts and sleep: a 1900 meal is still accepted, because refusing old dates would also refuse an honest back-fill. The daily series and goal periods look at bounded windows, so an old date does them no harm; it would still show in the meal history and the export. `API.md` updated. The UI never sent a bad date: it sends the current time when logging a meal and no date when editing one. | Code reading, then run |
 
 ---
 
@@ -585,8 +589,8 @@ it:
    - ~~**P5-18:** refuse a workout dated in the future.~~ **Fixed 2026-11-06**
      (`PROGRESS.md` Phase 26).
    - **Observations:** ~~O-1~~ changed 2026-10-17. ~~O-2~~ and ~~O-3~~ fixed (2026-11-16).
-     ~~O-4~~ handled and ~~O-7~~ fixed (2026-11-16). O-5 and O-6 still want a decision. **O-8**
-     (meal dates are not checked) is open and small.
+     ~~O-4~~ handled and ~~O-7~~ fixed (2026-11-16). ~~O-8~~ fixed (2026-11-16).
+     O-5 and O-6 still want a decision.
 
 Done earlier:
 

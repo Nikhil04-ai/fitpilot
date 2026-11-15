@@ -278,6 +278,37 @@ class InputValidationIntegrationTest {
                 Map.of("startTime", LocalDateTime.now().minusDays(3).toString()))).statusCode()).isEqualTo(200);
     }
 
+    /** Found checking the docs against the code (PLAN O-8): a meal dated 2099 counted in that day's intake. */
+    @Test
+    @DisplayName("A meal can't be dated in the future, on create or edit, and a refused edit changes nothing")
+    void mealTime() throws Exception {
+        assertRejected(post("/api/nutrition/meals",
+                Map.of("calories", 500, "loggedAt", "2099-01-01T12:00:00")), "hasn't happened");
+        assertRejected(post("/api/nutrition/meals",
+                Map.of("calories", 500, "loggedAt", LocalDateTime.now().plusDays(2).toString())), "hasn't happened");
+
+        String id = json(send(post("/api/nutrition/meals",
+                Map.of("calories", 500, "description", "lunch")))).get("id").asText();
+        assertRejected(put("/api/nutrition/meals/" + id,
+                Map.of("loggedAt", "2099-01-01T12:00:00", "description", "kept?")), "hasn't happened");
+        boolean seen = false;
+        for (JsonNode m : json(send(get("/api/nutrition/meals?size=100"))).get("content")) {
+            if (!m.get("id").asText().equals(id)) continue;
+            seen = true;
+            assertThat(m.get("loggedAt").asText()).doesNotStartWith("2099");
+            assertThat(m.get("description").asText()).isEqualTo("lunch");
+        }
+        assertThat(seen).as("the meal is still in the history").isTrue();
+
+        // A day of slack, and any time in the past, are both fine, on create and on edit.
+        assertThat(send(post("/api/nutrition/meals", Map.of("calories", 400,
+                "loggedAt", LocalDateTime.now().plusHours(12).toString()))).statusCode()).isEqualTo(200);
+        assertThat(send(post("/api/nutrition/meals", Map.of("calories", 400,
+                "loggedAt", LocalDateTime.now().minusYears(1).toString()))).statusCode()).isEqualTo(200);
+        assertThat(send(put("/api/nutrition/meals/" + id, Map.of("loggedAt",
+                LocalDateTime.now().minusDays(3).toString()))).statusCode()).isEqualTo(200);
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────
 
     private Map<String, Object> withField(String key, Object value) {

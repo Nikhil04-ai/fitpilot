@@ -1843,3 +1843,38 @@ is in the repo, and none was opened from outside it.
   "not covered" are unchanged. P4-18's dead-session `409` is tested for every `GET` route, not
   for write routes; real email delivery and the deployed environment (Phase 18) have never been
   exercised.
+
+## Phase 47 — O-8: a meal can't be dated in the future (2026-11-16)
+
+Found by the docs pass (Phase 46): a meal's `loggedAt` was stored with no date check, on create
+and on edit. A workout's start time (P5-18) and a sleep night (P5-8) were already refused when
+more than a day ahead; a meal dated 2099 was saved and counted in that day's intake, which the
+nutrition goals and the weekly digest read.
+
+* **Reproduced before fixing.** With the check removed from `NutritionService`, the new
+  integration test failed (1 of 17 in `InputValidationIntegrationTest`): `POST /api/nutrition/meals`
+  with `"loggedAt": "2099-01-01T12:00:00"` answered `200` and echoed that date back.
+* **The fix:** `InputChecks.mealTime()`, sharing one private helper with `startTime()` so the two
+  can't drift apart. A time more than a day ahead is a `400`, "A meal can't be logged for a time
+  that hasn't happened yet." A day of slack covers a server clock behind the person's own, as for
+  workouts and sleep. It runs in `logMeal` after the account lookup (a dead session still gets its
+  `409`) and in `updateMeal` after `loadOwned` and before any field changes (a stranger still gets
+  the `403`, and a refused edit saves nothing).
+* **The past is deliberately open.** Refusing old dates would also refuse an honest back-fill, and
+  it is how workouts and sleep behave. A 1900 meal is therefore still accepted. The daily series
+  and goal periods read bounded windows, so an old date does them no harm; it would still appear in
+  the meal history and the export. `PLAN.md` first listed "1900" as part of the problem; it is not
+  treated as one.
+* **The UI never sent a bad date:** `nutrition.js` sends the current time when logging a meal and
+  sends no date when editing one. This was a hole in the API, not a bug a user could reach.
+* **Not covered:** `POST /api/nutrition/meals/natural` always stamps the meal with now, so it
+  needs no check.
+* **`API.md`** updated for both routes: the rule, and the new `400` in each error list.
+* **Tests:** backend **616** passing (was 614): `InputChecksTest.mealTime` (the edges, including
+  one minute past the day of slack, and null) and `InputValidationIntegrationTest.mealTime` (create
+  refused; edit refused and the meal read back unchanged; the day of slack and a year ago accepted
+  on create; a past edit accepted). The full suite was run (`./mvnw test`, keys blanked) and totalled
+  from the XML reports: 616 tests, 0 failures, 0 errors, 65 suites, all written during the run.
+  `README.md`'s test count updated to match.
+* **Side effect of proving it:** the check was removed with `git stash` for the proof run and
+  restored with `git stash pop`; the stash is empty and both call sites are back (2 calls).

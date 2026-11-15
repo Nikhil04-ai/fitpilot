@@ -960,7 +960,7 @@ Logs a meal with numbers the user entered.
   - Every field is optional, but the meal must have `calories > 0` or at least one macro.
   - `calories` is at most 20000 and each macro is 0–2000 g, on create, edit and the AI-estimated path (`400` naming the field). There was no upper limit before 2026-10-11: a 10,000,000 kcal meal was saved.
   - `mealType` is one of `BREAKFAST`, `LUNCH`, `DINNER`, `SNACK`, `OTHER`. Defaults to `OTHER`.
-  - `loggedAt` is when the meal was eaten, as a local ISO date-time with no zone. It defaults to now. Daily totals, the series and goal periods all group by this field, so a backdated meal counts on the day it was eaten.
+  - `loggedAt` is when the meal was eaten, as a local ISO date-time with no zone. It defaults to now. Daily totals, the series and goal periods all group by this field, so a backdated meal counts on the day it was eaten. Any time in the past is accepted; one more than a day ahead is a `400` (a day of slack, as for a workout's `startTime` and a sleep `sleepDate`). Before 2026-11-16 a meal dated 2099 was saved and counted in that day's intake.
   - If `calories` is omitted but all three macros are present, calories are derived at 4/4/9 kcal per gram. An explicit `calories` value is never overwritten.
   - `description` is trimmed and silently truncated to 500 characters.
   - `userId` and `clear` are ignored.
@@ -985,7 +985,7 @@ Logs a meal with numbers the user entered.
   ```
   - `goalAchievements` lists the nutrition goals whose state this meal changed, and is `null` when there are none. An `AT_MOST` budget produces a warning instead of a congratulation, for example `"Over your CALORIE INTAKE PER DAY budget — 150 kcal above 2000."`.
   - `parseNote` is always `null` on this route.
-- **Errors:** `400` `"A meal needs at least a calorie figure or its macros."` · `400` `"Calories cannot be negative."` · `400` `"A meal's calories must be between 0 and 20000."` · `400` `"Protein must be between 0 and 2000 g."` (likewise Carbs, Fat)
+- **Errors:** `400` `"A meal needs at least a calorie figure or its macros."` · `400` `"Calories cannot be negative."` · `400` `"A meal's calories must be between 0 and 20000."` · `400` `"Protein must be between 0 and 2000 g."` (likewise Carbs, Fat) · `400` `"A meal can't be logged for a time that hasn't happened yet."` (`loggedAt` more than a day ahead)
 
 ### `POST /api/nutrition/meals/natural`
 Sends a description like "two eggs, toast and a coffee" to Gemini and logs the estimated meal.
@@ -1031,12 +1031,14 @@ Partially updates one of the caller's meals.
   - `clear` lists fields to set to empty. Allowed names: `description`, `calories`, `proteinGrams`, `carbsGrams`, `fatGrams`. When a field is in `clear`, that wins over any value sent for it. `mealType` and `loggedAt` cannot be cleared.
   - `aiEstimated` is reset to `false` only when a number (`calories` or a macro) actually changes value. Resending the same numbers, or editing only the description, type or time, keeps the flag.
   - Like `POST`, an update derives the calories from the macros when there are none: protein × 4 + carbs × 4 + fat × 9, and only when all three macros are present. So sending `"clear": ["calories"]` on a meal with all three macros recalculates its calories. A calorie figure that is already there is never replaced, so changing a macro alone leaves it as it was. A meal saved earlier with macros and no calories is filled in by its next edit.
+  - `loggedAt` follows the same rule as on `POST`: any past time is accepted, one more than a day ahead is refused. It is checked before anything is changed, after the ownership check, so a refused edit saves nothing.
   - `userId` is ignored.
 - **Response:** `200`, the `MealResponse` shape, with `goalAchievements` recomputed.
 - **Errors:**
   - `400` `"Meal not found: <mealId>"`
   - `403` `"You don't have access to this meal."`
   - `400` `"Can't clear '<field>' on a meal."`
+  - `400` `"A meal can't be logged for a time that hasn't happened yet."` (`loggedAt` more than a day ahead)
   - `400` `"A meal needs at least a calorie figure or its macros."` when the edit would leave the meal empty.
   - `400` `"Calories cannot be negative."`
 

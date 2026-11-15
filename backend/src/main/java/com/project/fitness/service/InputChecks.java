@@ -116,8 +116,24 @@ public final class InputChecks {
      * behind the person's own. {@code null} passes (create defaults it to now).
      */
     public static void startTime(LocalDateTime start) {
-        if (start != null && start.isAfter(LocalDateTime.now().plusDays(1))) {
-            throw new RuntimeException("A workout can't be logged for a time that hasn't happened yet.");
+        notMoreThanADayAhead(start, "A workout can't be logged for a time that hasn't happened yet.");
+    }
+
+    /**
+     * When a meal was eaten. Like a workout's start time and a sleep night, it is refused
+     * if it is more than a day ahead (PLAN O-8): a meal dated 2099 was stored and counted
+     * in that day's intake, which the nutrition goals and the weekly digest read. The past
+     * is open, because logging yesterday's dinner this morning is ordinary, and a day of
+     * slack covers a server clock behind the person's own. {@code null} passes (create
+     * defaults it to now, and an edit that omits it leaves it alone).
+     */
+    public static void mealTime(LocalDateTime loggedAt) {
+        notMoreThanADayAhead(loggedAt, "A meal can't be logged for a time that hasn't happened yet.");
+    }
+
+    private static void notMoreThanADayAhead(LocalDateTime when, String message) {
+        if (when != null && when.isAfter(LocalDateTime.now().plusDays(1))) {
+            throw new RuntimeException(message);
         }
     }
 

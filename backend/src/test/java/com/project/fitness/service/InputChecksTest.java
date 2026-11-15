@@ -41,6 +41,22 @@ class InputChecksTest {
     }
 
     @Test
+    @DisplayName("a meal may be dated up to a day ahead, not later; the past is open (PLAN O-8)")
+    void mealTime() {
+        assertThatCode(() -> {
+            InputChecks.mealTime(LocalDateTime.now().minusYears(1));
+            InputChecks.mealTime(LocalDateTime.now());
+            InputChecks.mealTime(LocalDateTime.now().plusHours(23));
+            InputChecks.mealTime(null);
+        }).doesNotThrowAnyException();
+        assertThatThrownBy(() -> InputChecks.mealTime(LocalDateTime.now().plusDays(1).plusMinutes(5)))
+                .isExactlyInstanceOf(RuntimeException.class)
+                .hasMessage("A meal can't be logged for a time that hasn't happened yet.");
+        assertThatThrownBy(() -> InputChecks.mealTime(LocalDateTime.of(2099, 1, 1, 12, 0)))
+                .isExactlyInstanceOf(RuntimeException.class);
+    }
+
+    @Test
     @DisplayName("one step outside is refused")
     void justOutsideIsRefused() {
         assertThatThrownBy(() -> InputChecks.weightKg(19.9)).hasMessageContaining("between 20 and 500 kg");
