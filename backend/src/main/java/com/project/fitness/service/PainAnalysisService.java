@@ -1,5 +1,6 @@
 package com.project.fitness.service;
 
+import com.project.fitness.dto.PainLogResponse;
 import com.project.fitness.exceptions.AccountNotFoundException;
 import com.project.fitness.model.Activity;
 import com.project.fitness.model.BodyPart;
@@ -33,8 +34,8 @@ public class PainAnalysisService {
     private final UserRepository userRepository;
     private final ActivityRepository activityRepository;
 
-    public PainLog logPain(String userId, String activityId, BodyPart bodyPart,
-                           int severity, String description) {
+    public PainLogResponse logPain(String userId, String activityId, BodyPart bodyPart,
+                                   int severity, String description) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AccountNotFoundException(userId));
 
@@ -65,12 +66,16 @@ public class PainAnalysisService {
                 .description(description)
                 .build();
 
-        return painLogRepository.save(log);
+        return PainLogResponse.from(painLogRepository.save(log));
     }
 
-    /** One page of pain history. Unbounded, this grew with every entry forever (PLAN P3-3). */
-    public Page<PainLog> getPainHistory(String userId, Pageable pageable) {
-        return painLogRepository.findByUserId(userId, pageable);
+    /**
+     * One page of pain history. Unbounded, this grew with every entry forever (PLAN P3-3).
+     * Mapped here, inside the transaction, because each entry's workout is lazy.
+     */
+    @Transactional(readOnly = true)
+    public Page<PainLogResponse> getPainHistory(String userId, Pageable pageable) {
+        return painLogRepository.findByUserId(userId, pageable).map(PainLogResponse::from);
     }
 
     /**
