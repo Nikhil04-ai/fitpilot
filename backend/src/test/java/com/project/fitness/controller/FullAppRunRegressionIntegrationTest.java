@@ -87,12 +87,40 @@ class FullAppRunRegressionIntegrationTest {
     void planKnowsTodayIsDone() throws Exception {
         String planId = json(ok(call("GET", "/api/plans", null, jwt))).get(0).get("id").asText();
         ok(call("POST", "/api/plans/" + planId + "/enroll", null, jwt));
-        assertThat(json(ok(call("GET", "/api/plans/active/" + userId, null, jwt))).get("completedToday").asBoolean()).isFalse();
+        JsonNode active = json(ok(call("GET", "/api/plans/active/" + userId, null, jwt)));
+        assertThat(active.get("completedToday").asBoolean()).isFalse();
+        // F35: the enrollment names its plan, so the app can show that plan's schedule.
+        assertThat(active.path("planId").asText()).isEqualTo(planId);
 
         JsonNode done = json(ok(call("POST", "/api/plans/active/" + userId + "/complete-day", null, jwt)));
         assertThat(done.get("completedToday").asBoolean()).isTrue();
         assertThat(done.get("lastCompletedDate").asText()).isEqualTo(LocalDate.now().toString());
         assertThat(json(ok(call("GET", "/api/plans/active/" + userId, null, jwt))).get("completedToday").asBoolean()).isTrue();
+    }
+
+    @Test
+    @DisplayName("A pain entry linked to a workout says which one, and outlives it unlinked (F20)")
+    void painNamesItsWorkout() throws Exception {
+        String act = json(ok(call("POST", "/api/activities", Map.of("type", "RUNNING", "duration", 30), jwt))).get("id").asText();
+
+        JsonNode logged = json(ok(call("POST", "/api/pain-log",
+                Map.of("activityId", act, "bodyPart", "LEFT_KNEE", "severity", 3), jwt)));
+        assertThat(logged.path("activity").path("id").asText()).as(logged.toString()).isEqualTo(act);
+        assertThat(logged.path("activity").path("type").asText()).isEqualTo("RUNNING");
+        assertThat(logged.path("activity").hasNonNull("startTime")).isTrue();
+
+        JsonNode unlinked = json(ok(call("POST", "/api/pain-log", Map.of("bodyPart", "NECK", "severity", 1), jwt)));
+        assertThat(unlinked.get("activity").isNull()).as(unlinked.toString()).isTrue();
+
+        JsonNode history = json(ok(call("GET", "/api/pain-log/" + userId, null, jwt))).get("content");
+        assertThat(history).hasSize(2);
+        JsonNode knee = history.get(0).get("bodyPart").asText().equals("LEFT_KNEE") ? history.get(0) : history.get(1);
+        assertThat(knee.path("activity").path("id").asText()).isEqualTo(act);
+
+        assertThat(call("DELETE", "/api/activities/" + act, null, jwt).statusCode()).isBetween(200, 204);
+        JsonNode after = json(ok(call("GET", "/api/pain-log/" + userId, null, jwt))).get("content");
+        assertThat(after).hasSize(2);
+        after.forEach(p -> assertThat(p.get("activity").isNull()).as(p.toString()).isTrue());
     }
 
     @Test
