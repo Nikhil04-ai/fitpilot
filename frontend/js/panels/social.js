@@ -363,6 +363,7 @@ export async function respondChallenge(id, accept) {
     });
     toast(accept ? 'Challenge accepted. Game on.' : 'Challenge declined.');
     loadChallenges();
+    refreshUnreadCount();   // answering takes back the invite's notification
   } catch (err) {
     toast(err.message, true);
   }
