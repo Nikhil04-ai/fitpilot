@@ -1,7 +1,7 @@
 package com.project.fitness.controller;
 
+import com.project.fitness.dto.PainLogResponse;
 import com.project.fitness.model.BodyPart;
-import com.project.fitness.model.PainLog;
 import com.project.fitness.security.AccountGuard;
 import com.project.fitness.security.CurrentUser;
 import com.project.fitness.service.PainAnalysisService;
@@ -25,8 +25,8 @@ public class PainLogController {
 
     /** POST /api/pain-log — log pain after a workout */
     @PostMapping
-    public ResponseEntity<PainLog> logPain(@RequestBody PainLogRequest request) {
-        PainLog saved = painAnalysisService.logPain(
+    public ResponseEntity<PainLogResponse> logPain(@RequestBody PainLogRequest request) {
+        PainLogResponse saved = painAnalysisService.logPain(
                 CurrentUser.id(),
                 request.getActivityId(),
                 request.getBodyPart(),
@@ -38,7 +38,7 @@ public class PainLogController {
 
     /** GET /api/pain-log/{userId}?page=&size= — pain history, newest first, paged */
     @GetMapping("/{userId}")
-    public ResponseEntity<Page<PainLog>> getPainHistory(
+    public ResponseEntity<Page<PainLogResponse>> getPainHistory(
             @PathVariable String userId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
