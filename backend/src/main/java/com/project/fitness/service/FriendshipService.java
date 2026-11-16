@@ -102,7 +102,7 @@ public class FriendshipService {
                 "Friend request from " + displayName(requester),
                 displayName(requester) + " wants to connect on FitPilot.",
                 "challenges",
-                "friend-request:" + friendship.getId());
+                requestKey(friendship));
 
         return message(REQUEST_SENT);
     }
@@ -125,6 +125,7 @@ public class FriendshipService {
         friendship.setStatus(FriendshipStatus.ACCEPTED);
         friendship.setRespondedAt(LocalDateTime.now());
         friendshipRepository.save(friendship);
+        notificationService.retire(friendship.getAddressee().getId(), requestKey(friendship));
 
         User accepter = friendship.getAddressee();
         notificationService.notify(friendship.getRequester(), NotificationType.GENERAL,
@@ -152,7 +153,14 @@ public class FriendshipService {
         if (!friendship.involves(requestingUserId)) {
             throw new AccessDeniedException("You don't have access to this friendship.");
         }
+        // Declined or withdrawn, the request is gone, so the addressee's notice of it goes too.
+        notificationService.retire(friendship.getAddressee().getId(), requestKey(friendship));
         friendshipRepository.delete(friendship);
+    }
+
+    /** The dedupe key of the notification that announces a friend request. */
+    private static String requestKey(Friendship friendship) {
+        return "friend-request:" + friendship.getId();
     }
 
     // ── Reading ──────────────────────────────────────────────────────────────
