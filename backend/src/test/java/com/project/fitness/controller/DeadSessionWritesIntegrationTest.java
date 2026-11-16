@@ -121,11 +121,9 @@ class DeadSessionWritesIntegrationTest {
                 "email", email, "password", PASSWORD, "firstName", "Dead", "lastName", "Writes",
                 "weight", 70.0, "height", 175.0, "age", 30), null))).get("id").asText();
         String jwt = login(email, PASSWORD);
-        // Read from the table, not GET /api/plans: that route serialises each plan's lazy
-        // days after its transaction ends, so under this profile (open-in-view off) it is
-        // a 500. Production keeps open-in-view on, which is the only reason it works there.
-        String planId = jdbc.queryForObject(
-                "SELECT id FROM workout_plan WHERE created_by_user_id IS NULL LIMIT 1", String.class);
+        // A seeded system plan to enroll in. (This used to be read from the table, because
+        // GET /api/plans was a 500 under this profile, where open-in-view is off: PLAN O-9.)
+        String planId = json(send(request("GET", "/api/plans", null, jwt))).get(0).get("id").asText();
 
         // ── Discover and classify every write route ─────────────────────────────
         Map<String, Write> body = bodyRoutes();

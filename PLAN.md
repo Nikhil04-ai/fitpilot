@@ -87,9 +87,13 @@ priority order, so priorities aren't re-derived from scratch every session.
 >
 > **Status, 2026-11-16 (P4-18, writes):** the dead-session check now covers write routes too, and
 > found two that returned a success to a deleted account; both are fixed (`PROGRESS.md` Phase
-> 48). Backend **617** passing. It also surfaced one open item, O-9: `GET /api/plans` only works
-> because production keeps open-in-view on. Open besides that: the decisions O-5 and O-6, and
-> deployment.
+> 48). Backend **617** passing. It also surfaced O-9: `GET /api/plans` only worked because
+> production keeps open-in-view on.
+>
+> **Status, 2026-11-16 (O-9):** fixed (`PROGRESS.md` Phase 49): the plan list now loads each
+> plan's days inside its transaction. Backend **618** passing, frontend **193**, Selenium **31 of
+> 31**. No code item is left open. What remains is the decisions O-5 and O-6, deployment, and the
+> unexplained first Selenium skip, whose cause is still unknown.
 
 ## Priority key
 
@@ -564,7 +568,7 @@ has a test that fails on the code before the fix. A struck-through row is fixed.
 | O-6 | Access tokens last 48 hours and sit in `localStorage`. Acceptable only because the XSS defences hold (all HTML sinks escaped, CSP without `unsafe-inline` for scripts), which the audit confirmed. | Code review; HTML-in-a-name test in Chrome |
 | ~~O-7~~ | ~~A workout with a duration but no calories, because the profile has no weight, shows an empty Burned cell with no explanation.~~ Found 2026-11-16 while fixing O-4; **fixed the same day** (`PROGRESS.md` Phase 45). Weight is optional at sign-up and on the profile form, and calories are worked out from it, so without one they are left empty rather than invented. The save toast and a chip on the row now name the cause and where to fix it: add the weight in Profile, then use Edit on the workout (a blank calorie field re-derives it). Already-saved workouts are not back-filled when a weight is added; each is repaired by its own Edit. | Live, in Chrome, as a user who left weight blank |
 | ~~**O-8**~~ | ~~A meal's `loggedAt` is stored without a date check, on create and on edit. A workout's start time (P5-18) and a sleep night (P5-8) are refused when more than a day ahead; a meal dated 2099 is accepted and counted in that day's intake, which the goals and the weekly digest read.~~ **Fixed 2026-11-16** (`PROGRESS.md` Phase 47), found the same day while checking the docs against the code. `InputChecks.mealTime()` refuses a `loggedAt` more than a day ahead with a `400`, on create and on edit; on edit it runs after the ownership check and before anything changes, so a refused edit saves nothing. **The past is deliberately open**, as it is for workouts and sleep: a 1900 meal is still accepted, because refusing old dates would also refuse an honest back-fill. The daily series and goal periods look at bounded windows, so an old date does them no harm; it would still show in the meal history and the export. `API.md` updated. The UI never sent a bad date: it sends the current time when logging a meal and no date when editing one. | Code reading, then run |
-| **O-9** | **Open.** `GET /api/plans` returns each plan's lazy `days` and only serialises them after `getAllSystemPlans`'s transaction has ended, so it works only because production sets `spring.jpa.open-in-view=true`. Under the `test` profile, which sets it `false`, the route is a `500` (`HttpMessageNotWritableException`, `LazyInitializationException` on `WorkoutPlan.days`). The same fault was fixed for `getPlanDetail` in P4-19; the list route was missed. Found 2026-11-16 by `DeadSessionWritesIntegrationTest`, whose first run got an error object where it expected a list. Nothing is broken in production today; it breaks the day someone turns open-in-view off, and it **probably explains the unexplained "no plans seeded" skip** in the first Selenium run (`PROGRESS.md` Phase 42): that session's run arguments weren't recorded, but if it ran under `profiles=test`, the Plans panel's list call would have failed exactly like this and shown no plans. The fix is the P4-19 one: load the days inside the transaction. | Reproduced in the test profile; production not affected |
+| ~~**O-9**~~ | ~~`GET /api/plans` returns each plan's lazy `days` and only serialises them after `getAllSystemPlans`'s transaction has ended, so it works only because production sets `spring.jpa.open-in-view=true`.~~ **Fixed 2026-11-16** (`PROGRESS.md` Phase 49). Under the JUnit context, where open-in-view is off, the route was a `500` (`LazyInitializationException` on `WorkoutPlan.days`); the same fault was fixed for `getPlanDetail` in P4-19 and the list was missed. Found by `DeadSessionWritesIntegrationTest`. `getAllSystemPlans` now loads each plan's days inside its transaction, like `getPlanDetail`. Nothing was broken in production, which keeps open-in-view on; this removes the dependency on that setting. **Correction to an earlier version of this row:** it said the bug "probably explains" the first Selenium run's "no plans seeded" skip. That was tested and is wrong. Under `spring-boot:run` with `profiles=test` the *unfixed* route returned `200` with all four plans and the plans check passed, so the cause of that skip is still unknown. | Reproduced in the JUnit context; production not affected |
 
 ---
 
@@ -596,7 +600,7 @@ it:
      (`PROGRESS.md` Phase 26).
    - **Observations:** ~~O-1~~ changed 2026-10-17. ~~O-2~~ and ~~O-3~~ fixed (2026-11-16).
      ~~O-4~~ handled and ~~O-7~~ fixed (2026-11-16). ~~O-8~~ fixed (2026-11-16).
-     O-5 and O-6 still want a decision. **O-9** (the plan list depends on open-in-view) is open.
+     ~~O-9~~ fixed (2026-11-16). O-5 and O-6 still want a decision.
 
 Done earlier:
 

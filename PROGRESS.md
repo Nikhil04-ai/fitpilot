@@ -1915,13 +1915,13 @@ tried. `DeadSessionWritesIntegrationTest` does the rest.
 * **A third finding, not fixed here: O-9.** The test's first run got an error object where it
   expected the plan list. `GET /api/plans` serialises each plan's lazy `days` after its transaction
   ends, so it only works because production sets `open-in-view=true`; under the `test` profile
-  (`false`) it is a `500`. The same fault was fixed for `getPlanDetail` in P4-19. The test reads
-  the plan id from the table instead. Recorded in `PLAN.md` as open.
-* **The earlier unexplained skip is probably this.** Phase 45 said the first Selenium run's "no
-  plans seeded" was a guess about a startup race. With O-9 a better-supported cause is that the run
-  used `profiles=test`, so the plan list call failed and the panel showed none. That session's run
-  arguments were not recorded, so this is inferred, not proved. Nothing in the app was wrong then
-  that is not also wrong now under that profile.
+  (`false`) it is a `500`. The same fault was fixed for `getPlanDetail` in P4-19. The test read
+  the plan id from the table instead. Recorded in `PLAN.md` as open here, and fixed in Phase 49.
+* **~~The earlier unexplained skip is probably this.~~ Wrong; corrected in Phase 49.** This bullet
+  first said the first Selenium run's "no plans seeded" was probably caused by O-9, if that run
+  used `profiles=test`. It was tested in Phase 49 and that is not the cause: the unfixed route
+  answers `200` with all four plans under `spring-boot:run` with `profiles=test`. The cause of that
+  skip is still unknown (Phase 45's startup-race guess is also unverified).
 * **Not covered:** a RECORD route is only tried with an id that doesn't exist. A dead account that
   still owns real rows (the account deleted but its activities left behind) is not exercised, and
   that is not what a database reset produces. The natural-language routes, with a Gemini key, call
@@ -1932,3 +1932,41 @@ tried. `DeadSessionWritesIntegrationTest` does the rest.
   the user before it writes anything", which this disproved; it now says so and names both tests.
 * **Tests:** backend **617** passing (was 616), 66 suites, 0 failures, 0 errors, totalled from the
   XML reports written during the run. `README.md`'s count updated.
+
+## Phase 49 — O-9: the plan list no longer depends on open-in-view (2026-11-16)
+
+Found by Phase 48: `GET /api/plans` returned each plan's lazy `days` and only serialised them after
+`getAllSystemPlans`'s transaction had ended, so it worked only because production sets
+`spring.jpa.open-in-view=true`. Where it is off, as in the JUnit context, the route was a `500`
+(`LazyInitializationException` on `WorkoutPlan.days`). `getPlanDetail` had the same fault fixed in
+P4-19; the list was missed.
+
+* **Reproduced first.** A new test, `ListOrderingIntegrationTest.planListCarriesItsDays`, failed on
+  the unfixed code with that exception and a `500` ("Something went wrong on our end").
+* **The fix:** `getAllSystemPlans` touches each plan's days inside its transaction, as
+  `getPlanDetail` does. One extra query per plan, and there are four system plans. The response is
+  unchanged. Nothing was broken in production, which keeps open-in-view on; this removes the
+  dependence on that setting.
+* **The test:** every plan in the list carries a `days` list in ascending day order, and a plan the
+  test stores backwards comes back with all four of its days. It does **not** require every plan to
+  have days: the database is shared across test classes and another class leaves one with none.
+  My first version asserted that, passed alone, and failed in the full suite; the assertion was
+  wrong, not the app. The relaxed test still fails on the unfixed code, because the `500` is caught
+  by the status check that comes first.
+* **`DeadSessionWritesIntegrationTest`** went back to reading its plan id from `GET /api/plans`
+  instead of the table, so the route has regression cover there too, and the comment saying it was a
+  `500` is gone.
+* **A correction to Phase 48 and to `PLAN.md`.** Both said this bug "probably explains" the first
+  Selenium run's "no plans seeded" skip. That was tested and is wrong. With the fix stashed, the
+  backend run under `spring-boot:run` with `profiles=test` on in-memory H2 (the `test` profile and
+  the JDBC URL were confirmed from the log first), `GET /api/plans` answered `200` with four plans,
+  seven days in the first, and the Selenium plans check passed (31 of 31). So the unfixed bug does
+  not show under `spring-boot:run`, only in the JUnit context, and the cause of the first skip is
+  still unknown. Phase 45's startup-race guess is not verified either. Both documents now say so.
+* **Not established:** why `spring-boot:run` behaves as if open-in-view were on despite
+  `profiles=test`. `application-test.properties` sets it `false`, and the JUnit context honours it.
+  Not chased: it does not change the fix.
+* **Verification:** backend **618** passing (was 617), 66 suites, 0 failures, 0 errors, totalled
+  from the XML reports written during the run. Selenium **31 of 31** against the fixed code,
+  and `DeadSessionReadsIntegrationTest` and `DeadSessionWritesIntegrationTest` pass. The stash used
+  for the unfixed run was popped; it is empty and the fix is back. `README.md`'s count updated.

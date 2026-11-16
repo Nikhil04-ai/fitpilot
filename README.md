@@ -6,7 +6,7 @@ An AI-powered fitness tracking platform with a Spring Boot backend and a vanilla
 
 **Backend:** Java 21 · Spring Boot 4.1 · Spring Security (JWT) · Hibernate/JPA · Flyway · MySQL · Gemini AI · Docker
 **Frontend:** Vanilla HTML/CSS/JS as native ES modules (no build step, no framework), with Chart.js from a CDN
-**Testing:** JUnit 5 · Mockito · H2 (in-memory test DB), 617 backend tests · Node's built-in test runner, 193 frontend tests · a Selenium browser suite, 31 checks
+**Testing:** JUnit 5 · Mockito · H2 (in-memory test DB), 618 backend tests · Node's built-in test runner, 193 frontend tests · a Selenium browser suite, 31 checks
 **CI/CD:** GitHub Actions
 
 ## Features

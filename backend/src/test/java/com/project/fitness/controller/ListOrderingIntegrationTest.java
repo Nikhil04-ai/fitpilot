@@ -192,6 +192,49 @@ class ListOrderingIntegrationTest {
         assertThat(numbers).containsExactly(1, 2, 3, 4, 5, 6);
     }
 
+    /**
+     * PLAN O-9. The list serialised each plan's lazy days after its transaction ended, so
+     * it only worked where the session stayed open for the whole request. Production
+     * keeps open-in-view on; this profile turns it off, and there the list was a 500.
+     */
+    @Test
+    @DisplayName("The plan list carries every plan's days, in day order, without relying on open-in-view")
+    void planListCarriesItsDays() throws Exception {
+        WorkoutPlan plan = WorkoutPlan.builder().name("List test").totalDays(4).difficulty("BEGINNER")
+                .goal("ENDURANCE").build();
+        for (int day = 4; day >= 1; day--) {   // backwards, as above
+            plan.getDays().add(WorkoutPlanDay.builder().plan(plan).dayNumber(day).isRestDay(false)
+                    .durationMinutes(20).instructions("day " + day).build());
+        }
+        String planId = planRepository.saveAndFlush(plan).getId();
+
+        HttpResponse<String> response = send(get("/api/plans"));
+        assertThat(response.statusCode()).as(response.body()).isEqualTo(200);
+
+        JsonNode plans = json(response);
+        assertThat(plans.isArray()).as("the body is a list").isTrue();
+        assertThat(plans.size()).as("the seeded plans and this one").isGreaterThan(1);
+
+        // Every plan carries a days list, in order. Not "a non-empty one": the database is
+        // shared across the test classes, and another class leaves a plan with no days in it.
+        boolean found = false;
+        for (JsonNode p : plans) {
+            JsonNode days = p.get("days");
+            assertThat(days).as("days of " + p.get("name").asText()).isNotNull();
+            int previous = 0;
+            for (JsonNode d : days) {
+                int n = d.get("dayNumber").asInt();
+                assertThat(n).as("days of " + p.get("name").asText() + " are in order").isGreaterThan(previous);
+                previous = n;
+            }
+            if (p.get("id").asText().equals(planId)) {
+                found = true;
+                assertThat(days.size()).isEqualTo(4);
+            }
+        }
+        assertThat(found).as("the plan saved by this test is in the list").isTrue();
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────
 
     private String url(String path) { return "http://localhost:" + port + path; }

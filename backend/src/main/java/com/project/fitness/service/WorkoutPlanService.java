@@ -109,7 +109,14 @@ public class WorkoutPlanService {
 
     @Transactional(readOnly = true)
     public List<WorkoutPlan> getAllSystemPlans() {
-        return planRepository.findByCreatedByUserIdIsNull();
+        List<WorkoutPlan> plans = planRepository.findByCreatedByUserIdIsNull();
+        // The days are lazy and are serialised after this transaction has ended. That only
+        // worked because production keeps the session open for the whole request
+        // (open-in-view); anywhere else the list was a 500 (AGENT.md rule 3, PLAN O-9).
+        // getPlanDetail below was fixed the same way in P4-19 and this one was missed.
+        // One query per plan, and there are four system plans.
+        plans.forEach(plan -> plan.getDays().size());
+        return plans;
     }
 
     @Transactional(readOnly = true)
