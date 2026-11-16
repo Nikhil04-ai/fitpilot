@@ -1523,17 +1523,18 @@ Logs a pain entry for the caller, optionally linked to a workout.
   - `activityId` is optional, and must be one of the caller's own activities. Omitted, `null` or blank saves the entry unlinked.
   - Nothing is technically required.
   - A `userId` in the body is ignored.
-- **Response:** `200`, the `PainLog` entity:
+- **Response:** `200`, the pain entry:
   ```json
   {
     "id": "b81f…",
     "bodyPart": "LEFT_KNEE",
     "severity": 3,
     "description": "Sharp twinge on the downhill section",
-    "loggedAt": "2026-09-25T18:22:09.771"
+    "loggedAt": "2026-09-25T18:22:09.771",
+    "activity": { "id": "9d4e…", "type": "RUNNING", "startTime": "2026-09-25T17:30:00" }
   }
   ```
-  - The linked activity is `@JsonIgnore`d, so it is never returned, not even as an id.
+  - `activity` is the linked workout, just enough to name it, or `null` when the entry isn't linked. When the workout is deleted the entry stays and `activity` becomes `null`. Added 2026-11-17: before, the link was `@JsonIgnore`d and never returned, not even as an id, so a link could be made but never seen.
 - **Errors:**
   - `400` "Activity not found: <activityId>"
   - `403` "You don't have access to this activity." The activity belongs to someone else.
@@ -1545,7 +1546,7 @@ Logs a pain entry for the caller, optionally linked to a workout.
 Returns the caller's pain history, newest first.
 - **Auth:** `Bearer`
 - **Params:** `userId` (path, must be the caller) · `page` (int, default `0`, negative treated as 0) · `size` (int, default `20`, clamped to 1–100)
-- **Response:** `200`. Paged (see Pagination) `PainLog` entities, same shape as the `POST` response, sorted by `loggedAt` descending.
+- **Response:** `200`. Paged (see Pagination) pain entries, same shape as the `POST` response (with `activity`), sorted by `loggedAt` descending.
 
 ### `GET /api/pain-log/patterns/{userId}`
 Returns one alert for each body part reported 3 or more times in the last 21 days.
@@ -1610,6 +1611,7 @@ Enrolls the caller in a plan starting today, at day 1. Any active enrollment is 
   ```json
   {
     "enrollmentId": "e5d2…",
+    "planId": "1f0a…",
     "planName": "7-Day Strength Starter",
     "planDifficulty": "BEGINNER",
     "planGoal": "MUSCLE_GAIN",
@@ -1630,6 +1632,7 @@ Enrolls the caller in a plan starting today, at day 1. Any active enrollment is 
     }
   }
   ```
+  - `planId` is the enrolled plan's `id`, so its full `days` can be taken from `GET /api/plans` (the app shows the schedule with the days done and today's marked). Added 2026-11-17.
   - `progressPercent` = `completedDays / totalDays × 100`, rounded to one decimal place.
   - `todaysWorkout` is omitted once the plan is finished.
   - `completedToday` is `true` once today's plan day has been marked complete. `todaysWorkout` is then the **next** day, to do tomorrow, and `complete-day` refuses until then. `lastCompletedDate` is the last day one was marked (ISO date, `null` before the first). Added 2026-11-16: without them the app showed the next day as "Today" and kept offering a button the server refused.
@@ -2080,6 +2083,7 @@ The caller's in-app feed of things the app worked out on its own schedule: diges
 - `body` is at most 1000 characters.
 - `isRead` is `true` exactly when `readAt` is set.
 - Read notifications older than 60 days are deleted daily at 03:45.
+- **An invite's notification is deleted, read or not, once there's nothing left to answer.** A friend request's goes when the request is accepted, declined or withdrawn. A challenge invite's goes when that person accepts or declines, when the creator cancels, or when the challenge ends with the invite unanswered. Other notifications are untouched. So the feed, and the unread count, never offer something that can't be answered.
 - **`targetPanel` is the name of a frontend panel, not a URL.** The frontend routes on `#<panel>`.
 
 **`NotificationType` values:**
