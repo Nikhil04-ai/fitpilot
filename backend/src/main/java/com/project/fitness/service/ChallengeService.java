@@ -188,7 +188,7 @@ public class ChallengeService {
                     firstName(creator) + " challenged you",
                     saved.getTitle(),
                     "challenges",
-                    "challenge-invite:" + saved.getId() + ":" + opponent.getId());
+                    inviteKey(saved, opponent.getId()));
         }
 
         return buildChallengeResponse(saved, creatorId);
@@ -252,7 +252,23 @@ public class ChallengeService {
         }
 
         challengeRepository.save(challenge);
+        notificationService.retire(userId, inviteKey(challenge, userId));
         return buildChallengeResponse(challenge, userId);
+    }
+
+    /** The dedupe key of the notification that invites {@code userId} to a challenge. */
+    private static String inviteKey(Challenge challenge, String userId) {
+        return "challenge-invite:" + challenge.getId() + ":" + userId;
+    }
+
+    /**
+     * Takes back the invites nobody answered, once the challenge has ended without them
+     * (cancelled, or run to its end). Answered ones were taken back on answering.
+     */
+    private void retireOpenInvites(Challenge challenge) {
+        challenge.getParticipants().stream()
+                .filter(p -> p.getStatus() == ParticipantStatus.INVITED)
+                .forEach(p -> notificationService.retire(p.getUser().getId(), inviteKey(challenge, p.getUser().getId())));
     }
 
     /** True when nobody is still deciding and nobody but the creator has accepted. */
@@ -288,6 +304,7 @@ public class ChallengeService {
 
         challenge.setStatus(ChallengeStatus.CANCELLED);
         challengeRepository.save(challenge);
+        retireOpenInvites(challenge);
     }
 
     /** Leaves a challenge that is already running, without ending it for everyone else. */
@@ -351,6 +368,7 @@ public class ChallengeService {
             updateScores(challenge);   // final score refresh
             declareWinner(challenge);
             challengeRepository.save(challenge);
+            retireOpenInvites(challenge);
             // Settling a challenge at five past midnight and saying nothing meant the
             // result was only ever seen by whoever happened to reopen the panel
             // (PLAN P2-2).
