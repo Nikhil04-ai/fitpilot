@@ -95,11 +95,24 @@ test('the CSP is set, comes before anything it governs, and allows no inline scr
   assert.ok(!policy['script-src'].includes("'unsafe-inline'"));
   assert.ok(!policy['script-src'].includes("'unsafe-eval'"));
   assert.deepEqual(policy['object-src'], ["'none'"]);
-  // The pinned Chart.js and the fonts must stay reachable.
-  assert.ok(policy['script-src'].includes('https://cdn.jsdelivr.net'));
+  // Scripts come from this site only. Chart.js is vendored, because trusting a CDN host
+  // trusts everything it serves (PLAN O-6). The fonts must stay reachable.
+  assert.deepEqual(policy['script-src'], ["'self'"]);
   assert.ok(policy['font-src'].includes('https://fonts.gstatic.com'));
-  assert.ok(html.includes('src="https://cdn.jsdelivr.net/npm/chart.js@'));
-  assert.ok(html.includes('integrity="sha384-'), 'Chart.js keeps its SRI hash');
+  assert.ok(!/<script[^>]+src="https?:/.test(html), 'no script is loaded from another host');
+});
+
+test('the vendored Chart.js is the exact file its integrity hash names', async () => {
+  const { createHash } = await import('node:crypto');
+  const { readFileSync, existsSync } = await import('node:fs');
+  const tag = /<script src="(vendor\/[^"]+)"\s+integrity="sha384-([^"]+)"/.exec(html);
+  assert.ok(tag, 'Chart.js is loaded from vendor/ with an integrity hash');
+  const file = new URL('../' + tag[1], import.meta.url);
+  const actual = createHash('sha384').update(readFileSync(file)).digest('base64');
+  // A mismatch means the browser refuses the file and every chart is blank: an edit to
+  // it, or git converting its line endings (.gitattributes forbids that).
+  assert.equal(actual, tag[2]);
+  assert.ok(existsSync(new URL('LICENSE.md', file)), 'its MIT licence travels with it');
 });
 
 test('the CSP lets the app reach every backend config.js can resolve to', () => {
