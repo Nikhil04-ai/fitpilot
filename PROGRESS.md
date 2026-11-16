@@ -2161,3 +2161,55 @@ code location. The script is `.claude/workflows/fitpilot-full-app-test.js` (not 
 * **Docs.** `API.md` for every contract change (the `clear` list, `completedToday` and
   `lastCompletedDate`, the null summary balance, the metric, goal, water, meal and password rules,
   the cancel rule, the firewall `400`). `PLAN.md` P6. `README.md` counts. `AGENT.md` §8 and §10.
+
+## Phase 53 — The last three P6 items: stale invites, pain linked to a workout, plan schedules (2026-11-17)
+
+Phase 52 left three findings as feature work because each needed a decision or a new view. All
+three are built, so P6 is 49 of 49.
+
+* **F16, stale invite notifications.** A friend request withdrawn or a challenge cancelled left
+  its notification unread: it counted in the badge, and Open went to a panel with nothing to
+  answer. **The rule chosen:** a notification that asks the user to act is deleted, read or not,
+  once there's nothing left to act on. Deleted rather than marked read, because a read "Friend
+  request from …" that points at nothing is still wrong. Each such notification already carried a
+  `dedupeKey` naming what it was about (`friend-request:<id>`, `challenge-invite:<id>:<user>`), so
+  `NotificationService.retire(userId, key)` deletes exactly that one, through the
+  `(user_id, dedupe_key)` index. It is called when a request is accepted, declined or withdrawn,
+  when an invite is answered either way, when the creator cancels, and when the nightly settlement
+  ends a challenge with an invite unanswered. The delete has no `clearAutomatically`, because each
+  caller holds the friendship or challenge it is changing. The frontend refreshes the bell after
+  answering a challenge invite too (it already did for friend requests).
+  * **A Selenium check depended on the bug.** "notifications: open deep-link, mark read, mark all
+    read" needed unread notifications and got them from the earlier checks' answered requests and
+    invites, which F16 now takes back. It now seeds three requests that stay pending, which is a
+    notification that legitimately stays.
+* **F20, pain linked to a workout.** The API always took an `activityId`, but the form sent `null`
+  and the response `@JsonIgnore`d the link. Log Pain now opens through `open-log-pain`, which fills
+  a "During a workout (optional)" list with the last ten workouts ("Running, Mon 16 Nov, 07:30"),
+  unlinked by default, and degrades to unlinked if that list can't load. The response is a
+  `PainLogResponse` built inside the service's transaction (the activity is lazy). It has the
+  same fields as before plus `activity: {id, type, startTime}` or `null`. A row shows "During
+  Running, …". Deleting the workout still keeps the entry, now with `activity: null`
+  (P4-6 unchanged).
+* **F35, plan schedules.** Every plan card has a native `<details>` "Schedule, N days" listing each
+  day's activity and minutes with its instructions (a rest day says "Rest" once). It opens by
+  keyboard with no script. The active plan's schedule sits under its progress bar and marks days
+  done and today, or "Tomorrow" once today is ticked off, in words as well as style, with
+  `aria-current="step"`. The enrollment response gained `planId` so the client pairs it with its
+  plan by id, not name. Found while checking it in Chrome: "Mark today complete" reloads the panel,
+  which snapped an open schedule shut; it now stays open.
+* **Tests.** Backend **655** (was 648): `NotificationRetirementIntegrationTest` (6: withdrawn,
+  declined then re-sent, accepted, an invite answered both ways, cancelled, and a challenge that
+  ran out with an invite unanswered), plus a pain-link test and a `planId` assertion in
+  `FullAppRunRegressionIntegrationTest`. Frontend **221** (was 217): two for the schedule, two for
+  the pain picker and row. **On the previous commit** (`0a4cdc5`, scratch worktree) all 6
+  notification tests, both backend additions and all 4 frontend ones fail.
+* **In Chrome** against an H2 backend (JDBC line checked first): a withdrawn request leaves no badge
+  and nothing in the feed; every plan card's schedule opens with 7 days listed and the active one
+  marks today; pain logged against a workout through the dialog shows "During Running" and the
+  server has the link; no console errors. Screenshots at 1400 and 390 px; no sideways scroll at
+  390. Selenium **32 of 32** after the two checks above were updated. One run had a profile-export
+  check fail on a download still in progress (a `.tmp` file). It passed on the rerun and on every
+  run before, and nothing in this phase touches export.
+* **Docs.** `API.md`: the notification retirement rule, the pain response's `activity`, and the
+  enrollment's `planId`. `PLAN.md` P6. `README.md` counts.
