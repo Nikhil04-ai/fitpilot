@@ -76,12 +76,14 @@ class Api:
             except ValueError:
                 return e.code, raw.decode(errors='replace')
 
-    def user(self, first):
-        """Registers and logs in a fresh account. Returns (id, token, email)."""
-        email = f'e2e-{first.lower()}-{uuid.uuid4().hex[:8]}@example.com'
+    def user(self, first, last='Tester', slug=None):
+        """Registers and logs in a fresh account. Returns (id, token, email).
+
+        `slug` is what the email is built from, for a `first` that can't go in an address."""
+        email = f'e2e-{slug or first.lower()}-{uuid.uuid4().hex[:8]}@example.com'
         status, body = self.call('POST', '/api/auth/register',
                                  body={'email': email, 'password': PASSWORD, 'firstName': first,
-                                       'lastName': 'Tester', 'weight': 70, 'height': 175, 'age': 30})
+                                       'lastName': last, 'weight': 70, 'height': 175, 'age': 30})
         assert status == 200, f'register {first}: {status} {body}'
         status, body = self.call('POST', '/api/auth/login', body={'email': email, 'password': PASSWORD})
         assert status == 200, f'login {first}: {status} {body}'
@@ -325,6 +327,7 @@ class Suite:
         self.check('mobile: menu button opens the sidebar, a link closes it', self.c_mobile)
         self.check('deep link survives a reload; Back returns', self.c_deep_link)
         self.check('logout, then log back in with the new password', self.c_logout_login)
+        self.check('free text is shown as text in every panel, never as markup', self.c_free_text_is_text, modern_only=True)
         self.check('CSP blocks an injected inline handler', self.c_csp_blocks_inline, modern_only=True)
         self.check('wake notice: shown while a sleeping backend wakes, then hidden', self.c_wake_notice, modern_only=True)
         self.check('file:// shows the "use a local server" message', self.c_file_protocol)
@@ -832,6 +835,84 @@ class Suite:
         self.click('#login-btn')
         self.visible('#app-shell.show')
         assert self.css('#sb-uname').text == 'Umaa Tester'
+
+    # Tag injection plus a double-quote and a single-quote attribute breakout. Each carries an
+    # on* handler and a marker attribute, so an injection shows in the DOM even where the CSP
+    # would stop the handler from running.
+    XSS_A = '"><img src=x data-xss="1" onerror="window.__xss=1"><b a="'
+    XSS_B = "'><svg data-xss='2' onload='window.__xss=2'><b a='"
+
+    def c_free_text_is_text(self):
+        """PLAN O-6. The tokens sit in localStorage, which is acceptable only because nothing a
+        person types can become markup. That was audited by hand before the redesign rewrote
+        every panel's templates, so it is tested here instead: hostile text goes into every
+        free-text field the API takes, including other people's names, and every panel is
+        opened and its DOM inspected."""
+        A, B = self.XSS_A, self.XSS_B
+        token, me = self.token(), self.me()
+        own = [
+            ('POST', '/api/activities', {'type': 'RUNNING', 'duration': 30, 'notes': A,
+                                         'additionalMetrics': {A: B, 'distance_km': 5}}),
+            ('POST', '/api/activities', {'type': 'WEIGHT_TRAINING', 'duration': 45, 'notes': B,
+                                         'exercises': [{'name': A, 'sets': 3, 'reps': 5, 'weightKg': 50.0},
+                                                       {'name': B, 'sets': 2, 'reps': 8, 'weightKg': 20.0}]}),
+            ('POST', '/api/nutrition/meals', {'calories': 500, 'description': A}),
+            ('POST', '/api/pain-log', {'bodyPart': 'LEFT_KNEE', 'severity': 3, 'description': B}),
+            ('POST', f'/api/health/sleep/{me["id"]}', {'sleepDate': time.strftime('%Y-%m-%d', time.localtime(time.time() - 86400)),
+                                                       'hoursSlept': 7.0, 'qualityRating': 3, 'notes': A}),
+        ]
+        for method, path, body in own:
+            s, b = self.api.call(method, path, token, body)
+            assert s == 200, f'seeding {path}: {s} {b}'
+
+        # Other people's names, which this person sees: a request left pending, and a friend
+        # whose challenge invite is left pending.
+        _, x_tok, _ = self.api.user(A, B, slug='xss')
+        s, b = self.api.call('POST', '/api/friends/request', x_tok, {'email': self.email}); assert s == 200, (s, b)
+        y_id, y_tok, _ = self.api.user(B, A, slug='xss')
+        s, b = self.api.call('POST', '/api/friends/request', y_tok, {'email': self.email}); assert s == 200, (s, b)
+        s, invites = self.api.call('GET', '/api/friends/invites', token)
+        row = next((r['friendshipId'] for r in invites if r.get('userId') == y_id), None)
+        assert row, f'no invite from the second attacker: {invites}'
+        s, b = self.api.call('POST', f'/api/friends/{row}/accept', token); assert s == 200, (s, b)
+        s, b = self.api.call('POST', '/api/challenges', y_tok,
+                             {'opponentIds': [me['id']], 'type': 'CALORIES_BURNED', 'durationDays': 5})
+        assert s == 200, f'challenge invite: {s} {b}'
+
+        self.d.get(self.url.split('#')[0])
+        self.visible('#app-shell.show')
+        # Counted inside the one panel being looked at, so a failure names the panel that
+        # produced it and not every panel opened after it.
+        scan = (
+            "const root = arguments[0] ? document.getElementById(arguments[0]) : document.body;"
+            "const injected = root.querySelectorAll('[data-xss]').length;"
+            "let handlers = 0; for (const e of root.querySelectorAll('*'))"
+            "  for (const a of e.attributes) if (a.name.startsWith('on')) handlers++;"
+            "return {injected, handlers, ran: window.__xss !== undefined,"
+            "        literal: (root.textContent || '').includes('data-xss')};")
+        panels = self.d.execute_script("return [...document.querySelectorAll('.sb-link[data-panel]')].map(a => a.dataset.panel)")
+        assert len(panels) >= 12, panels
+        showing, problems = [], []
+        for p in panels:
+            self.nav(p)
+            time.sleep(0.4)
+            r = self.d.execute_script(scan, f'panel-{p}')
+            if r['injected'] or r['handlers'] or r['ran']:
+                problems.append(f'{p}: {r}')
+            if r['literal']:
+                showing.append(p)
+        # The seeded page, the edit dialog (pre-filled with a hostile note) and the sidebar.
+        self.nav('activities')
+        self.click('#panel-activities [data-action="edit-activity"]')
+        self.visible('#modal-edit-activity.show')
+        r = self.d.execute_script(scan, None)
+        if r['injected'] or r['handlers'] or r['ran']:
+            problems.append(f'edit dialog / whole page: {r}')
+        assert not problems, 'hostile text became markup: ' + '; '.join(problems)
+        # The control: a pass would mean nothing if the text had simply not been shown.
+        missing = [p for p in ('activities', 'nutrition', 'pain', 'challenges', 'notifications') if p not in showing]
+        assert not missing, f'the seeded text was not shown in {missing}, so this proves nothing there'
+        return f'{len(panels)} panels, no markup injected; text shown in {len(showing)} of them'
 
     def c_csp_blocks_inline(self):
         meta = self.d.execute_script(

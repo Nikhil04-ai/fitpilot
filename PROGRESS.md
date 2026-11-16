@@ -2022,3 +2022,65 @@ real browser (a hook installed before any page script, with start and end times)
 * **Docs:** `ARCHITECTURE.md` auth step 4 and `AGENT.md` §8 describe the single-flight refresh and
   why both halves are needed. `README.md`'s frontend count is 197.
 * **Selenium:** 31 of 31 against the fixed frontend. Backend unchanged at 618.
+
+## Phase 51 — O-6: the premise re-verified after the redesign, and now tested (2026-11-16)
+
+O-6 accepted the risk of tokens in `localStorage` "only because the XSS defences hold". That was
+audited by hand on 2026-10-11, before Phases 27 to 42 rewrote every panel's templates (109
+`innerHTML` assignments across 15 files). So the first job was to check the premise still held.
+
+* **What is stored.** The 48-hour access token (`jwt.expiration.ms=172800000`) **and the 30-day
+  refresh token**, plus `fp_user`, all in `localStorage`. O-6 had only named the access token; the
+  refresh token is the bigger prize for anyone who could run script on the page, so shortening the
+  access token would do little against that threat.
+* **The CSP, as it stands:** `script-src 'self' https://cdn.jsdelivr.net` (no `unsafe-inline`),
+  `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`; `style-src` keeps `unsafe-inline`
+  and `connect-src` allows any `https:` origin, both for reasons already recorded in `AGENT.md`.
+* **By reading.** No `eval`, `insertAdjacentHTML`, `outerHTML`, `document.write` or string
+  timers anywhere. `escapeHtml` escapes `&`, `<`, `>` and both quote characters, so it is right in
+  text and in a quoted attribute. A scan of all 509 template interpolations and a search for every
+  use of a free-text field not escaped on its own line left the helpers that take raw text, and each
+  is safe: `emptyState` escapes its text, `setChartNote` and `showAuthError` use `textContent`, toasts
+  use `textContent`, and the digest renderer escapes the headline, week, narrative, every
+  observation and every figure.
+* **By attack, in Chrome against the running app.** Hostile text (a tag injection, and a double-
+  and a single-quote attribute breakout, each carrying an `on*` handler and a marker attribute) went
+  into every free-text field: both users' first and last names, an activity's notes, exercise names,
+  metric keys and values, a meal description, a pain description and sleep notes, with an accepted
+  friend, a pending incoming request, a pending request the victim sent, a running challenge and a
+  pending challenge invite, so another person's hostile name appears in friends, challenges and
+  notifications. All 14 panels, the whole page and the edit dialog pre-filled with a hostile note:
+  **no injected element, no `on*` attribute, no script run, no CSP violation.** The payload was shown
+  as literal text in 7 panels (overview, activities, bests, nutrition, pain, challenges,
+  notifications); the other 7 display none of those fields. The first seeding left the pending rows
+  unexercised (a second challenge between the same pair is refused), so they were added and the run
+  repeated with the same result.
+* **Not covered.** Gemini-written text (the digest, insights) could not be driven, because the runs
+  use no key; its rendering was read instead and is escaped. Chrome only. Only the fields seeded:
+  a new free-text field must be added to the seeds (`AGENT.md` says so).
+* **Made permanent.** A new Selenium check, `free text is shown as text in every panel, never as
+  markup` (`c_free_text_is_text`), does the same through the suite: it seeds the fields, opens every
+  panel, and fails if any panel contains a marker element or an `on*` attribute. It also has a
+  **control**: it fails unless the text is actually shown in activities, nutrition, pain, challenges
+  and notifications, because a pass would mean nothing if the text simply hadn't been displayed.
+  `Api.user` gained a last-name and an email-slug parameter, since a hostile name can't go in an
+  address.
+* **Shown to fail.** In a scratch copy of the frontend, two escapes were removed: the meal
+  description in `nutrition.js` and the friend name in `social.js`. The new check failed, and the
+  console check failed with the browser's own "Executing inline event handler violates the
+  Content Security Policy… the action has been blocked", from both files, with `ran: False` in every
+  panel. So with escaping broken the CSP still stopped the script, which shows both layers working.
+* **A flaw in my first version, fixed.** It counted injected elements across the whole page, so one
+  broken panel made the failure blame ten. Counted inside each panel, it names exactly nutrition and
+  challenges (the friend name sits in that panel) plus the whole-page scan.
+* **Not done: the decision.** O-6 stays open as a decision, with the recommendation to accept. The
+  alternatives were weighed in `PLAN.md`: a shorter access token (little help while the refresh token
+  sits beside it), `HttpOnly` cookies (impractical: GitHub Pages and Render are different sites, so
+  cross-site cookies, and third-party-cookie blocking would break them), and one optional hardening,
+  **self-hosting Chart.js so `script-src` can drop `cdn.jsdelivr.net`**. jsDelivr serves arbitrary
+  npm and GitHub files, so trusting the whole host would be a way round the policy if HTML injection
+  ever existed. Chart.js is already pinned to `4.4.3` with a SHA-384 integrity hash, so the tag
+  itself is safe. Not done because it adds a vendored third-party file to the repo.
+* **Verification:** Selenium **32 of 32** against the real frontend. Frontend (197) and backend (618)
+  unchanged. `README.md`'s Selenium count is 32; `AGENT.md` §8 now says the CSP and `escapeHtml` are
+  the whole defence of the tokens and where the guard is.
