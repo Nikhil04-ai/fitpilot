@@ -17,10 +17,11 @@ const { openModal, closeAllModals, toggleSidebar, toast, hideToast } = await imp
 const { showAuthScreen } = await import('../js/auth.js');
 const { refreshUnreadCount } = await import('../js/panels/notifications.js');
 const { rememberActivities, openEditActivity, handleEditActivity } = await import('../js/panels/activities.js');
-const { activePlanSheet } = await import('../js/panels/plans.js');
+const { activePlanSheet, planCard, scheduleList } = await import('../js/panels/plans.js');
 const { challengeCard } = await import('../js/panels/social.js');
 const { openEditGoal } = await import('../js/panels/goals.js');
 const { handleUpdateProfile } = await import('../js/panels/profile.js');
+const { painRow, openLogPain, handleLogPain } = await import('../js/panels/pain.js');
 const { session } = await import('../js/state.js');
 
 /** Scripted fetch that records each call and answers from `reply(url, opts)`. */
@@ -197,6 +198,64 @@ test('a plan day already done today is shown as done, with no live button (F6)',
   const notYet = activePlanSheet({ ...base, completedToday: false });
   assert.match(notYet, /Today, day 2/);
   assert.match(notYet, /data-action="complete-plan-day">Mark today complete</);
+});
+
+const DAYS = [
+  { dayNumber: 2, activityType: null, durationMinutes: 0, instructions: 'Rest', isRestDay: true },
+  { dayNumber: 1, activityType: 'WEIGHT_TRAINING', durationMinutes: 45, instructions: 'Upper body: <b>3x10</b>', isRestDay: false },
+  { dayNumber: 3, activityType: 'CARDIO', durationMinutes: 20, instructions: 'Light cardio', isRestDay: false }
+];
+
+test('a plan card shows its day-by-day schedule, in order and escaped (F35)', () => {
+  const html = planCard({ id: 'p-1', name: 'Starter', goal: 'MUSCLE_GAIN', difficulty: 'BEGINNER', totalDays: 3, days: DAYS });
+  assert.match(html, /<details class="plan-sched">\s*<summary>Schedule, 3 days<\/summary>/);
+  const order = [...html.matchAll(/Day (\d)/g)].map(m => m[1]);
+  assert.deepEqual(order, ['1', '2', '3']);
+  assert.match(html, /Weight training · 45 min/);
+  assert.match(html, /Upper body: &lt;b&gt;3x10&lt;\/b&gt;/);
+  assert.doesNotMatch(html, /pd-ins">Rest</, 'a rest day says Rest once, not twice');
+  assert.doesNotMatch(html, /pd-mark/, 'a plan you are not on has no progress marks');
+});
+
+test('the active plan\'s schedule marks the days done and today, in text (F35)', () => {
+  const active = { planName: 'Starter', currentDay: 2, totalDays: 3, completedDays: 1, progressPercent: 33.3,
+    isCompleted: false, completedToday: false, todaysWorkout: DAYS[0] };
+  const html = activePlanSheet(active, DAYS);
+  assert.match(html, /class="pd done"[\s\S]*?Day 1[\s\S]*?pd-mark">Done</);
+  assert.match(html, /class="pd now" aria-current="step"[\s\S]*?Day 2[\s\S]*?pd-mark">Today</);
+  assert.match(activePlanSheet({ ...active, completedToday: true }, DAYS), /pd-mark">Tomorrow</);
+  assert.equal(scheduleList([]), '', 'no days, no disclosure');
+  assert.doesNotMatch(activePlanSheet(active), /plan-sched/, 'until the days are known');
+});
+
+test('Log Pain offers the recent workouts and sends the one picked (F20)', async () => {
+  document.body.appendChild(el('div', { id: 'modal-log-pain', class: 'modal-overlay' },
+    el('select', { id: 'pain-bodypart' }), el('select', { id: 'pain-severity' }),
+    el('select', { id: 'pain-activity' }), el('input', { id: 'pain-description' })));
+  fakeFetch(url => url.includes('/api/activities')
+    ? jsonResponse(200, { content: [{ id: 'a-<1>', type: 'WEIGHT_TRAINING', startTime: '2026-11-16T07:30:00' }] })
+    : jsonResponse(200, {}));
+  await openLogPain();
+  const sel = document.getElementById('pain-activity');
+  assert.match(sel.innerHTML, /<option value="">Not linked to a workout<\/option>/);
+  assert.match(sel.innerHTML, /<option value="a-&lt;1&gt;">Weight training, /, 'named, and the id escaped');
+  assert.equal(document.getElementById('modal-log-pain').classList.contains('show'), true);
+
+  document.getElementById('pain-bodypart').value = 'LEFT_KNEE';
+  document.getElementById('pain-severity').value = '3';
+  sel.value = 'a-1';
+  fakeFetch(() => jsonResponse(200, {}));
+  await handleLogPain({ preventDefault() {} });
+  const post = calls.find(c => c.opts.method === 'POST');
+  assert.equal(JSON.parse(post.opts.body).activityId, 'a-1');
+  closeAllModals();
+});
+
+test('a pain entry shows the workout it happened in, and nothing when unlinked (F20)', () => {
+  const linked = painRow({ id: 'p', bodyPart: 'LEFT_KNEE', severity: 3, loggedAt: '2026-11-16T09:00:00',
+    activity: { id: 'a', type: 'RUNNING', startTime: '2026-11-16T07:30:00' } });
+  assert.match(linked, /During Running, /);
+  assert.doesNotMatch(painRow({ id: 'p', bodyPart: 'NECK', severity: 1, activity: null }), /During/);
 });
 
 test('a declined challenge reads "Declined", not the raw enum (F40)', () => {
