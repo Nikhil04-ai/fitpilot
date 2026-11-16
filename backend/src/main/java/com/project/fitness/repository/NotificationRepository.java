@@ -42,4 +42,13 @@ public interface NotificationRepository extends JpaRepository<Notification, Stri
     int deleteReadOlderThan(@Param("cutoff") LocalDateTime cutoff);
 
     List<Notification> findByUserIdAndReadAtIsNullOrderByCreatedAtDesc(String userId);
+
+    /**
+     * Removes one user's notification about one thing, read or not. No
+     * {@code clearAutomatically}: callers are mid-way through changing a friendship or a
+     * challenge they have loaded, and clearing the context would detach it.
+     */
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM Notification n WHERE n.user.id = :userId AND n.dedupeKey = :dedupeKey")
+    int deleteByUserIdAndDedupeKey(@Param("userId") String userId, @Param("dedupeKey") String dedupeKey);
 }
