@@ -9,6 +9,11 @@ mvnw text eol=lf
 *.cmd text eol=crlf
 *.bat text eol=crlf
 
+# Vendored third-party files are kept byte for byte: frontend/index.html checks
+# Chart.js against a SHA-384 hash, and a line-ending conversion on checkout would
+# change the bytes, fail that check, and silently leave every chart blank.
+frontend/vendor/** -text
+
 # Binary
 *.png binary
 *.jpg binary
