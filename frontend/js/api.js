@@ -42,16 +42,24 @@ export async function api(path, options = {}) {
   };
 
   let res;
+  const sentWith = session.accessToken;
   try {
-    res = await doFetch(session.accessToken);
+    res = await doFetch(sentWith);
   } catch (networkErr) {
     throw new Error(unreachableMessage());
   }
 
   // Access token expired — try one silent refresh, then retry the original call
   if (res.status === 401 && path !== '/api/auth/refresh') {
-    const refreshed = session.refreshToken ? await tryRefreshToken() : false;
-    if (refreshed) {
+    // A panel fires several calls at once, so when the token has expired they all get
+    // their 401 together. Each used to start its own refresh, and a refresh token works
+    // once: the first call won, the rest were refused, and the refused ones then saw the
+    // winner's fresh token in `session` and signed the person out (PLAN O-5). So: a call
+    // whose token has already been replaced just retries with the new one, and the rest
+    // share a single refresh.
+    let renewed = !!session.accessToken && session.accessToken !== sentWith;
+    if (!renewed && session.refreshToken) renewed = await refreshTokensOnce();
+    if (renewed) {
       res = await doFetch(session.accessToken);
     }
     // Still 401 after refreshing (or with no refresh token left to try): the
@@ -124,6 +132,20 @@ export function forceSessionExpired(reason) {
   // Re-enable toasts after other in-flight calls (from the same failed page
   // load) have had a chance to fail and be silently suppressed above.
   setTimeout(() => { session.expiredInProgress = false; }, 1500);
+}
+
+/**
+ * One refresh at a time. Callers that arrive while one is in flight wait for it and share
+ * its answer, success or failure, rather than spending the (single-use) refresh token
+ * again. Cleared when it settles, so the next expiry refreshes afresh.
+ */
+let refreshInFlight = null;
+
+function refreshTokensOnce() {
+  if (!refreshInFlight) {
+    refreshInFlight = tryRefreshToken().finally(() => { refreshInFlight = null; });
+  }
+  return refreshInFlight;
 }
 
 async function tryRefreshToken() {

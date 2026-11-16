@@ -158,3 +158,74 @@ test('forceSessionExpired re-enables toasts after its grace period', async (t) =
   t.mock.timers.tick(1500);
   assert.equal(session.expiredInProgress, false);
 });
+
+// ── Concurrent 401s (PLAN O-5) ──────────────────────────────────────────────
+// A panel fires several calls at once, so an expired token is a burst of 401s. The real
+// backend honours a refresh token once; a second use is a 401. These tests run against a
+// fake that behaves the same way, because a fake that accepts any refresh would pass while
+// the bug stayed.
+
+/** A backend that treats tokens like the real one: a refresh token works once. */
+function tokenServer({ refreshWorks = true, holdUntilRefreshed = [] } = {}) {
+  const s = { refreshCalls: 0, n: 1, validAccess: 'access-1', validRefresh: refreshWorks ? 'refresh' : 'never-matches' };
+  globalThis.fetch = async (url, opts = {}) => {
+    const path = String(url).replace('http://localhost:8080', '');
+    await new Promise(r => setImmediate(r));                       // let concurrent calls interleave
+    if (path === '/api/auth/refresh') {
+      s.refreshCalls++;
+      if (JSON.parse(opts.body).refreshToken !== s.validRefresh) {
+        return jsonResponse(401, { error: 'Refresh token has been revoked. Please log in again.' });
+      }
+      s.n++; s.validAccess = 'access-' + s.n; s.validRefresh = 'refresh-' + s.n;
+      return jsonResponse(200, { accessToken: s.validAccess, refreshToken: s.validRefresh });
+    }
+    // A call that was sent with the old token but whose answer only arrives after another
+    // call has already refreshed: the case that must retry without refreshing again.
+    // Bounded, so a regression fails this test instead of leaving a loop that keeps node alive.
+    if (holdUntilRefreshed.includes(path)) {
+      for (let i = 0; i < 1000 && s.n < 2; i++) await new Promise(r => setImmediate(r));
+    }
+    return opts.headers.Authorization === 'Bearer ' + s.validAccess
+      ? jsonResponse(200, { path }) : jsonResponse(401, { error: 'expired' });
+  };
+  return s;
+}
+
+test('several calls that all get a 401 share one refresh, and all succeed', async () => {
+  const server = tokenServer();   // the session starts on 'access', which this server no longer accepts
+  const results = await Promise.all([api('/api/a'), api('/api/b'), api('/api/c')]);
+  assert.deepEqual(results.map(r => r.path), ['/api/a', '/api/b', '/api/c']);
+  assert.equal(server.refreshCalls, 1, 'one refresh, not one per call');
+  assert.equal(session.accessToken, 'access-2');
+  assert.equal(session.expiredInProgress, false, 'nobody was signed out');
+});
+
+test('a call sent with the old token that is refused after another call refreshed retries without a second refresh', async () => {
+  const server = tokenServer({ holdUntilRefreshed: ['/api/late'] });
+  const results = await Promise.all([api('/api/a'), api('/api/late')]);
+  assert.deepEqual(results.map(r => r.path), ['/api/a', '/api/late']);
+  assert.equal(server.refreshCalls, 1);
+  assert.equal(session.expiredInProgress, false);
+});
+
+test('when the refresh is refused, the burst makes one attempt and ends the session once with a reason', async () => {
+  const server = tokenServer({ refreshWorks: false });
+  const results = await Promise.allSettled([api('/api/a'), api('/api/b'), api('/api/c')]);
+  assert.ok(results.every(r => r.status === 'rejected'));
+  assert.equal(server.refreshCalls, 1, 'a refused refresh is not retried per call');
+  assert.equal(session.accessToken, null);
+  assert.equal(session.expiredInProgress, true);
+  assert.match(document.getElementById('auth-error').textContent, /session has expired/);
+});
+
+test('the guard is cleared once a refresh settles, so the next expiry refreshes again', async () => {
+  const server = tokenServer();
+  await Promise.all([api('/api/a'), api('/api/b')]);
+  assert.equal(server.refreshCalls, 1);
+
+  session.accessToken = 'expired-again';              // the token goes bad a second time
+  const again = await api('/api/c');
+  assert.equal(again.path, '/api/c');
+  assert.equal(server.refreshCalls, 2, 'a fresh refresh, using the rotated refresh token');
+  assert.equal(session.accessToken, 'access-3');
+});

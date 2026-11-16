@@ -1970,3 +1970,55 @@ P4-19; the list was missed.
   from the XML reports written during the run. Selenium **31 of 31** against the fixed code,
   and `DeadSessionReadsIntegrationTest` and `DeadSessionWritesIntegrationTest` pass. The stash used
   for the unfixed run was popped; it is empty and the fix is back. `README.md`'s count updated.
+
+## Phase 50 — O-5: concurrent 401s no longer sign the user out (2026-11-16)
+
+O-5 was recorded as "reloading with an expired access token made two refresh calls, both 200, and
+the session survived; cause not investigated." It was investigated by logging every `fetch` in a
+real browser (a hook installed before any page script, with start and end times).
+
+* **The reported symptom did not reproduce.** A reload with a rejected access token makes exactly
+  one refresh: boot waits on a single profile call, refreshes once, and only then starts the rest.
+  What was seen in the QA pass is not explained; it may have been a different sequence.
+* **A real bug was found beside it.** `api()` had no guard against concurrent refreshes. A panel
+  fires several calls at once (eight on entering the app), so when the token expires while a page is
+  open they all get a 401 together. Each started its own refresh, each reading `session.refreshToken`
+  when it began. The backend honours a refresh token once (`revokeIfActive`), so one refresh won and
+  the others were refused with a 401. The refused callers then fell through to
+  `res.status === 401 && session.accessToken`, and the winner had just put a fresh token in
+  `session.accessToken`, so each called `forceSessionExpired`. Reproduced: four calls in flight, four
+  refreshes (`200`, `401`, `401`, `401`), and the login screen with "Your session has expired",
+  for a user whose session was fine.
+* **When it bites.** The access token lasts 48 hours, so it needs a tab left open that long (a
+  sleeping laptop, an idle desktop) and then a panel opened or the unread poll coinciding with a
+  load. Rare, but it signs a user out with no way to know why.
+* **The fix, in `frontend/js/api.js` only:** `refreshTokensOnce()` keeps one in-flight refresh and
+  callers that arrive while it runs wait for it and share its answer, success or failure. And a call
+  records the token it was sent with (`sentWith`); if that token has already been replaced by the
+  time its 401 arrives, it just retries with the new one. The first half covers calls that 401
+  together, the second one that 401s just after a refresh finished. Everything else is untouched:
+  `api()` is still the only place that calls the backend, and a 401 that survives a refresh still
+  ends the session.
+* **Verified in Chrome after the fix:** the same four concurrent calls make one refresh (`200`) and
+  the user stays signed in. One of my four probe calls came back `405`; that was my probe hitting
+  `GET /api/goals` without a user id, a route that only exists as `/api/goals/{userId}`, and it
+  proves the call was authenticated and retried.
+* **Tests:** frontend **197** passing (was 193), four new in `tests/api.test.mjs`, run against a fake
+  backend whose refresh token works once, like the real one: a burst shares one refresh and all
+  succeed; a call refused after another refreshed retries without a second refresh; a refused
+  refresh makes one attempt and ends the session once with a reason; and the guard clears so the
+  next expiry refreshes again. All four fail on the old `api.js`, checked by running them against
+  `git show HEAD:frontend/js/api.js` in a scratch copy of the frontend.
+* **A flaw in my first version of those tests, fixed:** the fake backend held one call in a
+  `setImmediate` loop until "another call had refreshed". On the old code that condition is never
+  met for the left-over call, so node never exited and the run hung until killed (40 s, measured)
+  instead of failing. The wait is now bounded; on the old code the tests fail in 3 s with exit
+  code 1, and on the fixed code the whole frontend suite passes in 4 s.
+* **A slip while proving it, and how it ended.** I first checked the old behaviour with `git stash`
+  on `api.js` and a single compound command; the test run hung, the command was moved to the
+  background, and my fix sat in the stash until I stopped the job and popped it. It is back
+  (verified line by line; the stash is empty). The second check used a scratch copy and never
+  touched the working tree.
+* **Docs:** `ARCHITECTURE.md` auth step 4 and `AGENT.md` §8 describe the single-flight refresh and
+  why both halves are needed. `README.md`'s frontend count is 197.
+* **Selenium:** 31 of 31 against the fixed frontend. Backend unchanged at 618.
