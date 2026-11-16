@@ -2213,3 +2213,46 @@ three are built, so P6 is 49 of 49.
   run before, and nothing in this phase touches export.
 * **Docs.** `API.md`: the notification retirement rule, the pain response's `activity`, and the
   enrollment's `planId`. `PLAN.md` P6. `README.md` counts.
+
+## Phase 54 — O-6 decided: tokens stay in localStorage, and Chart.js is vendored (2026-11-17)
+
+O-6 asked whether keeping the access and refresh tokens in `localStorage` is acceptable. Phase 51
+re-verified the premise (nothing a person types becomes markup) and made it a permanent Selenium
+check, and recommended accepting the risk with one optional hardening. Both are now done.
+
+* **The decision: accepted.** A shorter access token would do little while the 30-day refresh
+  token sits beside it. `HttpOnly` cookies would have to be cross-site between GitHub Pages and
+  Render, and third-party-cookie blocking breaks those. What protects the tokens is the CSP plus
+  `escapeHtml`, and the Selenium check keeps that honest.
+* **The hardening: Chart.js is served from this site.** `script-src` trusted `cdn.jsdelivr.net`,
+  which serves any npm package or GitHub file, so if markup were ever injected, a `<script>` from
+  that host would have run despite the policy. Chart.js now lives in
+  `frontend/vendor/chartjs-4.4.3/`: npm's `dist/chart.umd.js`, downloaded from the URL the page used
+  and checked against the SHA-384 the tag already carried (identical, 205,363 bytes), with the
+  package's MIT `LICENSE.md` beside it. The tag keeps the same `integrity`, so the browser runs only
+  those bytes. `script-src` is now `'self'` only.
+* **A trap avoided.** The repo normalises line endings (`* text=auto`, `core.autocrlf=true`). A
+  checkout that converted the vendored file's line endings would change its bytes, fail the hash,
+  and leave every chart blank with nothing but a console line. `.gitattributes` now has
+  `frontend/vendor/** -text`; `git check-attr` confirms both files are unconverted.
+* **Tests.** Frontend **222** (was 221). `markup.test.mjs` now pins `script-src` to exactly
+  `'self'`, refuses any `<script src>` on another host, and hashes the vendored file against the
+  tag's `integrity`. That catches an edit to the file, a line-ending conversion, or a tag pointing
+  at a different version. It also checks the licence is present.
+* **In Chrome**, on an H2 backend: `Chart.version` is `4.4.3`, loaded from
+  `/vendor/chartjs-4.4.3/chart.umd.js`; both Stats & Insights charts draw; a script injected from
+  `cdn.jsdelivr.net` is refused by the CSP. Selenium **32 of 32**, its console check showing no
+  errors and no CSP violations.
+* **Docs.** `PLAN.md` O-6 closed. `AGENT.md` §8: no CDN host goes back in `script-src`, and how to
+  vendor a library. `README.md`. The comments on the CSP and on the script tag in `index.html` say
+  why and how to upgrade.
+* **Two loose ends, tidied with it.**
+  * The CSP comment in `index.html` said `connect-src` allows any `https` origin "because
+    `?api=<url>` may point anywhere". That stopped being true with P5-2. The real reason is
+    that the deployed backend's address isn't known when the page is written.
+  * The Selenium profile-export check failed once, on a download still in progress. Chrome
+    first writes a download as `<guid>.tmp`, and the check counted anything not ending in
+    `.crdownload` as finished. It now waits for the `.json` and `.csv` themselves. Selenium
+    **32 of 32** after both.
+
+**Nothing is open now except deployment.**
