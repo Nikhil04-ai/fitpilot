@@ -347,7 +347,7 @@
             </div>
             <div class="head-acts">
               <span class="sheet-meta" id="pain-count"></span>
-              <button type="button" class="btn btn-sec btn-sm" data-action="open-modal" data-modal="modal-log-pain">Log pain</button>
+              <button type="button" class="btn btn-sec btn-sm" data-action="open-log-pain">Log pain</button>
             </div>
           </div>
           <div id="pain-warnings" aria-live="polite"></div>
@@ -731,6 +731,10 @@
           <option value="4">4: Significant</option>
           <option value="5">5: Severe</option>
         </select>
+      </div>
+      <div class="field">
+        <label for="pain-activity">During a workout (optional)</label>
+        <select id="pain-activity"><option value="">Not linked to a workout</option></select>
       </div>
       <div class="field"><label for="pain-description">Description (optional)</label><input type="text" id="pain-description" maxlength="255" placeholder="Sharp pain after running downhill"></div>
       <div class="modal-actions">
