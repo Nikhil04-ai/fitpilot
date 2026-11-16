@@ -4,15 +4,20 @@
 <meta charset="UTF-8">
 <!-- Content-Security-Policy. GitHub Pages can't send headers, hence a meta tag; it has
      to come before anything it governs. What each line allows, and why:
-       script-src  this site plus the pinned Chart.js on jsDelivr. No 'unsafe-inline':
-                   there are no inline scripts or on*= handlers left (js/actions.js),
-                   so injected markup can't run script even if an escapeHtml() is missed.
+       script-src  this site only. Chart.js is served from vendor/, not a CDN: trusting
+                   cdn.jsdelivr.net trusted every npm and GitHub file it serves, which
+                   would be a way round this policy if markup were ever injected
+                   (PLAN O-6). No 'unsafe-inline': there are no inline scripts or on*=
+                   handlers left (js/actions.js), so injected markup can't run script
+                   even if an escapeHtml() is missed.
        style-src   'unsafe-inline' stays: ~150 style="" attributes, in this file and in
                    the HTML the panels build. Moving them all to classes is a rewrite.
-       connect-src the API: any https origin, because ?api=<url> may point anywhere
-                   (js/config.js), plus a local backend on any port.
+       connect-src the API: any https origin, because the deployed backend's address
+                   isn't known when this page is written (js/config.js holds it), plus a
+                   local backend on any port. Not because of ?api=: since PLAN P5-2 that
+                   is honoured on a local origin only, for a loopback address.
      tests/markup.test.mjs pins the no-'unsafe-inline' script rule. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https: http://localhost:* http://127.0.0.1:*; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https: http://localhost:* http://127.0.0.1:*; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FitPilot: Guide Your Fitness Journey</title>
 <meta name="description" content="FitPilot: AI-powered fitness tracking. Log workouts, track goals, and get coaching insights.">
@@ -975,17 +980,19 @@
 
 <button class="fab" data-action="open-modal" data-modal="modal-log-activity" title="Log Workout" id="fab-log" style="display:none">+</button>
 
-<!-- Chart.js from a CDN, pinned. No build step, no npm - consistent with the rest
-     of this frontend. A classic script runs before any module, so window.Chart exists
-     by the time a panel renders; js/charts.js still guards on it, so a blocked CDN
+<!-- Chart.js 4.4.3, vendored: npm's dist/chart.umd.js, byte for byte, with its licence
+     beside it. No build step, no npm - consistent with the rest of this frontend. It was
+     loaded from jsDelivr until 2026-11-17, which meant the CSP had to trust that whole
+     host (PLAN O-6). A classic script runs before any module, so window.Chart exists by
+     the time a panel renders; js/charts.js still guards on it, so a missing file
      degrades to the numbers that were always there rather than a broken panel.
-     integrity pins the exact bytes, so a tampered CDN copy is refused rather than run.
-     It must stay chart.umd.js: there is no chart.umd.min.js in the 4.4.3 package, so
-     jsDelivr generates that one itself and warns never to put SRI on it. To upgrade,
-     change the version and recompute: openssl dgst -sha384 -binary chart.umd.js | openssl base64 -A -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.js"
-        integrity="sha384-tgbB5AKnszdcfwcZtTfuhR3Ko1XZdlDfsLtkxiiAZiVkkXCkFmp+FQFh+V/UTo54"
-        crossorigin="anonymous"></script>
+     integrity is the same hash the CDN tag carried, so the bytes are the ones that were
+     always loaded, and an edited copy is refused rather than run (.gitattributes keeps
+     git from converting its line endings). To upgrade: download the new
+     dist/chart.umd.js and LICENSE.md into a new vendor/chartjs-<version>/, point this tag
+     at it, and recompute: openssl dgst -sha384 -binary chart.umd.js | openssl base64 -A -->
+<script src="vendor/chartjs-4.4.3/chart.umd.js"
+        integrity="sha384-tgbB5AKnszdcfwcZtTfuhR3Ko1XZdlDfsLtkxiiAZiVkkXCkFmp+FQFh+V/UTo54"></script>
 <!-- Browsers refuse to load ES modules from file://, so opening this file directly
      leaves a login form whose buttons do nothing. This says so instead. A classic
      script, because those still load from file://; a file, because the CSP above
