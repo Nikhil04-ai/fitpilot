@@ -777,9 +777,12 @@ class Suite:
         self.click_text('#panel-profile .btn', 'Download .csv')
         self.toast('Downloaded')
 
+        # Only the two finished files count. Chrome first writes a download as <guid>.tmp,
+        # then .crdownload, then renames it; counting "anything but .crdownload" once
+        # caught a .tmp and failed the check on a download still in progress.
         def finished(_):
             files = set(os.listdir(self.download_dir)) - before
-            done = [f for f in files if not f.endswith('.crdownload')]
+            done = [f for f in files if f.endswith(('.json', '.csv'))]
             return done if len(done) >= 2 else False
         files = WebDriverWait(self.d, 20).until(finished)
         csv = [f for f in files if f.endswith('.csv')]
