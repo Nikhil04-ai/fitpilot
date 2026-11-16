@@ -59,6 +59,10 @@ public class ChallengeService {
     /** Enough for a training group; beyond this the standings stop being readable. */
     private static final int MAX_PARTICIPANTS = 10;
 
+    /** When a creator may cancel: said the same way by cancel and by leave, so they agree. */
+    static final String CANCEL_RULE =
+            "A challenge can be cancelled while it's pending, or once everyone else has left it.";
+
     /**
      * Longest a challenge can run. There was no limit: 100,000 days was accepted with an
      * end date in the year 2300, and 2,000,000,000 overflowed the date at the database,
@@ -125,6 +129,14 @@ public class ChallengeService {
             opponents.add(userRepository.findById(opponentId)
                     .orElseThrow(() -> new RuntimeException(NOT_FRIENDS)));
         }
+
+        // Everyone involved is locked first, so the check below and the insert after it
+        // happen as one step. Two requests at the same moment (X inviting Y while Y
+        // invites X) both passed the check and made two open challenges between the same
+        // pair (found 2026-11-16). Now the second waits, then sees the first.
+        List<String> involved = new ArrayList<>(invitees);
+        involved.add(creatorId);
+        userRepository.lockForUpdate(involved);
 
         // One live challenge at a time with any given person, so the standings can't
         // be split across two competitions nobody asked for. "With" means both of you
@@ -263,8 +275,15 @@ public class ChallengeService {
         if (!challenge.getCreator().getId().equals(requestingUserId)) {
             throw new AccessDeniedException("Only the creator can cancel a challenge.");
         }
-        if (challenge.getStatus() != ChallengeStatus.PENDING) {
-            throw new RuntimeException("Only pending challenges can be cancelled.");
+        // A running challenge the creator is alone in can be cancelled too. Before, a
+        // creator whose opponents had all left was told "can't leave, cancel it instead"
+        // and then "only pending challenges can be cancelled", and was stuck in a contest
+        // with nobody until its end date (found 2026-11-16).
+        boolean aloneInRunning = challenge.getStatus() == ChallengeStatus.ACTIVE
+                && challenge.getParticipants().stream().noneMatch(p ->
+                        !Boolean.TRUE.equals(p.getIsCreator()) && p.getStatus() != ParticipantStatus.DECLINED);
+        if (challenge.getStatus() != ChallengeStatus.PENDING && !aloneInRunning) {
+            throw new RuntimeException(CANCEL_RULE);
         }
 
         challenge.setStatus(ChallengeStatus.CANCELLED);
@@ -281,7 +300,7 @@ public class ChallengeService {
                 .orElseThrow(() -> new AccessDeniedException("You're not part of this challenge."));
 
         if (Boolean.TRUE.equals(participant.getIsCreator())) {
-            throw new RuntimeException("The creator can't leave — cancel it instead.");
+            throw new RuntimeException("The creator can't leave. " + CANCEL_RULE);
         }
         if (challenge.getStatus() == ChallengeStatus.COMPLETED) {
             throw new RuntimeException("This challenge is already over.");

@@ -82,7 +82,7 @@ class NutritionServiceTest {
         @DisplayName("stores the meal against the caller and refreshes nutrition goals")
         void logsAndRefreshesGoals() {
             when(userRepository.findById("user-1")).thenReturn(Optional.of(user));
-            when(mealLogRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+            when(mealLogRepository.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
             when(goalService.refreshNutritionGoals(user)).thenReturn(List.of());
 
             MealResponse response = nutritionService.logMeal("user-1", request(420, 12.0, 60.0, 9.0));
@@ -99,7 +99,7 @@ class NutritionServiceTest {
         @DisplayName("defaults loggedAt to now, so the meal counts against today")
         void defaultsLoggedAt() {
             when(userRepository.findById("user-1")).thenReturn(Optional.of(user));
-            when(mealLogRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+            when(mealLogRepository.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
 
             MealResponse response = nutritionService.logMeal("user-1", request(300, null, null, null));
 
@@ -113,7 +113,7 @@ class NutritionServiceTest {
         @DisplayName("derives calories from macros when none were given (4/4/9)")
         void derivesCaloriesFromMacros() {
             when(userRepository.findById("user-1")).thenReturn(Optional.of(user));
-            when(mealLogRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+            when(mealLogRepository.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
 
             MealResponse response = nutritionService.logMeal("user-1", request(null, 20.0, 50.0, 10.0));
 
@@ -124,7 +124,7 @@ class NutritionServiceTest {
         @DisplayName("an explicit calorie figure is never overwritten by the macro estimate")
         void explicitCaloriesWin() {
             when(userRepository.findById("user-1")).thenReturn(Optional.of(user));
-            when(mealLogRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+            when(mealLogRepository.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
 
             // The macros here imply 370 kcal. The user said 500 — off a packet, most
             // likely, which is the better number. Silently replacing what someone typed
@@ -142,7 +142,7 @@ class NutritionServiceTest {
             assertThatThrownBy(() -> nutritionService.logMeal("user-1", request(null, null, null, null)))
                     .isInstanceOf(RuntimeException.class)
                     .hasMessageContaining("at least a calorie figure");
-            verify(mealLogRepository, never()).save(any());
+            verify(mealLogRepository, never()).saveAndFlush(any());
         }
 
         /**
@@ -174,7 +174,7 @@ class NutritionServiceTest {
                     "mealType", "BREAKFAST", "calories", 320,
                     "proteinGrams", 18, "carbsGrams", 26, "fatGrams", 15));
             when(userRepository.findById("user-1")).thenReturn(Optional.of(user));
-            when(mealLogRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+            when(mealLogRepository.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
 
             MealResponse response = nutritionService.parseAndLog("user-1", "two eggs and toast");
 
@@ -193,7 +193,7 @@ class NutritionServiceTest {
             when(geminiService.parseMeal(anyString())).thenReturn(Map.of(
                     "mealType", "ELEVENSES", "calories", 150));
             when(userRepository.findById("user-1")).thenReturn(Optional.of(user));
-            when(mealLogRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+            when(mealLogRepository.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
 
             MealResponse response = nutritionService.parseAndLog("user-1", "a biscuit");
 
@@ -206,7 +206,7 @@ class NutritionServiceTest {
             assertThatThrownBy(() -> nutritionService.parseAndLog("user-1", "x".repeat(1001)))
                     .hasMessageContaining("at most 1000 characters");
             verifyNoInteractions(geminiService);
-            verify(mealLogRepository, never()).save(any());
+            verify(mealLogRepository, never()).saveAndFlush(any());
         }
 
         @Test
@@ -227,7 +227,7 @@ class NutritionServiceTest {
             assertThatThrownBy(() -> nutritionService.parseAndLog("user-1", "two eggs"))
                     .isInstanceOf(RuntimeException.class)
                     .hasMessageContaining("enter the meal manually");
-            verify(mealLogRepository, never()).save(any());
+            verify(mealLogRepository, never()).saveAndFlush(any());
         }
 
         @Test
@@ -239,7 +239,7 @@ class NutritionServiceTest {
             assertThatThrownBy(() -> nutritionService.parseAndLog("user-1", "some food"))
                     .isInstanceOf(RuntimeException.class)
                     .hasMessageContaining("Couldn't work out the calories");
-            verify(mealLogRepository, never()).save(any());
+            verify(mealLogRepository, never()).saveAndFlush(any());
         }
     }
 
@@ -262,7 +262,7 @@ class NutritionServiceTest {
         void correctingClearsEstimatedFlag() {
             MealLog meal = existing();
             when(mealLogRepository.findById("meal-1")).thenReturn(Optional.of(meal));
-            when(mealLogRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+            when(mealLogRepository.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
 
             MealRequest edit = new MealRequest();
             edit.setCalories(260);
@@ -280,7 +280,7 @@ class NutritionServiceTest {
         void renamingKeepsEstimatedFlag() {
             MealLog meal = existing();
             when(mealLogRepository.findById("meal-1")).thenReturn(Optional.of(meal));
-            when(mealLogRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+            when(mealLogRepository.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
 
             MealRequest edit = new MealRequest();
             edit.setDescription("Toast with jam");
@@ -297,7 +297,7 @@ class NutritionServiceTest {
         void resubmittedNumbersKeepEstimatedFlag() {
             MealLog meal = existing();
             when(mealLogRepository.findById("meal-1")).thenReturn(Optional.of(meal));
-            when(mealLogRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+            when(mealLogRepository.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
 
             // What the edit form actually sends: every field, whether or not it changed.
             MealRequest edit = new MealRequest();
@@ -317,7 +317,7 @@ class NutritionServiceTest {
             MealLog meal = existing();
             meal.setProteinGrams(12.0);
             when(mealLogRepository.findById("meal-1")).thenReturn(Optional.of(meal));
-            when(mealLogRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+            when(mealLogRepository.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
 
             MealRequest edit = new MealRequest();
             edit.setCalories(200);
@@ -344,7 +344,7 @@ class NutritionServiceTest {
 
         private MealResponse edit(MealLog meal, MealRequest edit) {
             when(mealLogRepository.findById("meal-1")).thenReturn(Optional.of(meal));
-            when(mealLogRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+            when(mealLogRepository.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
             return nutritionService.updateMeal("user-1", "meal-1", edit);
         }
 
@@ -414,7 +414,7 @@ class NutritionServiceTest {
             assertThatThrownBy(() -> nutritionService.updateMeal("user-1", "meal-1", edit))
                     .isExactlyInstanceOf(RuntimeException.class)
                     .hasMessageContaining("mealType");
-            verify(mealLogRepository, never()).save(any());
+            verify(mealLogRepository, never()).saveAndFlush(any());
         }
 
         @Test
@@ -428,7 +428,7 @@ class NutritionServiceTest {
             assertThatThrownBy(() -> nutritionService.updateMeal("user-1", "meal-1", edit))
                     .isExactlyInstanceOf(RuntimeException.class)
                     .hasMessageContaining("at least a calorie figure");
-            verify(mealLogRepository, never()).save(any());
+            verify(mealLogRepository, never()).saveAndFlush(any());
         }
 
         @Test
@@ -438,7 +438,7 @@ class NutritionServiceTest {
 
             assertThatThrownBy(() -> nutritionService.updateMeal("someone-else", "meal-1", new MealRequest()))
                     .isInstanceOf(AccessDeniedException.class);
-            verify(mealLogRepository, never()).save(any());
+            verify(mealLogRepository, never()).saveAndFlush(any());
         }
 
         @Test

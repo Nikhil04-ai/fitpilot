@@ -33,6 +33,11 @@ export async function refreshUnreadCount() {
     const label = unread > 99 ? '99+' : String(unread);
 
     if (bell) { bell.textContent = label; bell.hidden = !unread; }
+    // The button's aria-label overrides its content, so the count shown in red was never
+    // part of its accessible name: a screen reader heard "Notifications" either way
+    // (found 2026-11-16). The name says the count when there is one.
+    const bellBtn = document.getElementById('bell-btn');
+    if (bellBtn) bellBtn.setAttribute('aria-label', unread ? `Notifications, ${label} unread` : 'Notifications');
     if (badge) { badge.textContent = label; badge.hidden = !unread; }
     // The page's own count, in words; nothing is said when nothing is waiting.
     if (count) count.textContent = unread ? `${label} unread` : '';

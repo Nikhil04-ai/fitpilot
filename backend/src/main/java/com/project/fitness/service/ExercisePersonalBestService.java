@@ -57,14 +57,15 @@ public class ExercisePersonalBestService {
             if (record == null) {
                 // Nothing measurable at all (no load and no rep count) means nothing to
                 // record — a card of three dashes is worse than no card.
-                if (exercise.getWeightKg() == null && exercise.getReps() == null) continue;
+                if (exercise.loadKg() == null && exercise.getReps() == null) continue;
 
                 repository.save(ExercisePersonalBest.builder()
                         .user(user)
                         .normalisedName(key)
                         .displayName(exercise.getName())
-                        .bestWeightKg(exercise.getWeightKg())
-                        .bestWeightReps(exercise.getReps())
+                        .bestWeightKg(exercise.loadKg())
+                        // The reps at the heaviest load: none when there is no load (0 kg is bodyweight).
+                        .bestWeightReps(exercise.loadKg() != null ? exercise.getReps() : null)
                         .bestEstimatedOneRepMax(exercise.estimatedOneRepMax())
                         .bestVolume(exercise.volume())
                         .bestBodyweightReps(bodyweightReps(exercise))
@@ -78,10 +79,10 @@ public class ExercisePersonalBestService {
 
             List<String> beaten = new ArrayList<>();
 
-            if (isGreater(exercise.getWeightKg(), record.getBestWeightKg())) {
-                record.setBestWeightKg(exercise.getWeightKg());
+            if (isGreater(exercise.loadKg(), record.getBestWeightKg())) {
+                record.setBestWeightKg(exercise.loadKg());
                 record.setBestWeightReps(exercise.getReps());
-                beaten.add(formatKg(exercise.getWeightKg()) + " x "
+                beaten.add(formatKg(exercise.loadKg()) + " x "
                         + (exercise.getReps() != null ? exercise.getReps() : 1));
             }
             if (isGreater(exercise.estimatedOneRepMax(), record.getBestEstimatedOneRepMax())) {
@@ -125,7 +126,7 @@ public class ExercisePersonalBestService {
             String key = Exercise.normalise(e.getName());
             if (key == null) continue;
 
-            if (e.getWeightKg() == null && e.getReps() == null) continue;
+            if (e.loadKg() == null && e.getReps() == null) continue;
 
             ExercisePersonalBest agg = rebuilt.computeIfAbsent(key, k ->
                     ExercisePersonalBest.builder()
@@ -135,8 +136,8 @@ public class ExercisePersonalBestService {
             LocalDateTime when = e.getActivity() != null && e.getActivity().getStartTime() != null
                     ? e.getActivity().getStartTime() : e.getCreatedAt();
 
-            if (isGreater(e.getWeightKg(), agg.getBestWeightKg())) {
-                agg.setBestWeightKg(e.getWeightKg());
+            if (isGreater(e.loadKg(), agg.getBestWeightKg())) {
+                agg.setBestWeightKg(e.loadKg());
                 agg.setBestWeightReps(e.getReps());
                 agg.setDisplayName(e.getName());
                 agg.setAchievedAt(later(agg.getAchievedAt(), when));
@@ -190,7 +191,7 @@ public class ExercisePersonalBestService {
 
         ExercisePersonalBest r = record.get();
         Integer reps = bodyweightReps(exercise);
-        return equalish(exercise.getWeightKg(), r.getBestWeightKg())
+        return equalish(exercise.loadKg(), r.getBestWeightKg())
                 || equalish(exercise.estimatedOneRepMax(), r.getBestEstimatedOneRepMax())
                 || equalish(exercise.volume(), r.getBestVolume())
                 || (reps != null && reps.equals(r.getBestBodyweightReps()));
@@ -204,7 +205,7 @@ public class ExercisePersonalBestService {
      * covering both would let the easier one take the record.
      */
     private static Integer bodyweightReps(Exercise exercise) {
-        if (exercise.getWeightKg() != null && exercise.getWeightKg() > 0) return null;
+        if (exercise.loadKg() != null && exercise.loadKg() > 0) return null;
         return exercise.getReps();
     }
 

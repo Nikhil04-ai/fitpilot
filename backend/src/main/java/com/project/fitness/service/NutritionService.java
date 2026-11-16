@@ -91,7 +91,7 @@ public class NutritionService {
         fillCaloriesFromMacros(meal);
         requireSomethingToRecord(meal);
 
-        MealLog saved = mealLogRepository.save(meal);
+        MealLog saved = mealLogRepository.saveAndFlush(meal);   // flushed: the timestamps are set on write
 
         MealResponse response = mapToResponse(saved, user);
         response.setGoalAchievements(emptyToNull(goalService.refreshNutritionGoals(user)));
@@ -150,7 +150,7 @@ public class NutritionService {
         }
         requireBelievableNumbers(meal);
 
-        MealLog saved = mealLogRepository.save(meal);
+        MealLog saved = mealLogRepository.saveAndFlush(meal);   // flushed: the timestamps are set on write
 
         MealResponse response = mapToResponse(saved, user);
         response.setGoalAchievements(emptyToNull(goalService.refreshNutritionGoals(user)));
@@ -207,7 +207,7 @@ public class NutritionService {
         fillCaloriesFromMacros(meal);
 
         requireSomethingToRecord(meal);
-        mealLogRepository.save(meal);
+        mealLogRepository.saveAndFlush(meal);   // flushed, so the response carries the new updatedAt
 
         MealResponse response = mapToResponse(meal, user);
         response.setGoalAchievements(emptyToNull(goalService.refreshNutritionGoals(user)));
@@ -281,7 +281,14 @@ public class NutritionService {
         summary.put("basalCalories", calorieCalculatorService.basalMetabolicRate(user));
         summary.put("maintenanceCalories", maintenance);
 
-        if (maintenance != null) {
+        if (meals.isEmpty()) {
+            // Nothing logged is not a full-maintenance deficit. The daily series already
+            // leaves an empty day's net blank; this summary used to report "-2036,
+            // DEFICIT" beside "Nothing logged today" (found 2026-11-16).
+            summary.put("netCalories", null);
+            summary.put("balance", null);
+            summary.put("estimateNote", "Nothing logged for this day yet, so there's no balance to show.");
+        } else if (maintenance != null) {
             int net = caloriesIn - maintenance - exerciseBurn;
             summary.put("netCalories", net);
             summary.put("balance", net < 0 ? "DEFICIT" : net > 0 ? "SURPLUS" : "MAINTENANCE");
@@ -399,9 +406,15 @@ public class NutritionService {
     }
 
     /** A meal with no calories and no macros records nothing, so it is rejected outright. */
+    private static boolean positive(Double grams) {
+        return grams != null && grams > 0;
+    }
+
     private void requireSomethingToRecord(MealLog meal) {
         boolean hasEnergy = meal.getCalories() != null && meal.getCalories() > 0;
-        boolean hasMacros = meal.getProteinGrams() != null || meal.getCarbsGrams() != null || meal.getFatGrams() != null;
+        // A macro of 0 g records nothing, just as 0 kcal doesn't: {"proteinGrams":0,
+        // "carbsGrams":0,"fatGrams":0} used to save an empty row (found 2026-11-16).
+        boolean hasMacros = positive(meal.getProteinGrams()) || positive(meal.getCarbsGrams()) || positive(meal.getFatGrams());
         if (!hasEnergy && !hasMacros) {
             throw new RuntimeException("A meal needs at least a calorie figure or its macros.");
         }

@@ -2084,3 +2084,80 @@ audited by hand on 2026-10-11, before Phases 27 to 42 rewrote every panel's temp
 * **Verification:** Selenium **32 of 32** against the real frontend. Frontend (197) and backend (618)
   unchanged. `README.md`'s Selenium count is 32; `AGENT.md` §8 now says the CSP and `escapeHtml` are
   the whole defence of the tokens and where the guard is.
+
+## Phase 52 — The multi-agent full-app run (2026-11-16 to 2026-11-17)
+
+Every feature was run end to end by eight agents at once, one per area: auth and profile; workouts,
+exercises, records, streaks and recovery; nutrition and goals; health and pain; plans, stats,
+insights and the AI coach; friends, challenges and notifications; security and the API contract;
+and UI, accessibility and layout at 1400, 1024, 768 and 390 px. They shared one backend on
+in-memory H2 with Gemini and email off (never the local MySQL), drove it over HTTP and in headless
+Chrome, and were told to report only what they could reproduce twice, with steps, evidence and a
+code location. The script is `.claude/workflows/fitpilot-full-app-test.js` (not committed).
+
+* **What came back:** 42 functional findings (F1 to F42) and 10 UI ones (U1 to U10). Three were the
+  same problem found by two agents (F26/F30/F33, F18/F31, F21/F28), so 49 distinct. The full list,
+  with severity and the fix for each, is `PLAN.md` P6.
+* **The worst:** changing weight in Profile never recorded a weigh-in, so the weight-trend chart
+  could never fill from the UI and a weight goal disagreed with Health (F1, F22); the current
+  streak never ran out (F9); logout left the password in the login form, so one click signed the
+  account back in (U1); a network blip at page load signed the user out and threw away tokens the
+  server still accepted (F2); and `additionalMetrics` took a 10 MB value with no limit (F5).
+* **46 fixed, 3 left as feature work:** F16 (notifications for a withdrawn request or cancelled
+  invite stay unread), F20 (linking pain to a workout from the UI) and F35 (showing a plan's
+  schedule). Each needs a design decision or a new view, not a correction.
+* **How the fixes are shaped.** Three are worth knowing before touching the code again:
+  * **Streaks are derived, not stored and trusted.** `StreakService.recompute` rebuilds current
+    and longest from the workout dates on every write, and every read goes through
+    `StreakService.current(user)`, which returns 0 once the last workout is before yesterday.
+    The stored counter alone was never wrong on the day it was written; it went stale while
+    nobody wrote.
+  * **A PUT can now clear a field.** `null` still means "keep" on `PUT /api/activities/{id}`, so
+    an emptied field is named in a `clear` list (`notes`, `distanceKm`). The Edit dialog sends it
+    only for a field that had a value and is now empty.
+  * **Date-only strings are local dates.** `new Date('2026-11-16')` is UTC midnight, which is the
+    15th anywhere west of UTC. `util.js`'s `localDay()` reads it as a local date; the Health
+    panel's water week and sleep rows and the challenge rows use it.
+* **Found while fixing, and fixed with it:**
+  * **Jackson 3 skipped my setter.** The first fix for F13 (trim the email in
+    `RegisterRequest.setEmail`) did nothing: Boot 4.1's Jackson 3 builds the record-like DTO through
+    its all-args constructor, so the setter never ran and `@Email` still saw the spaces. The trim
+    and the constraints now sit on the getter, which is what validation reads.
+  * **The firewall's 401 (F29).** Spring Security's `StrictHttpFirewall` rejected `;`, `//` and an
+    encoded `%`, then dispatched to `/error`, which `anyRequest().authenticated()` covered. So a
+    valid token got "please log in again" and no CORS header. `/error` is permitted, and a
+    `RequestRejectedHandler` answers the rejection itself with a JSON `400`.
+  * **Moving 27 Mockito stubs.** `saveAndFlush` (F26, F30, F33) broke every unit test that stubbed
+    `save`. The stubs and the `never()`/`times()` checks moved with it, so a "nothing saved" test
+    still means nothing was saved.
+  * **The Selenium free-text check seeded a 59-character metric name**, which the new 50-character
+    limit refuses. It now uses a 41-character payload for the metric name. It still breaks out of
+    an attribute and carries both a marker and a handler. Every other field keeps the full ones.
+* **Tests.** Backend **648** passing (was 618): four new integration classes
+  (`FullAppRunRegressionIntegrationTest`, `GoalLifecycleIntegrationTest`, `BodyWeightIntegrationTest`,
+  `AuthEdgeCasesIntegrationTest`), new cases in `InputValidationIntegrationTest` and
+  `ChallengeServiceTest`, and `StreakServiceTest` rewritten. Frontend **217** (was 197):
+  `tests/full-app-run.test.mjs` (17, one per frontend fix; the time-zone test sets
+  `TZ=America/Los_Angeles` at runtime, the only way to show the west-of-UTC bug from India) and
+  `tests/boot.test.mjs` (3).
+* **Shown to fail on the old code**, in a scratch `git worktree` of `484ef3c` with the new tests
+  copied in, so the working tree was never touched: 24 of the new backend HTTP tests failed there.
+  All 17 of `full-app-run.test.mjs` failed, on the assertion itself wherever the helper existed,
+  and the two outage cases of `boot.test.mjs` failed while its "a refusal still ends the session"
+  case passed, as it should.
+* **Run again in the browser**, on a fresh H2 backend (the JDBC line was checked to read `jdbc:h2`
+  before any request): Selenium **32 of 32**. A separate script drove the fixes Selenium doesn't
+  reach, against the running app: three backdated workouts give a streak of 3 (F9); Edit on an
+  Overview row opens, and emptying notes and distance empties them on the server (F7, F8); a plan
+  day done today shows a disabled "Done for today" (F6); an empty nutrition day shows no balance
+  (F23); at 390 px the drawer takes focus, its scrim closes it and focus returns to the menu button
+  (U4, U5); logout leaves the password and email empty and hides the + button (U1, U2). 7 of 7, with
+  no console errors.
+* **Not covered.** MySQL: the run was on H2, so F25's 1899-12-31 date shift and F14's row lock
+  (`SELECT … FOR UPDATE` through `@Lock(PESSIMISTIC_WRITE)`) were not run there. Its test runs
+  five pairs of simultaneous requests on H2 and gets one challenge each time. Gemini: AI was off,
+  so the `/natural` path's metric filtering was read, not run, because it needs a model reply. Real
+  screen readers: the UI agent checked Chrome's accessibility tree instead.
+* **Docs.** `API.md` for every contract change (the `clear` list, `completedToday` and
+  `lastCompletedDate`, the null summary balance, the metric, goal, water, meal and password rules,
+  the cancel rule, the firewall `400`). `PLAN.md` P6. `README.md` counts. `AGENT.md` §8 and §10.

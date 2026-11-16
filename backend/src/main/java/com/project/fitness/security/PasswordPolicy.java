@@ -21,6 +21,22 @@ public final class PasswordPolicy {
 
     private PasswordPolicy() {}
 
+    /**
+     * Throws a 400-bound RuntimeException for a password that is only whitespace.
+     * Registration already refuses one (@NotBlank); reset and change checked only the
+     * length, so eight spaces or eight tabs became a working password (found 2026-11-16).
+     */
+    public static void requireNotBlank(String rawPassword) {
+        if (rawPassword != null && rawPassword.isBlank()) {
+            throw new RuntimeException("Password can't be only spaces.");
+        }
+    }
+
+    /** True when the password is longer than BCrypt can hash, so it can't match any stored hash. */
+    public static boolean tooLongToHash(String rawPassword) {
+        return rawPassword != null && rawPassword.getBytes(StandardCharsets.UTF_8).length > MAX_BYTES;
+    }
+
     /** Throws a 400-bound RuntimeException when BCrypt couldn't hash the password. */
     public static void requireHashable(String rawPassword) {
         if (rawPassword != null && rawPassword.getBytes(StandardCharsets.UTF_8).length > MAX_BYTES) {

@@ -27,6 +27,7 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -92,10 +93,10 @@ public class ActivityService {
 
         Activity savedActivity = activityRepository.save(activity);
 
-        // The workout's own date, not today's — otherwise a backdated entry is recorded
-        // as having happened when it was typed in, and disagrees with what
-        // ActivityRecalculationService derives from the same rows after an edit.
-        streakService.updateStreak(user, startTime.toLocalDate());
+        // Derived from every workout's own date, as an edit or delete does. Updating it
+        // incrementally ignored a workout dated before the last one, so backdated days
+        // never extended a streak until some later edit rebuilt it.
+        streakService.recompute(user);
         userRepository.save(user);
 
         PersonalBestService.Result pb = personalBestService.evaluate(user, savedActivity);
@@ -150,9 +151,13 @@ public class ActivityService {
         return mapToResponse(activity, activity.getUser());
     }
 
+    /** Fields an edit may explicitly empty through {@link ActivityRequest#getClear()}. */
+    private static final Set<String> CLEARABLE = Set.of("notes", "distanceKm");
+
     /**
      * Edits a logged activity. Every field the client sends is applied; anything left
-     * null is kept, so this doubles as a partial update.
+     * null is kept, so this doubles as a partial update. A field named in {@code clear}
+     * is emptied.
      *
      * <p>Duration, calories and start time all feed derived state, so the whole lot is
      * recomputed afterwards rather than nudged — see ActivityRecalculationService.
@@ -174,6 +179,10 @@ public class ActivityService {
         if (request.getDistanceKm() != null || request.getAdditionalMetrics() != null) {
             InputChecks.distanceKm(resolveDistance(request));
         }
+        Set<String> clear = request.getClear() == null ? Set.of() : request.getClear();
+        for (String field : clear) {
+            if (!CLEARABLE.contains(field)) throw new RuntimeException("Can't clear '" + field + "' on a workout.");
+        }
 
         if (request.getType() != null)      activity.setType(request.getType());
         if (request.getDuration() != null)  activity.setDuration(request.getDuration());
@@ -190,6 +199,9 @@ public class ActivityService {
             Double distance = resolveDistance(request);
             if (distance != null) activity.setDistanceKm(distance);
         }
+        // After the values, so a field named in clear wins over a value sent for it.
+        if (clear.contains("notes"))      activity.setNotes(null);
+        if (clear.contains("distanceKm")) activity.setDistanceKm(null);
         // Null leaves the movements alone (this is a partial update); an empty list
         // is an explicit "remove them all".
         if (request.getExercises() != null) {
@@ -312,6 +324,7 @@ public class ActivityService {
         InputChecks.caloriesBurned(request.getCaloriesBurned());
         InputChecks.startTime(request.getStartTime());
         InputChecks.notes(request.getNotes());
+        InputChecks.additionalMetrics(request.getAdditionalMetrics());
         if (request.getExercises() != null) {
             for (ExerciseRequest e : request.getExercises()) {
                 if (e == null || e.getName() == null || e.getName().isBlank()) continue;   // skipped anyway
@@ -446,7 +459,7 @@ public class ActivityService {
         r.setTotalVolume(activity.totalVolume());
         r.setCreatedAt(activity.getCreatedAt());
         r.setUpdatedAt(activity.getUpdatedAt());
-        r.setCurrentStreak(user.getCurrentStreak());
+        r.setCurrentStreak(StreakService.current(user));
         r.setLongestStreak(user.getLongestStreak());
         r.setIsPersonalBest(false);
         return r;

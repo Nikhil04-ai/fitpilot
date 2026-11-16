@@ -1,7 +1,7 @@
 import { session } from '../state.js';
 import { emptyState, escapeHtml, figure, skeletonFigures, skeletonLines, skeletonRows } from '../util.js';
 import { api } from '../api.js';
-import { activityRow } from './activities.js';
+import { activityRow, rememberActivities } from './activities.js';
 import { goalRow } from './goals.js';
 import { loadOverviewAiTeaser } from './coach.js';
 
@@ -41,8 +41,11 @@ async function loadOverviewStats() {
     // The week leads: what you did these seven days, then the run you're on, then
     // the career.
     el.innerHTML = [
-      figure(weekly.activityCount ?? 0, 'Workouts this week'),
-      figure(weekly.totalCalories ?? 0, 'Calories this week'),
+      // "Last 7 days", because that is what /stats/weekly counts. "This week" read as
+      // Monday to Sunday, which is how the digest counts a week, so two screens gave
+      // different answers to the same question (found 2026-11-16).
+      figure(weekly.activityCount ?? 0, 'Workouts, last 7 days'),
+      figure(weekly.totalCalories ?? 0, 'Calories, last 7 days'),
       figure(session.currentUser.currentStreak ?? 0, 'Day streak', `Best: ${allTime.longestStreak ?? 0}`),
       figure(allTime.totalWorkouts ?? 0, 'Total workouts')
     ].join('');
@@ -90,6 +93,7 @@ async function loadOverviewActivities() {
         '<button class="btn btn-sec btn-sm" data-action="open-modal" data-modal="modal-log-activity">Log workout</button>');
       return;
     }
+    rememberActivities(items);   // so the rows' Edit buttons can open the dialog
     el.innerHTML = items.map(activityRow).join('');
   } catch (err) {
     el.innerHTML = `<div class="error-state">Couldn't load activities: ${escapeHtml(err.message)}</div>`;

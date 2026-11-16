@@ -309,6 +309,75 @@ class InputValidationIntegrationTest {
                 LocalDateTime.now().minusDays(3).toString()))).statusCode()).isEqualTo(200);
     }
 
+    /** Found by the full-app test run (2026-11-16): a 10 MB value was stored and sent back on every list load. */
+    @Test
+    @DisplayName("A workout's extra metrics are a few short, flat values, on create and on edit")
+    void additionalMetricsLimits() throws Exception {
+        Map<String, Object> tooMany = new HashMap<>();
+        for (int i = 0; i < 21; i++) tooMany.put("m" + i, i);
+        assertRejected(post("/api/activities", withField("additionalMetrics", tooMany)), "at most 20");
+        assertRejected(post("/api/activities", withField("additionalMetrics", Map.of("k", "x".repeat(1001)))), "metric");
+        assertRejected(post("/api/activities", withField("additionalMetrics", Map.of("k".repeat(51), 1))), "name");
+        assertRejected(post("/api/activities", withField("additionalMetrics", Map.of("nested", Map.of("a", 1)))), "metric");
+
+        String id = json(send(post("/api/activities", withField("additionalMetrics", Map.of("pace", "5:30", "laps", 4)))))
+                .get("id").asText();
+        assertRejected(put("/api/activities/" + id, Map.of("additionalMetrics", Map.of("k", "x".repeat(1001)))), "metric");
+    }
+
+    /** Found by the full-app test run (2026-11-16): water alone took 2099-12-31. */
+    @Test
+    @DisplayName("Water can't be logged for a day more than one ahead, like sleep, meals and workouts")
+    void waterFutureDate() throws Exception {
+        assertRejected(post("/api/health/water/" + userId, Map.of("amountMl", 500, "date", "2099-12-31")), "hasn't happened");
+        assertRejected(post("/api/health/water/" + userId, Map.of("amountMl", 500,
+                "date", java.time.LocalDate.now().plusDays(2).toString())), "hasn't happened");
+        assertThat(send(post("/api/health/water/" + userId, Map.of("amountMl", 500,
+                "date", java.time.LocalDate.now().minusDays(3).toString()))).statusCode()).isEqualTo(200);
+    }
+
+    /** Found by the full-app test run (2026-11-16): 0/0/0 g saved an empty row. */
+    @Test
+    @DisplayName("A meal with nothing in it (zero calories and zero macros) is refused")
+    void emptyMealRefused() throws Exception {
+        assertRejected(post("/api/nutrition/meals", Map.of("proteinGrams", 0, "carbsGrams", 0, "fatGrams", 0)), "calorie figure or its macros");
+        assertRejected(post("/api/nutrition/meals", Map.of("calories", 0, "proteinGrams", 0)), "calorie figure or its macros");
+        assertThat(send(post("/api/nutrition/meals", Map.of("proteinGrams", 30))).statusCode()).isEqualTo(200);
+    }
+
+    /** Found by the full-app test run (2026-11-16): NaN and Infinity were saved, and so was a 5000 kg weight goal. */
+    @Test
+    @DisplayName("A goal target must be a finite, believable number, on create and on edit")
+    void goalTargets() throws Exception {
+        assertRejected(post("/api/goals", Map.of("type", "PROTEIN_PER_DAY", "targetValue", "NaN")), "number");
+        assertRejected(post("/api/goals", Map.of("type", "CALORIES_PER_WEEK", "targetValue", "Infinity")), "number");
+        // 1e309 can't be written by the client's own JSON library, so it is sent as raw text.
+        HttpResponse<String> huge = send(HttpRequest.newBuilder().uri(URI.create(url("/api/goals")))
+                .header("Content-Type", "application/json").header("Authorization", "Bearer " + jwt)
+                .POST(HttpRequest.BodyPublishers.ofString("{\"type\":\"WORKOUTS_PER_WEEK\",\"targetValue\":1e309}")).build());
+        assertThat(huge.statusCode()).as(huge.body()).isEqualTo(400);
+        assertRejected(post("/api/goals", Map.of("type", "WORKOUTS_PER_WEEK", "targetValue", 0)), "greater than zero");
+        assertRejected(post("/api/goals", Map.of("type", "WORKOUTS_PER_WEEK", "targetValue", 51)), "at most 50");
+        assertRejected(post("/api/goals", Map.of("type", "PROTEIN_PER_DAY", "targetValue", 100_000)), "at most 2000");
+        assertRejected(post("/api/goals", Map.of("type", "TARGET_WEIGHT", "targetValue", 5000)), "between 20 and 500");
+        assertRejected(post("/api/goals", Map.of("type", "TARGET_WEIGHT", "targetValue", 5)), "between 20 and 500");
+
+        String id = json(send(post("/api/goals", Map.of("type", "WORKOUTS_PER_WEEK", "targetValue", 4)))).get("id").asText();
+        assertRejected(put("/api/goals/" + id, Map.of("targetValue", "NaN")), "number");
+        assertRejected(put("/api/goals/" + id, Map.of("targetValue", 9999)), "at most 50");
+        assertThat(send(put("/api/goals/" + id, Map.of("targetValue", 5))).statusCode()).isEqualTo(200);
+    }
+
+    @Test
+    @DisplayName("A goal deadline must be a plausible date; a recent past one is still allowed")
+    void goalDeadlines() throws Exception {
+        assertRejected(post("/api/goals", Map.of("type", "WORKOUTS_PER_WEEK", "targetValue", 3, "deadline", "1900-01-01")), "deadline");
+        assertRejected(post("/api/goals", Map.of("type", "WORKOUTS_PER_WEEK", "targetValue", 3, "deadline", "0001-01-01")), "deadline");
+        assertRejected(post("/api/goals", Map.of("type", "WORKOUTS_PER_WEEK", "targetValue", 3, "deadline", "2200-01-01")), "deadline");
+        assertThat(send(post("/api/goals", Map.of("type", "WORKOUTS_PER_WEEK", "targetValue", 3,
+                "deadline", java.time.LocalDate.now().minusDays(3).toString()))).statusCode()).isEqualTo(200);
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────
 
     private Map<String, Object> withField(String key, Object value) {

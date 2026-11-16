@@ -43,9 +43,15 @@ export function planCard(p, isCurrent = false) {
     </article>`;
 }
 
-/** Today's workout: the activity and its minutes as the figure, then what to do. */
-function todayBlock(today, day) {
-  const head = `<h4 class="mini-ttl">Today, day ${escapeHtml(day)}</h4>`;
+/**
+ * Today's workout: the activity and its minutes as the figure, then what to do. Once
+ * today's day is ticked off, the server already returns the next day, so it is labelled
+ * as tomorrow's rather than "Today" (found 2026-11-16).
+ */
+function todayBlock(today, day, doneToday) {
+  const head = doneToday
+    ? `<h4 class="mini-ttl">Next, day ${escapeHtml(day)} (tomorrow)</h4>`
+    : `<h4 class="mini-ttl">Today, day ${escapeHtml(day)}</h4>`;
   if (!today) return '';
   if (today.isRestDay) {
     return `<div class="plan-today">${head}<div class="plan-act">Rest day</div>
@@ -65,8 +71,14 @@ export function activePlanSheet(active) {
   const done = active.completedDays ?? 0;
   const body = active.isCompleted
     ? `<div class="note">Plan complete. Well done.</div>`
-    : `${todayBlock(active.todaysWorkout, active.currentDay)}
-       <button type="button" class="btn btn-sec" data-action="complete-plan-day">Mark today complete</button>`;
+    : active.completedToday
+      // Done for today: the button used to stay live and every press was refused with
+      // "already marked complete" (found 2026-11-16).
+      ? `<p class="sec-sub">Today's day is done.</p>
+         ${todayBlock(active.todaysWorkout, active.currentDay, true)}
+         <button type="button" class="btn btn-sec" data-action="complete-plan-day" disabled>Done for today</button>`
+      : `${todayBlock(active.todaysWorkout, active.currentDay, false)}
+         <button type="button" class="btn btn-sec" data-action="complete-plan-day">Mark today complete</button>`;
   return `
     <div class="sheet-head">
       <h3 class="sheet-ttl" id="active-plan-ttl">Active plan</h3>

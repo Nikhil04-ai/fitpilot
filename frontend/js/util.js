@@ -48,6 +48,27 @@ export function today() {
 }
 
 /** Yesterday's local date: the night a sleep entry is for unless told otherwise, as on the server. */
+/**
+ * A date-only "YYYY-MM-DD" as local midnight. `new Date("2026-11-16")` is UTC midnight,
+ * which is the evening before anywhere west of UTC, so the water week, the sleep rows
+ * and a challenge's days were all labelled a day early there (found 2026-11-16).
+ */
+export function localDay(iso) {
+  return new Date(String(iso).slice(0, 10) + 'T00:00:00');
+}
+
+/** The last `n` local dates as "YYYY-MM-DD", oldest first, ending today. */
+export function lastDays(n) {
+  const pad = x => String(x).padStart(2, '0');
+  const out = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    out.push(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
+  }
+  return out;
+}
+
 export function yesterday() {
   const d = new Date();
   d.setDate(d.getDate() - 1);

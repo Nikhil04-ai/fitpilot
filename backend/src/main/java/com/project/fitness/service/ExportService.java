@@ -132,7 +132,7 @@ public class ExportService {
         profile.put("weightKg", user.getWeight());
         profile.put("heightCm", user.getHeight());
         profile.put("age", user.getAge());
-        profile.put("currentStreak", user.getCurrentStreak());
+        profile.put("currentStreak", StreakService.current(user));
         profile.put("longestStreak", user.getLongestStreak());
         profile.put("memberSince", user.getCreatedAt());
         // password and role are deliberately absent. An export is a file that gets

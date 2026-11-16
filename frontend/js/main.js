@@ -18,7 +18,7 @@
 // ═══════════════════════════════════════════════════════════════════════
 
 import { session } from './state.js';
-import { acceptConfirm, closeModal, hideToast, installLogoFallback, openModal, toggleSidebar } from './ui.js';
+import { acceptConfirm, closeModal, hideToast, installLogoFallback, openModal, toast, toggleSidebar } from './ui.js';
 import { installActionDelegation, registerActions } from './actions.js';
 import { api, forceSessionExpired } from './api.js';
 import { consumeResetLink, doLogout, enterApp, handleForgotPassword, handleLogin, handleRegister, handleResetPassword, switchAuthTab } from './auth.js';
@@ -58,8 +58,18 @@ window.addEventListener('DOMContentLoaded', async () => {
     // api() already self-heals on the 409 "no longer exists" case, and its message
     // says exactly what happened — don't overwrite it with this vaguer one.
     if (session.expiredInProgress) return;
-    // Everything else that can fail at boot: a 401 that survived a refresh, or the
-    // backend being unreachable. Either way the saved session can't be trusted.
+    // A network failure or a server fault says nothing about the session. It used to end
+    // it anyway: tokens the server still accepted were thrown away, and a phone restoring
+    // a tab offline, or a deploy in progress, signed the person out (found 2026-11-16).
+    // So the app opens as it would mid-session, the panels say they can't load, and the
+    // next request after the server is back carries on. A 401 or 409 never reaches here:
+    // api() has already ended the session for those.
+    if (!err.status || err.status >= 500) {
+      enterApp();
+      toast(err.message, true);
+      return;
+    }
+    // Any other refusal (a 403: this token isn't for that account) can't be trusted.
     forceSessionExpired('Your saved session is no longer valid. Please log in again.');
   }
 });

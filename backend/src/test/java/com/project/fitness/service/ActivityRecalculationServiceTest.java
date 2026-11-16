@@ -196,6 +196,9 @@ class ActivityRecalculationServiceTest {
 
         service.recalculateMuscleRecovery(user, List.of());
 
-        assertThat(quads.getLastWorkedAt()).isNull();
+        // Removed, not kept with a null date: a null-dated row listed the muscle as
+        // "Recovered" with a blank "last worked" after every workout was deleted.
+        verify(muscleRecoveryRepository).delete(quads);
+        verify(muscleRecoveryRepository, never()).save(quads);
     }
 }

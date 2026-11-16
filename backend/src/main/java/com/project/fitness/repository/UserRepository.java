@@ -1,12 +1,16 @@
 package com.project.fitness.repository;
 
 import com.project.fitness.model.User;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -31,4 +35,13 @@ public interface UserRepository extends JpaRepository<User, String> {
     @Modifying
     @Query("update User u set u.tokenVersion = u.tokenVersion + 1 where u.id = :id")
     int retireIssuedTokens(@Param("id") String id);
+
+    /**
+     * Locks these users' rows until the transaction ends (SELECT ... FOR UPDATE), in id
+     * order so two overlapping callers take them in the same order and can't deadlock.
+     * For check-then-insert rules that span people, such as one open challenge per pair.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from User u where u.id in :ids order by u.id")
+    List<User> lockForUpdate(@Param("ids") Collection<String> ids);
 }

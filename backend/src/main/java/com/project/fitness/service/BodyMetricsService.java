@@ -45,36 +45,37 @@ public class BodyMetricsService {
         if (height != null) user.setHeight(height);
         userRepository.save(user);
 
+        List<String> goalAchievements = recordWeighIn(user);
+        Map<String, Object> response = buildResponse(user, bmiOf(user), bmiOf(user) == null ? null : bmiCategory(user));
+        if (!goalAchievements.isEmpty()) response.put("goalAchievements", goalAchievements);
+        return response;
+    }
+
+    /**
+     * Writes a weigh-in row from the user's current weight and height, and refreshes the
+     * weight goals. Called by PUT /api/health/metrics and by a profile update that changes
+     * weight or height. The profile is the only place the app lets a person change their
+     * weight, and it used to write no row, so the weight chart, the history and the
+     * weight goal never saw it (found 2026-11-16).
+     *
+     * @return the goal messages a weigh-in produced, empty if none.
+     */
+    public List<String> recordWeighIn(User user) {
         // Unknown stays null. It was stored as 0, and zero kg is not a measurement: it
         // looked like one in the history, the chart and the export.
-        Double w = user.getWeight();
-        Double h = user.getHeight();
-
-        Double bmi = null;
-        String category = null;
-        if (w != null && h != null && w > 0 && h > 0) {
-            double hm = h / 100.0;
-            bmi = Math.round((w / (hm * hm)) * 10.0) / 10.0;
-            category = bmiCategory(bmi);
-        }
-
+        Double bmi = bmiOf(user);
         BodyMetricsLog log = BodyMetricsLog.builder()
                 .user(user)
-                .weight(w)
-                .height(h)
+                .weight(user.getWeight())
+                .height(user.getHeight())
                 .bmi(bmi)
-                .bmiCategory(category)
+                .bmiCategory(bmi == null ? null : bmiCategory(user))
                 .build();
         bodyMetricsLogRepository.save(log);
 
-        // A weigh-in is the only thing that moves a TARGET_WEIGHT goal, and nothing
-        // else in the app ever triggers one: those goals are not fed by workouts or by
-        // meals, so without this the Goals panel would keep showing the weight from
-        // whenever the goal was created (PLAN P2-1).
-        Map<String, Object> response = buildResponse(user, bmi, category);
-        List<String> goalAchievements = goalService.refreshStateGoals(user);
-        if (!goalAchievements.isEmpty()) response.put("goalAchievements", goalAchievements);
-        return response;
+        // A weigh-in is the only thing that moves a TARGET_WEIGHT goal: those goals are
+        // not fed by workouts or by meals (PLAN P2-1).
+        return goalService.refreshStateGoals(user);
     }
 
     /**
@@ -89,15 +90,8 @@ public class BodyMetricsService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AccountNotFoundException(userId));
 
-        Double bmi = null;
-        String category = null;
-        if (user.getWeight() != null && user.getHeight() != null && user.getHeight() > 0) {
-            double hm = user.getHeight() / 100.0;
-            bmi = Math.round((user.getWeight() / (hm * hm)) * 10.0) / 10.0;
-            category = bmiCategory(bmi);
-        }
-
-        Map<String, Object> result = buildResponse(user, bmi, category);
+        Double bmi = bmiOf(user);
+        Map<String, Object> result = buildResponse(user, bmi, bmi == null ? null : bmiCategory(user));
 
         // Newest N, then flipped: the chart reads left to right in time.
         Page<BodyMetricsLog> recent = bodyMetricsLogRepository.findByUserId(userId,
@@ -144,7 +138,44 @@ public class BodyMetricsService {
         return map;
     }
 
-    private String bmiCategory(double bmi) {
+    // ── BMI ─────────────────────────────────────────────────────────────────
+    // The category used to be judged from the BMI rounded to 0.1, and the healthy range's
+    // top used 24.9 while the category's cut-off is 25. So at the edges one response
+    // disagreed with itself: 53.4 kg at 170 cm (BMI 18.48) read "18.5, Normal weight"
+    // beside a range starting at 53.5 kg, and 72.1 kg was "Normal" though above the
+    // range (found 2026-11-16). Now the category comes from the exact BMI, the figure
+    // shown is rounded as usual except where rounding would carry it across a category
+    // boundary, and the range's ends are the exact weights where the category changes.
+
+    /** The exact BMI, or null when weight or height is missing. */
+    private static Double exactBmi(User user) {
+        Double w = user.getWeight(), h = user.getHeight();
+        if (w == null || h == null || w <= 0 || h <= 0) return null;
+        double hm = h / 100.0;
+        return w / (hm * hm);
+    }
+
+    /** The category cut-offs: below 18.5, below 25, below 30. */
+    private static final double[] BMI_CUTOFFS = {18.5, 25.0, 30.0};
+
+    /**
+     * BMI to one decimal, rounded as usual, except that rounding never carries it onto a
+     * cut-off it is below: 18.48 shows as 18.4, because "18.5, Underweight" contradicts
+     * itself. So the figure and its category always agree.
+     */
+    static Double bmiOf(User user) {
+        Double exact = exactBmi(user);
+        if (exact == null) return null;
+        double shown = Math.round(exact * 10.0) / 10.0;
+        for (double cut : BMI_CUTOFFS) {
+            if (exact < cut && shown >= cut) shown = Math.round((cut - 0.1) * 10.0) / 10.0;
+        }
+        return shown;
+    }
+
+    /** The category of the exact BMI. Only called when there is one. */
+    static String bmiCategory(User user) {
+        double bmi = exactBmi(user);
         if (bmi < 18.5) return "Underweight";
         if (bmi < 25.0) return "Normal weight";
         if (bmi < 30.0) return "Overweight";
@@ -160,11 +191,16 @@ public class BodyMetricsService {
         };
     }
 
-    private String healthyWeightRange(Double heightCm) {
-        if (heightCm == null || heightCm == 0) return "N/A";
-        double hm = heightCm / 100.0;
-        double low = Math.round(18.5 * hm * hm * 10.0) / 10.0;
-        double high = Math.round(24.9 * hm * hm * 10.0) / 10.0;
+    /**
+     * The lightest and heaviest weights, to 0.1 kg, whose BMI is "Normal weight":
+     * at least 18.5 and below 25. The small epsilon keeps a weight that lands exactly on
+     * the cut-off on the right side of it.
+     */
+    static String healthyWeightRange(Double heightCm) {
+        if (heightCm == null || heightCm <= 0) return "N/A";
+        double hm2 = Math.pow(heightCm / 100.0, 2);
+        double low = Math.ceil(18.5 * hm2 * 10.0 - 1e-9) / 10.0;
+        double high = Math.floor(25.0 * hm2 * 10.0 - 1e-9) / 10.0;
         return low + " kg – " + high + " kg";
     }
 }

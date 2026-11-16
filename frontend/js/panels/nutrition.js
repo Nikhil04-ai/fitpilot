@@ -59,7 +59,10 @@ function renderNutritionSummary(el, s) {
   // used to be coloured by direction, which still read as a verdict; now the sign and
   // the word under it say which way it went, and the colour says nothing.
   const netText = net == null ? '–' : (net > 0 ? '+' : '') + net;
-  const balance = s.balance ? s.balance.toLowerCase() : 'add your profile';
+  // No balance has two causes: nothing eaten yet that day (the server no longer reports a
+  // full-maintenance deficit for an empty day), or a profile missing what maintenance needs.
+  const balance = s.balance ? s.balance.toLowerCase()
+    : s.mealsLogged === 0 ? 'nothing logged yet' : 'add your profile';
 
   el.innerHTML = [
     figure(s.caloriesIn ?? 0, 'Eaten (kcal)'),

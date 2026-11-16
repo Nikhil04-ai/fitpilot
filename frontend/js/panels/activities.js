@@ -140,7 +140,7 @@ export async function rateActivity(id, rating) {
     if (res.progressionSuggestion) {
       setTimeout(() => toast(res.progressionSuggestion), 1200);
     }
-    loadActivities(currentActivityPage);
+    refreshShownPanel();
   } catch (err) {
     toast(err.message, true);
   }
@@ -156,7 +156,7 @@ export async function deleteActivity(id) {
   try {
     await api(`/api/activities/${id}`, { method: 'DELETE' });
     toast('Workout deleted');
-    loadActivities(currentActivityPage);
+    refreshShownPanel();
     refreshStreakFromProfile();
   } catch (err) {
     toast(err.message, true);
@@ -165,7 +165,7 @@ export async function deleteActivity(id) {
 
 /** Opens the edit modal pre-filled from the row already on screen. */
 export function openEditActivity(id) {
-  const a = (activityCache || []).find(x => x.id === id);
+  const a = shownActivities.get(id);
   if (!a) return;
   document.getElementById('edit-act-id').value = a.id;
   document.getElementById('edit-act-type').value = a.type || 'OTHER';
@@ -202,6 +202,14 @@ export async function handleEditActivity(e) {
     exercises: collectExerciseRows('edit-act-exercises'),
     notes: document.getElementById('edit-act-notes').value.trim() || null
   };
+  // A blank field sends null, which an edit reads as "keep". So emptying the notes or
+  // the distance said "Workout updated" and kept both (found 2026-11-16). A field the
+  // workout had and the person emptied is named in `clear` instead.
+  const original = shownActivities.get(id) || {};
+  const clear = [];
+  if (payload.distanceKm == null && original.distanceKm != null) clear.push('distanceKm');
+  if (payload.notes == null && original.notes) clear.push('notes');
+  if (clear.length) payload.clear = clear;
   // A figure is sent only when the field was changed (PLAN P4-2). Sending the
   // pre-filled figure back every time pinned it as "typed", so changing the duration
   // never updated a calculated figure. Left alone, the server keeps a typed figure and
@@ -214,7 +222,7 @@ export async function handleEditActivity(e) {
     await api(`/api/activities/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
     closeModal('modal-edit-activity');
     toast('Workout updated');
-    loadActivities(currentActivityPage);
+    refreshShownPanel();
     refreshStreakFromProfile();
   } catch (err) {
     toast(err.message, true);
@@ -235,8 +243,29 @@ async function refreshStreakFromProfile() {
   } catch (err) { /* the list already refreshed; a stale streak badge isn't worth a toast */ }
 }
 
-let activityCache = [];
+/**
+ * Every workout row on screen, by id, whichever panel drew it. The edit dialog is filled
+ * from here. It used to read only the Activities page's list, so Edit on the Overview's
+ * recent sessions found nothing and did nothing (found 2026-11-16).
+ */
+const shownActivities = new Map();
 let currentActivityPage = 0;
+
+/** Called by any panel that draws activityRow()s, so their Edit buttons work. */
+export function rememberActivities(items) {
+  for (const a of items || []) shownActivities.set(a.id, a);
+}
+
+/**
+ * Reloads whichever panel is on screen after a rating, an edit or a delete. Only the
+ * Activities list used to be reloaded, so the Overview kept a deleted row (deleting it
+ * again said "Activity not found"), an old rating and stale figures (found 2026-11-16).
+ */
+function refreshShownPanel() {
+  const shown = document.querySelector('.panel.on')?.id?.replace('panel-', '');
+  if (!shown || shown === 'activities') loadActivities(currentActivityPage);
+  else if (panelLoaders[shown]) panelLoaders[shown]();
+}
 
 export async function loadActivities(page = 0) {
   const el = document.getElementById('activities-list');
@@ -245,7 +274,7 @@ export async function loadActivities(page = 0) {
   try {
     const data = await api(`/api/activities?page=${page}&size=10&sort=startTime,desc`);
     const items = data.content || [];
-    activityCache = items;
+    rememberActivities(items);
     currentActivityPage = page;
     const total = data.page?.totalElements;
     if (count) count.textContent = total ? `${total} workout${total === 1 ? '' : 's'}` : '';

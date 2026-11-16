@@ -73,8 +73,10 @@ public class GlobalExceptionHandler {
         java.util.regex.Matcher tooLong = TEXT_TOO_LONG.matcher(rootMsg != null ? rootMsg : "");
         if (tooLong.find()) {
             String field = tooLong.group(1).toLowerCase().replace('_', ' ');
+            // "field", so a plural column reads right: "The notes field is too long", not
+            // "The notes is too long" (found 2026-11-16).
             return ResponseEntity.badRequest().body(Map.of(
-                    "error", "The " + field + " is too long. Shorten it and try again."));
+                    "error", "The " + field + " field is too long. Shorten it and try again."));
         }
 
         if (rootMsg != null && rootMsg.contains("fk_activity_user")) {

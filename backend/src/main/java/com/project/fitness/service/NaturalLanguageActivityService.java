@@ -62,10 +62,21 @@ public class NaturalLanguageActivityService {
             request.setDuration(((Number) duration).intValue());
         }
 
-        // additionalMetrics pass-through
+        // additionalMetrics pass-through. They came from the model, not the person, so an
+        // entry that doesn't fit the limits ActivityService enforces (a nested object, an
+        // over-long value) is dropped rather than refusing a workout the person described
+        // correctly.
         Object metrics = parsed.get("additionalMetrics");
-        if (metrics instanceof Map) {
-            request.setAdditionalMetrics((Map<String, Object>) metrics);
+        if (metrics instanceof Map<?, ?> raw) {
+            Map<String, Object> kept = new java.util.LinkedHashMap<>();
+            for (Map.Entry<?, ?> e : raw.entrySet()) {
+                if (kept.size() >= InputChecks.MAX_METRICS) break;
+                if (e.getKey() instanceof String k && k.length() <= InputChecks.MAX_METRIC_NAME_CHARS
+                        && InputChecks.isPlainMetricValue(e.getValue())) {
+                    kept.put(k, e.getValue());
+                }
+            }
+            if (!kept.isEmpty()) request.setAdditionalMetrics(kept);
         }
 
         // Distance. ActivityService also digs it out of additionalMetrics, so this is

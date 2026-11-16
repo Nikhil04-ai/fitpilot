@@ -21,6 +21,10 @@ public interface ActivityRepository extends JpaRepository<Activity, String> {
     // Non-paginated — used internally by services (stats, plateau, etc.)
     List<Activity> findByUserId(String userId);
 
+    /** Just the start times, which is all a streak needs (StreakService.recompute). */
+    @Query("SELECT a.startTime FROM Activity a WHERE a.user.id = :userId")
+    List<LocalDateTime> findStartTimesByUserId(@Param("userId") String userId);
+
     List<Activity> findByUserIdAndStartTimeBetween(String userId, LocalDateTime from, LocalDateTime to);
 
     @Query("SELECT COALESCE(SUM(a.caloriesBurned), 0) FROM Activity a " +

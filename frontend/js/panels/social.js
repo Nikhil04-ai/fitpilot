@@ -1,5 +1,5 @@
 import { session } from '../state.js';
-import { emptyState, escapeHtml, skeletonCards, skeletonRows } from '../util.js';
+import { emptyState, escapeHtml, localDay, skeletonCards, skeletonRows } from '../util.js';
 import { closeModal, confirmDialog, openModal, toast } from '../ui.js';
 import { api } from '../api.js';
 import { refreshUnreadCount } from './notifications.js';
@@ -151,7 +151,10 @@ const CHALLENGE_TYPE_LABEL = {
 /** The status, in sentence case. Only a live challenge carries the lime: it is the one in play. */
 const STATUS_META = {
   ACTIVE: { label: 'Active', cls: 'bl' }, PENDING: { label: 'Pending', cls: 'bn' },
-  COMPLETED: { label: 'Completed', cls: 'bp2' }, CANCELLED: { label: 'Cancelled', cls: 'bd' }
+  COMPLETED: { label: 'Completed', cls: 'bp2' }, CANCELLED: { label: 'Cancelled', cls: 'bd' },
+  // Everyone invited said no. Missing here, it fell back to the raw "DECLINED" as both
+  // badge and footer (found 2026-11-16).
+  DECLINED: { label: 'Declined', cls: 'bd' }
 };
 
 export function challengeCard(c, isInvite) {
@@ -168,8 +171,15 @@ export function challengeCard(c, isInvite) {
       ? `<span class="cdl">Waiting on ${waiting} ${waiting === 1 ? 'person' : 'people'}…</span><button type="button" class="g-del" data-action="cancel-challenge" data-id="${c.id}">Cancel</button>`
       : `<span class="cdl">Waiting for others to accept…</span>`;
   } else if (c.status === 'ACTIVE') {
-    const leave = c.youAreCreator ? ''
-      : `<button type="button" class="g-del" data-action="leave-challenge" data-id="${c.id}">Leave</button>`;
+    // A creator can't leave, but may cancel once nobody else is still in it. Without
+    // this button a creator left alone had no way out until the end date (found
+    // 2026-11-16); the API allows exactly this case.
+    const othersIn = (c.participants || []).filter(p => !p.isYou && p.status !== 'DECLINED').length;
+    const leave = !c.youAreCreator
+      ? `<button type="button" class="g-del" data-action="leave-challenge" data-id="${c.id}">Leave</button>`
+      : othersIn === 0
+        ? `<button type="button" class="g-del" data-action="cancel-challenge" data-id="${c.id}">Cancel</button>`
+        : '';
     const days = c.daysRemaining ?? '?';
     actions = `<span class="cdl"><b class="num">${days}</b> ${days === 1 ? 'day' : 'days'} left</span>${leave}<button type="button" class="btn-ghost" data-action="challenge-detail" data-id="${c.id}">Details</button>`;
   } else if (c.status === 'COMPLETED') {
@@ -178,6 +188,8 @@ export function challengeCard(c, isInvite) {
     // Settled with no contest ("Nobody else joined"). The message says why; the bare
     // status word did not (PLAN P4-14). A challenge its creator cancelled has no message.
     actions = `<span class="cdl">${escapeHtml(c.resultMessage)}</span>`;
+  } else if (c.status === 'DECLINED') {
+    actions = `<span class="cdl">Everyone invited declined.</span>`;
   } else {
     actions = `<span class="cdl">${escapeHtml(status.label)}</span>`;
   }
@@ -205,7 +217,7 @@ export function scoreHistoryTable(leaderboard) {
     const n = r.name || 'Athlete';
     if (!names.includes(n)) names.push(n);
   }));
-  const day = d => new Date(d).toLocaleDateString('en', { day: 'numeric', month: 'short' });
+  const day = d => localDay(d).toLocaleDateString('en', { day: 'numeric', month: 'short' });
   return `<div class="tbl-wrap"><table class="tbl">
     <thead><tr><th scope="col">Day</th>${names.map(n => `<th scope="col" class="num">${escapeHtml(n)}</th>`).join('')}</tr></thead>
     <tbody>${leaderboard.map(l => `<tr><th scope="row">${escapeHtml(day(l.date))}</th>${names.map(n => {

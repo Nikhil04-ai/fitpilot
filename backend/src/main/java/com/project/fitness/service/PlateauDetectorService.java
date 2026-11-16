@@ -63,12 +63,15 @@ public class PlateauDetectorService {
                           "message", "Not enough activities to detect a plateau yet.");
         }
 
+        // A workout with 0 kcal carries no calorie figure to compare. It used to be
+        // averaged in, so a fortnight of 0s divided by zero: "NaN%" (and NaN <= 5 is false,
+        // so "you're progressing"), or "Infinity%" against an earlier 0 (found 2026-11-16).
         OptionalDouble recentAvg = recentActivities.stream()
-                .filter(a -> a.getCaloriesBurned() != null)
+                .filter(a -> a.getCaloriesBurned() != null && a.getCaloriesBurned() > 0)
                 .mapToInt(Activity::getCaloriesBurned).average();
 
         OptionalDouble previousAvg = previousActivities.stream()
-                .filter(a -> a.getCaloriesBurned() != null)
+                .filter(a -> a.getCaloriesBurned() != null && a.getCaloriesBurned() > 0)
                 .mapToInt(Activity::getCaloriesBurned).average();
 
         if (recentAvg.isEmpty() || previousAvg.isEmpty()) {
@@ -80,9 +83,10 @@ public class PlateauDetectorService {
 
         Map<String, Object> result = new HashMap<>();
         result.put("activityType", activityType.name());
-        result.put("recentAverageCalories", String.format("%.1f", recentAvg.getAsDouble()));
-        result.put("previousAverageCalories", String.format("%.1f", previousAvg.getAsDouble()));
-        result.put("improvementPercent", String.format("%.1f%%", improvement));
+        // Locale.ROOT, so the decimal separator is always "." (as in StatsService, P4-8).
+        result.put("recentAverageCalories", String.format(java.util.Locale.ROOT, "%.1f", recentAvg.getAsDouble()));
+        result.put("previousAverageCalories", String.format(java.util.Locale.ROOT, "%.1f", previousAvg.getAsDouble()));
+        result.put("improvementPercent", String.format(java.util.Locale.ROOT, "%.1f%%", improvement));
         result.put("plateauDetected", isPlateaued);
 
         if (isPlateaued) {

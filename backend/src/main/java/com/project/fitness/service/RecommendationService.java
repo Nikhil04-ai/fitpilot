@@ -81,7 +81,7 @@ public class RecommendationService {
                         user.getAge() != null ? user.getAge() : "unknown",
                         user.getWeight() != null ? user.getWeight() : "unknown",
                         activityList,
-                        user.getCurrentStreak() != null ? user.getCurrentStreak() : 0
+                        StreakService.current(user)
                 );
 
         Map<String, Object> aiResponse = geminiService.generateRecommendation(prompt);
@@ -113,7 +113,7 @@ public class RecommendationService {
             // Gemini not configured — rule-based fallback
             recommendation.setType("MOTIVATION");
             recommendation.setRecommendation(
-                    "Keep going! You're on a " + user.getCurrentStreak() + "-day streak. " +
+                    "Keep going! You're on a " + StreakService.current(user) + "-day streak. " +
                     "Consistency is the most important factor in fitness progress.");
             recommendation.setImprovements(List.of(
                     "Try to vary your workout types to prevent overuse injuries.",

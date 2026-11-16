@@ -1,6 +1,9 @@
 package com.project.fitness.service;
 
+import com.project.fitness.model.GoalType;
+
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -159,6 +162,79 @@ public final class InputChecks {
         if (description != null && description.length() > MAX_AI_DESCRIPTION_CHARS) {
             throw new RuntimeException("A description can be at most " + MAX_AI_DESCRIPTION_CHARS + " characters.");
         }
+    }
+
+    public static final int MAX_METRICS = 20, MAX_METRIC_NAME_CHARS = 50;
+
+    /**
+     * A workout's {@code additionalMetrics}: free-form key/value pairs stored as JSON.
+     * There was no limit at all: a 10 MB value was stored, sent back on every Activities
+     * load, and broke the page's layout (found 2026-11-16). Every other free-text field
+     * has a cap; this one gets the same as notes per value, and at most 20 flat entries.
+     * {@code null} passes.
+     */
+    public static void additionalMetrics(java.util.Map<String, Object> metrics) {
+        if (metrics == null) return;
+        if (metrics.size() > MAX_METRICS) {
+            throw new RuntimeException("A workout can have at most " + MAX_METRICS + " extra metrics.");
+        }
+        for (java.util.Map.Entry<String, Object> e : metrics.entrySet()) {
+            if (e.getKey() == null || e.getKey().length() > MAX_METRIC_NAME_CHARS) {
+                throw new RuntimeException("A metric's name can be at most " + MAX_METRIC_NAME_CHARS + " characters.");
+            }
+            if (!isPlainMetricValue(e.getValue())) {
+                throw new RuntimeException("Each extra metric must be a number, true/false, or text of at most "
+                        + MAX_NOTES_CHARS + " characters.");
+            }
+        }
+    }
+
+    /** A number, a boolean, a short string or null: the only shapes a metric value takes. */
+    public static boolean isPlainMetricValue(Object v) {
+        return v == null || v instanceof Number || v instanceof Boolean
+                || (v instanceof String s && s.length() <= MAX_NOTES_CHARS);
+    }
+
+    /**
+     * A goal's target. It used to be checked only for {@code <= 0}, which NaN and Infinity
+     * both pass: {@code 1e309} was saved, came back as the JSON string "Infinity", and the
+     * Goals panel showed "NaN%" (found 2026-11-16). The ceilings refuse only what can't be
+     * meant, and match the limits on the things the goal is made of.
+     */
+    public static void goalTarget(GoalType type, double value) {
+        if (Double.isNaN(value) || Double.isInfinite(value)) {
+            throw new RuntimeException("A goal target must be a number.");
+        }
+        if (value <= 0) throw new RuntimeException("A goal target must be greater than zero.");
+        switch (type) {
+            case CALORIES_PER_WEEK      -> atMost("A weekly calorie target", value, 100_000, " kcal");
+            case WORKOUTS_PER_WEEK      -> atMost("A weekly workout target", value, 50, " workouts");
+            case DURATION_PER_WEEK      -> atMost("A weekly training-time target", value, 7 * 24 * 60, " minutes");
+            case CALORIE_INTAKE_PER_DAY -> atMost("A daily calorie target", value, 20_000, " kcal");
+            case PROTEIN_PER_DAY        -> atMost("A daily protein target", value, 2_000, " g");
+            case TARGET_WEIGHT          -> range("A body-weight target", value, MIN_WEIGHT_KG, MAX_WEIGHT_KG, " kg");
+        }
+    }
+
+    /** Earliest and latest goal deadlines: no goal was ever meant for 1900 or for 2200. */
+    public static final LocalDate MIN_GOAL_DEADLINE = LocalDate.of(2000, 1, 1);
+    public static final int MAX_GOAL_DEADLINE_YEARS = 10;
+
+    /**
+     * A goal deadline. There was no range: 1900-01-01 was stored and read back as
+     * 1899-12-31, and year 1 as 0001-12-31. A past deadline stays allowed (it makes an
+     * already-ended goal, which the app supports). {@code null} passes.
+     */
+    public static void goalDeadline(LocalDate deadline) {
+        if (deadline == null) return;
+        LocalDate latest = LocalDate.now().plusYears(MAX_GOAL_DEADLINE_YEARS);
+        if (deadline.isBefore(MIN_GOAL_DEADLINE) || deadline.isAfter(latest)) {
+            throw new RuntimeException("A goal deadline must be between " + MIN_GOAL_DEADLINE + " and " + latest + ".");
+        }
+    }
+
+    private static void atMost(String what, double value, double max, String unit) {
+        if (value > max) throw new RuntimeException(what + " can be at most " + plain(max) + unit + ".");
     }
 
     private static void range(String what, double value, double min, double max, String unit) {

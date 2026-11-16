@@ -29,7 +29,7 @@
 <div class="toast" id="toast" role="status" aria-live="polite">
   <div class="tic" aria-hidden="true">✓</div>
   <div id="tmsg">Done</div>
-  <button class="toast-close" data-action="hide-toast" aria-label="Dismiss notification">✕</button>
+  <button class="toast-close" data-action="hide-toast" aria-label="Dismiss notification" tabindex="-1">✕</button>
 </div>
 <!-- Shown by js/wake.js when a request to a possibly-sleeping backend is slow. -->
 <div class="wake-notice" id="wake-notice" role="status" aria-live="polite">
@@ -134,6 +134,8 @@
 
 <!-- ═══════════ APP SHELL ═══════════ -->
 <div id="app-shell">
+  <!-- Behind the open mobile drawer: a tap outside closes it, not a control on the page. -->
+  <div class="drawer-scrim" id="drawer-scrim" data-action="toggle-sidebar" hidden></div>
   <aside class="sidebar" id="sidebar">
     <div class="sb-logo">
       <img src="logo-128.png" alt="" width="32" height="32" id="sb-logo-img">

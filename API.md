@@ -141,9 +141,14 @@ database and Hibernate messages never reach the client.
 
 Text longer than its database column (a name or a pain or sleep note over 255
 characters, a meal description over 500) is a `400` that names the field, for example
-`{"error":"The last name is too long. Shorten it and try again."}`. It used to be a `409`
+`{"error":"The last name field is too long. Shorten it and try again."}`. It used to be a `409`
 "data conflict, refresh and try again". Activity notes have their own limit and message
 (see `POST /api/activities`).
+
+A URL the security firewall refuses (one with a `;`, a `//`, or an encoded `%` or `.` in the
+path) is `400 {"error":"That address isn't valid."}`, whatever the token. Until 2026-11-16
+it was a `401` "Please log in again" for a valid token, which made the frontend try a
+refresh that couldn't help.
 
 ### Pagination
 
@@ -288,7 +293,7 @@ Checks the credentials and returns a 48-hour access token and a 30-day refresh t
   - `expiresIn` is a human-readable label, not a number of seconds.
   - `refreshToken` is a UUID string.
   - Each login adds a session. Refresh tokens issued to the account's other devices stay valid.
-- **Errors:** `401` "Invalid email or password". This is returned for an unknown email, a wrong password and a missing field alike.
+- **Errors:** `401` "Invalid email or password". This is returned for an unknown email, a wrong password and a missing field alike. A password over 72 bytes always gets it, after the same work as a wrong one: BCrypt reads only the first 72 bytes, so until 2026-11-16 a 72-byte password with anything after it logged in.
 
 ### `POST /api/auth/refresh`
 Exchanges a valid refresh token for a new access token and a new refresh token. The token sent in is revoked (rotation). The account's other refresh tokens are not affected.
@@ -373,6 +378,7 @@ Sets a new password using a reset token, then revokes every refresh token for th
   - "This reset link is not valid. Request a new one." The token is blank or missing.
   - "Your new password must be at least 8 characters." The number reflects the configured minimum.
   - "Password is too long: keep it to 72 characters or fewer (fewer if it uses accented letters or emoji)." The new password is over 72 bytes. Like the minimum, this is checked before the token, so the link isn't used up.
+  - "Password can't be only spaces." Also checked before the token. Registration already refused a blank password; until 2026-11-16 a reset accepted eight spaces.
   - "This reset link has expired or already been used. Request a new one." This single message covers unknown, used and expired tokens, so the response does not reveal which case applies.
 
 ---
@@ -406,7 +412,7 @@ Returns the caller's profile.
     "updatedAt": "2026-09-24T19:30:12"
   }
   ```
-  `currentStreak` and `longestStreak` count consecutive training days, and the server keeps them up to date.
+  `currentStreak` and `longestStreak` count consecutive training days. `currentStreak` is the streak as of today: it counts back from today or yesterday, and is `0` once the last workout is older than that. The same holds wherever a `currentStreak` appears (login, stats, friends, export). Until 2026-11-16 it was the number stored when a workout was last logged, so a streak never ran out.
 - **Errors:** none specific.
 
 ### `PUT /api/profile/{userId}`
@@ -421,6 +427,7 @@ Updates some profile fields and leaves the others as they are.
   - A blank `firstName` or `lastName` is also ignored, so a name cannot be cleared.
   - `weight` is in kg (20 to 500), `height` in cm (50 to 275) and `age` in years (5 to 120). A value outside its range is refused, and nothing in the request is saved.
   - `email` and `password` cannot be changed here. Any other field sent is ignored.
+  - A change of `weight` or `height` records a weigh-in, exactly as `PUT /api/health/metrics` does: it appears in the weight history and chart, and refreshes `TARGET_WEIGHT` goals. Saving the same values again, or only a name, records nothing. Until 2026-11-16 the profile wrote no weigh-in, so the app's only weight form never reached the chart or the weight goal.
 - **Response:** `200`, the updated `UserResponse` (the same shape as `GET` above).
 - **Errors:** `400` "Weight must be between 20 and 500 kg." / "Height must be between 50 and 275 cm." / "Age must be between 5 and 120 years."
 
@@ -447,6 +454,7 @@ Changes the password after checking the current one.
 - **Errors:**
   - `400` "Current password is incorrect." This also covers a missing `currentPassword`.
   - `400` "New password must be at least 8 characters."
+  - `400` "Password can't be only spaces."
   - `400` "Password is too long: keep it to 72 characters or fewer (fewer if it uses accented letters or emoji)." The new password is over 72 bytes. A *current* password over 72 bytes is reported as "Current password is incorrect."
 
 ---
@@ -515,11 +523,11 @@ Logs a workout. The response also reports what the save triggered: streaks, reco
   - `caloriesBurned`: if it is left out, the server estimates it from `type`, `duration` and the profile weight using MET values. It stays `null` if either the duration or the profile weight is missing.
   - `recalculateCalories` is for edits only and is ignored here.
   - `distanceKm` is in km. If it is left out, the server reads `additionalMetrics.distance_km` or `additionalMetrics.distanceKm` instead. A number or a numeric string is accepted there.
-  - `additionalMetrics` is a free-form JSON object that is stored as given.
+  - `additionalMetrics` is a free-form JSON object that is stored as given, within limits: at most 20 entries, each name at most 50 characters, and each value a number, `true`/`false`, `null` or text of at most 1000 characters; no nested objects or lists. Otherwise `400` naming the limit. There was no limit until 2026-11-16: a 10 MB value was stored and sent back on every list load. On `/natural`, an entry the model returns that doesn't fit is dropped instead of refusing the workout.
   - `exercises`:
     - Entries with a blank `name` are skipped.
     - The order of the entries is kept.
-    - A `null` `weightKg` means a bodyweight movement.
+    - A `null` or `0` `weightKg` means a bodyweight movement: no heaviest-weight or volume record, and its reps count towards the bodyweight-reps record. Until 2026-11-16 a 0 kg set made records like "Heaviest 0kg x 12".
   - `difficultyRating` is optional, and must be 1 to 5 when given (`400` "Rating must be between 1 and 5"), as on edit.
   - `userId` is ignored. The activity is always saved to the caller's account.
   - **Limits** (each a `400` that names the field; the same on edit and on `/natural`, where they apply to the model's numbers). They refuse values that can't be true; until the 2026-10-11 QA pass every one of them was saved as sent, including `-30` minutes and `2000000000` kcal, which went straight onto challenge leaderboards:
@@ -564,7 +572,8 @@ Logs a workout. The response also reports what the save triggered: streaks, reco
   }
   ```
   - `completedAt` is `startTime + duration`.
-  - `volume` is sets × reps × weightKg. It is `null` unless all three are present.
+  - `currentStreak` is derived from every workout's date, so a workout backdated to yesterday extends a streak that includes today, whatever order they were logged in. Until 2026-11-16 a workout dated before the last one never extended it.
+  - `volume` is sets × reps × weightKg. It is `null` unless all three are present and the weight is above 0.
   - `estimatedOneRepMax` is calculated with the Epley formula. It is `null` above 12 reps or when no weight is given.
   - `totalVolume` is the sum of the exercise volumes, rounded to 0.1. It is `null` when no exercise has a load.
   - `isPersonalBest` refers to the activity type's record (duration, calories or distance). The first workout of a given type always counts as one, with the message "First <type> session logged — that's a benchmark to beat."
@@ -596,6 +605,7 @@ Edits a workout. After the edit, the server rebuilds streaks, personal bests and
 
     A re-derivation that can't be done, because the profile has no weight, keeps the stored figure instead of setting it to `null`.
   - `distanceKm` is only updated when `distanceKm` or `additionalMetrics` is sent.
+  - `clear` (list of names, edit only) empties fields that `null` can't, since `null` means "keep". Allowed: `notes`, `distanceKm`. A field named in `clear` wins over a value sent for it. Any other name is `400` "Can't clear '<name>' on a workout." Clearing a distance lowers a distance record it held, through the rebuild. Added 2026-11-16: before it, the edit form could not remove a note or a distance.
   - `completedAt` is always recalculated.
   - `difficultyRating` is range-checked here (1–5).
   - The same limits as `POST` apply to every field sent (duration, calories, distance, exercises, notes, start time). They are checked before anything changes, so a refused edit saves nothing.
@@ -603,6 +613,7 @@ Edits a workout. After the edit, the server rebuilds streaks, personal bests and
 - **Errors:**
   - `400` "Activity not found: <activityId>". A missing activity gets a 400, not a 404.
   - `400` "Rating must be between 1 and 5"
+  - `400` "Can't clear '<name>' on a workout."
   - `403` "You don't have access to this activity."
 
 ### `DELETE /api/activities/{activityId}`
@@ -627,7 +638,7 @@ Sets how hard the workout felt and returns a progression suggestion based on rec
   `rating` is required and must be an integer from 1 to 5. If it is left out, it becomes `0` and is rejected.
 - **Response:** `200`, an `ActivityResponse` with `progressionSuggestion` filled in when there is something to say. Otherwise `progressionSuggestion` is `null`.
   - When the workout has loaded exercises, the suggestion is based on the load, for example "Across your last 3 sessions: Bench Press is up 8%. Keep the current progression going."
-  - Otherwise it is based on the last 3 rated sessions of the same type, for example "Your last 3 running sessions all felt easy. Consider increasing intensity, distance, or duration."
+  - Otherwise it is based on the last 3 rated sessions of the same type, for example "Your last 3 running sessions all felt easy. Consider increasing intensity, distance, or duration." "All felt easy" needs **each** of the three rated 1 or 2, and "all felt very hard" each rated 4 or 5. Until 2026-11-16 it used their average, so ratings 1, 1 and 4 read "all felt easy" right after a session was rated hard.
   - `isPersonalBest` is always `false` here.
 - **Errors:**
   - `400` "Rating must be between 1 and 5"
@@ -904,7 +915,8 @@ Checks whether average calories per session for one activity type have stalled. 
   { "status": "insufficient_data", "message": "Not enough activities to detect a plateau yet." }
   ```
   - This is returned when either window has fewer than 2 sessions of that type.
-  - The message is "No calorie data to compare." when the sessions exist but none of them have calories.
+  - The message is "No calorie data to compare." when the sessions exist but none of them in a window have calories above 0. A 0 kcal session carries no calorie figure and is left out of the averages. Until 2026-11-16 it was averaged in, so all-zero windows gave "NaN%" (reported as progress) and an earlier window of zeros gave "Infinity%".
+  - The numbers always use `.` as the decimal separator.
 - **Errors:**
   - `400` "Request failed." `activityType` is missing.
   - `400` "The request couldn't be read. Check the field names and value types and try again." `activityType` is not a valid enum value.
@@ -929,6 +941,7 @@ Returns one row per muscle group the caller has ever trained.
     { "id": "d3a1...", "muscleGroup": "FULL_BODY",  "lastWorkedAt": "2026-09-23T07:02:44", "recommendedRestHours": 48, "updatedAt": "2026-09-23T07:02:44" }
   ]
   ```
+  - A group that no remaining workout trains has no row: after every workout is deleted the list is `[]`, as for a new account. Until 2026-11-16 its row was kept with a `null` `lastWorkedAt`, which the client showed as "Recovered".
   - `muscleGroup` can be `QUADRICEPS`, `HAMSTRINGS`, `CALVES`, `CORE`, `GLUTES`, `SHOULDERS`, `BACK`, `ARMS`, `LEGS`, `CHEST` or `FULL_BODY`.
   - **There is no "recovered" flag and no hours-remaining field.** The client works it out as `lastWorkedAt + recommendedRestHours` against now. `recommendedRestHours` is currently always 48.
   - Groups come from a fixed mapping of activity type to groups, and the exercises logged are not taken into account. For example, `WEIGHT_TRAINING`, `YOGA`, `HIIT`, `STRETCHING` and `OTHER` all mark only `FULL_BODY`, and `CHEST` is never set.
@@ -968,7 +981,7 @@ Logs a meal with numbers the user entered.
     "loggedAt": "2026-09-25T08:15:00"
   }
   ```
-  - Every field is optional, but the meal must have `calories > 0` or at least one macro.
+  - Every field is optional, but the meal must have `calories > 0` or at least one macro above 0 g. Until 2026-11-16 a macro of `0` counted, so `{"proteinGrams":0,"carbsGrams":0,"fatGrams":0}` saved an empty row.
   - `calories` is at most 20000 and each macro is 0–2000 g, on create, edit and the AI-estimated path (`400` naming the field). There was no upper limit before 2026-10-11: a 10,000,000 kcal meal was saved.
   - `mealType` is one of `BREAKFAST`, `LUNCH`, `DINNER`, `SNACK`, `OTHER`. Defaults to `OTHER`.
   - `loggedAt` is when the meal was eaten, as a local ISO date-time with no zone. It defaults to now. Daily totals, the series and goal periods all group by this field, so a backdated meal counts on the day it was eaten. Any time in the past is accepted; one more than a day ahead is a `400` (a day of slack, as for a workout's `startTime` and a sleep `sleepDate`). Before 2026-11-16 a meal dated 2099 was saved and counted in that day's intake.
@@ -1096,7 +1109,8 @@ Returns one day's intake alongside that day's exercise burn and estimated mainte
     "meals": [ { "id": "…", "mealType": "BREAKFAST", "calories": 420, "aiEstimated": false, "…": "full MealResponse" } ]
   }
   ```
-  - `netCalories` = `caloriesIn − maintenanceCalories − caloriesBurnedExercise`.
+  - `netCalories` = `caloriesIn − maintenanceCalories − caloriesBurnedExercise`, once at least one meal is logged that day.
+  - With **no meal logged** that day, `netCalories` and `balance` are `null` and `estimateNote` reads "Nothing logged for this day yet, so there's no balance to show." An unrecorded day is not a full-maintenance deficit; `/daily` already left an empty day's net blank. Until 2026-11-16 this route reported, for example, `-2036`, `DEFICIT` before breakfast.
   - `balance` is `DEFICIT`, `SURPLUS` or `MAINTENANCE`.
   - Macro totals are rounded to one decimal place.
   - `byMealType` has keys only for meal types that have a calorie total that day.
@@ -1157,8 +1171,8 @@ Creates a goal for the caller.
   { "type": "TARGET_WEIGHT", "targetValue": 72.0, "deadline": "2026-12-31" }
   ```
   - `type` is required and must be one of the six values above.
-  - `targetValue` is required and must be greater than 0.
-  - `deadline` (ISO date) is optional.
+  - `targetValue` is required. It must be a finite number above 0, and at most: 100000 kcal for `CALORIES_PER_WEEK`, 50 for `WORKOUTS_PER_WEEK`, 10080 minutes (a week) for `DURATION_PER_WEEK`, 20000 kcal for `CALORIE_INTAKE_PER_DAY` and 2000 g for `PROTEIN_PER_DAY`. A `TARGET_WEIGHT` must be 20 to 500 kg, the same as a body weight. Until 2026-11-16 only `<= 0` was refused: `NaN`, `Infinity` (returned as the string `"Infinity"`) and a 5000 kg weight target were saved, and the panels showed "NaN%".
+  - `deadline` (ISO date) is optional. When given it must be between 2000-01-01 and ten years from today; a past one is allowed and makes an already-ended goal. Until 2026-11-16 there was no range, and 1900-01-01 was stored and read back as 1899-12-31.
   - A `userId` in the body is ignored.
 - **Response:** `200`, the raw `Goal` entity:
   ```json
@@ -1183,6 +1197,9 @@ Creates a goal for the caller.
 - **Errors:**
   - `400` `"A goal needs a type."`
   - `400` `"A goal target must be greater than zero."` This also applies when `targetValue` is omitted, because it defaults to 0.
+  - `400` `"A goal target must be a number."` (`NaN`, `Infinity`)
+  - `400` naming the ceiling, for example `"A weekly workout target can be at most 50 workouts."` or `"A body-weight target must be between 20 and 500 kg."`
+  - `400` `"A goal deadline must be between 2000-01-01 and <date>."`
   - An unknown `type` returns the generic unreadable-request `400`.
 
 ### `GET /api/goals/{userId}`
@@ -1247,11 +1264,13 @@ Updates a goal's target and/or deadline, then re-evaluates `isCompleted`.
   - Both fields are optional, and `null` keeps the current value.
   - A deadline cannot be removed once set.
   - `type` cannot be changed.
+  - The same limits as `POST` apply to `targetValue` and `deadline`. Both are checked before either changes.
+  - Moving an **expired** activity goal's deadline into the future brings it back counting: its period moves to the current one and it counts the workouts already dated in it. Until 2026-11-16 a revived goal stayed at whatever it held when it ended, so this week's workouts were missed until the next roll-over.
 - **Response:** `200`, the raw `Goal` entity, same shape as `POST`.
 - **Errors:**
   - `400` `"Goal not found: <goalId>"`
   - `403` `"You don't have access to this goal."`
-  - `400` `"A goal target must be greater than zero."`
+  - `400` `"A goal target must be greater than zero."`, `"A goal target must be a number."`, a ceiling, or the deadline range, as on `POST`.
 
 ### `DELETE /api/goals/{goalId}`
 Deletes one of the caller's goals.
@@ -1290,6 +1309,7 @@ Updates the profile's weight and/or height, writes a weigh-in row, and refreshes
   ```
   - At least one of the two is required. A missing field keeps the profile's current value. Units are kg and cm.
   - One history row is written per successful call. A value the profile doesn't have yet is stored as `null` in that row, not `0`.
+  - `PUT /api/profile/{userId}` writes the same row when it changes weight or height.
 - **Response:** `200`
   ```json
   {
@@ -1299,12 +1319,14 @@ Updates the profile's weight and/or height, writes a weigh-in row, and refreshes
     "age": 29,
     "bmi": 24.1,
     "bmiCategory": "Normal weight",
-    "healthyWeightRange": "58.6 kg – 78.9 kg",
+    "healthyWeightRange": "58.7 kg – 79.2 kg",
     "bmiNote": "Great! Maintain your healthy lifestyle.",
     "goalAchievements": ["Goal reached! Body weight target of 76 kg achieved."]
   }
   ```
-  - `bmiCategory` is `Underweight`, `Normal weight`, `Overweight` or `Obese`.
+  - `bmiCategory` is `Underweight`, `Normal weight`, `Overweight` or `Obese`, judged from the exact BMI (cut-offs 18.5, 25 and 30).
+  - `bmi` is rounded to one decimal as usual, except that it never rounds up onto a cut-off it is below: a BMI of 18.48 is shown as `18.4`, so the figure and its category always agree.
+  - `healthyWeightRange` runs from the lightest to the heaviest weight, to 0.1 kg, whose category is `Normal weight` (BMI at least 18.5 and below 25). Until 2026-11-16 the category used the rounded BMI and the range's top used 24.9, so 53.4 kg at 170 cm read "18.5, Normal weight" beside a range starting at 53.5 kg.
   - `bmi` and `bmiCategory` are `null`, and `healthyWeightRange` and `bmiNote` are absent, unless both weight and height are known.
   - `goalAchievements` appears only when a weight goal was just reached.
   - This response has no `history`.
@@ -1321,7 +1343,7 @@ Returns current body metrics plus the most recent weigh-ins for the trend chart.
   {
     "userId": "a1b2c3d4-…", "weight": 76.4, "height": 178.0, "age": 29,
     "bmi": 24.1, "bmiCategory": "Normal weight",
-    "healthyWeightRange": "58.6 kg – 78.9 kg", "bmiNote": "Great! Maintain your healthy lifestyle.",
+    "healthyWeightRange": "58.7 kg – 79.2 kg", "bmiNote": "Great! Maintain your healthy lifestyle.",
     "history": [
       { "weight": 80.0, "height": 178.0, "bmi": 25.2, "bmiCategory": "Overweight", "loggedAt": "2026-08-01T07:30:12.004" },
       { "weight": 76.4, "height": 178.0, "bmi": 24.1, "bmiCategory": "Normal weight", "loggedAt": "2026-09-25T07:31:40.551" }
@@ -1347,7 +1369,7 @@ Adds a water entry and returns that day's hydration summary.
   { "amountMl": 350, "date": "2026-09-25" }
   ```
   - `amountMl` is required and must be from 1 to 5000. An omitted value (it arrives as `0`), a negative one or a larger one is refused: `400` "Water amount must be between 1 and 5000 ml."
-  - `date` (ISO date) is optional and defaults to today.
+  - `date` (ISO date) is optional and defaults to today. A date more than a day ahead is `400` "Water can't be logged for a day that hasn't happened yet.", the same day of slack as sleep, meals and workouts. Until 2026-11-16 water alone took any date, 2099-12-31 included.
   - Each call adds a new entry; entries for a day are summed.
 - **Response:** `200`, the summary for the logged `date`:
   ```json
@@ -1597,6 +1619,8 @@ Enrolls the caller in a plan starting today, at day 1. Any active enrollment is 
     "completedDays": 0,
     "progressPercent": 0.0,
     "isCompleted": false,
+    "completedToday": false,
+    "lastCompletedDate": null,
     "todaysWorkout": {
       "dayNumber": 1,
       "activityType": "WEIGHT_TRAINING",
@@ -1608,6 +1632,7 @@ Enrolls the caller in a plan starting today, at day 1. Any active enrollment is 
   ```
   - `progressPercent` = `completedDays / totalDays × 100`, rounded to one decimal place.
   - `todaysWorkout` is omitted once the plan is finished.
+  - `completedToday` is `true` once today's plan day has been marked complete. `todaysWorkout` is then the **next** day, to do tomorrow, and `complete-day` refuses until then. `lastCompletedDate` is the last day one was marked (ISO date, `null` before the first). Added 2026-11-16: without them the app showed the next day as "Today" and kept offering a button the server refused.
 - **Errors:** `400` `"Plan not found: <planId>"`
 
 ### `GET /api/plans/active/{userId}`
@@ -1894,7 +1919,7 @@ Creates a challenge and invites one or more people. The caller is the creator an
   - `"Invite at least one other person to the challenge."`
   - `"A challenge can hold at most 10 people."`
   - `"You can only challenge your friends."`: an invitee is not a friend. An id that isn't an account gets this same message, so the endpoint can't be used to test which ids exist. One non-friend refuses the whole invite.
-  - `"You already have an active or pending challenge with one of these people."`: this applies to a `PENDING` or `ACTIVE` challenge in which both the caller and that invitee are still in, meaning invited-and-unanswered or accepted. Someone who declined or left it is out of it and doesn't block a new challenge.
+  - `"You already have an active or pending challenge with one of these people."`: this applies to a `PENDING` or `ACTIVE` challenge in which both the caller and that invitee are still in, meaning invited-and-unanswered or accepted. Someone who declined or left it is out of it and doesn't block a new challenge. The rule holds under concurrency too: the people involved are locked while it is checked, so two requests sent at the same moment between the same pair create one challenge and refuse the other. Until 2026-11-16 both could succeed.
   - An unknown `type` value gets the standard malformed-request 400.
 
 ### `POST /api/challenges/{challengeId}/respond`
@@ -1929,13 +1954,13 @@ Leaves a challenge the caller joined, without ending it for the others.
 - **Errors:**
   - `400` `"Challenge not found: <id>"`
   - `403` `"You're not part of this challenge."`
-  - `400` `"The creator can't leave — cancel it instead."`
+  - `400` `"The creator can't leave. A challenge can be cancelled while it's pending, or once everyone else has left it."`
   - `400` `"This challenge is already over."`: the challenge is `COMPLETED`.
   - `400` `"You're no longer part of this challenge."`: the caller is already `DECLINED`.
   - `400` `"You haven't joined this challenge — decline the invite instead."`: the caller is still `INVITED`.
 
 ### `DELETE /api/challenges/{challengeId}/cancel`
-Lets the creator cancel a challenge that is still `PENDING`.
+Lets the creator cancel a challenge that is still `PENDING`, or one that is `ACTIVE` once nobody else is still in it (everyone else declined or left). Until 2026-11-16 only `PENDING` could be cancelled, so a creator left alone was told by `leave` to cancel and by `cancel` that it couldn't, and stayed in a contest with nobody until its end date.
 - **Auth:** `Bearer`
 - **Params:**
   - `challengeId` (path, string UUID)
@@ -1947,7 +1972,7 @@ Lets the creator cancel a challenge that is still `PENDING`.
 - **Errors:**
   - `400` `"Challenge not found: <id>"`
   - `403` `"Only the creator can cancel a challenge."`: this also applies to non-participants.
-  - `400` `"Only pending challenges can be cancelled."`
+  - `400` `"A challenge can be cancelled while it's pending, or once everyone else has left it."`
 
 ### `GET /api/challenges/user/{userId}`
 Lists every challenge the caller has a participant row in, in any status and any participant status.

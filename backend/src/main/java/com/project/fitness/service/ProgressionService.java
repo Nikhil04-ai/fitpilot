@@ -153,17 +153,15 @@ public class ProgressionService {
         boolean allHaveRatings = last3.stream().allMatch(a -> a.getDifficultyRating() != null);
         if (!allHaveRatings) return "";
 
-        OptionalDouble avgRating = last3.stream()
-                .mapToInt(Activity::getDifficultyRating).average();
-        if (avgRating.isEmpty()) return "";
-
-        double avg = avgRating.getAsDouble();
         String type = ratedActivity.getType().name().toLowerCase().replace('_', ' ');
 
-        if (avg <= 2.0) {
+        // Each of the three, as the message says, not their average. On the average,
+        // ratings of 1, 1 and 4 read "all felt easy" straight after the person rated the
+        // session hard (found 2026-11-16).
+        if (last3.stream().allMatch(a -> a.getDifficultyRating() <= 2)) {
             return "Your last 3 " + type
                     + " sessions all felt easy. Consider increasing intensity, distance, or duration.";
-        } else if (avg >= 4.0) {
+        } else if (last3.stream().allMatch(a -> a.getDifficultyRating() >= 4)) {
             return "Your last 3 " + type
                     + " sessions all felt very hard. Consider scaling back or adding a rest day to prevent burnout.";
         }

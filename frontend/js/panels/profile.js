@@ -1,5 +1,5 @@
 import { session } from '../state.js';
-import { escapeHtml, today } from '../util.js';
+import { escapeHtml, initials, today } from '../util.js';
 import { toast } from '../ui.js';
 import { api, storeTokens } from '../api.js';
 
@@ -99,14 +99,19 @@ export async function loadProfile() {
     const p = await api(`/api/profile/${session.currentUser.id}`);
     session.currentUser = { ...session.currentUser, ...p };
     localStorage.setItem('fp_user', JSON.stringify(session.currentUser));
-    document.getElementById('prof-first').value  = p.firstName || '';
-    document.getElementById('prof-last').value   = p.lastName  || '';
-    document.getElementById('prof-weight').value = p.weight ?? '';
-    document.getElementById('prof-height').value = p.height ?? '';
-    document.getElementById('prof-age').value    = p.age ?? '';
+    fillProfileForm(p);
   } catch (err) {
     toast('Could not load profile: ' + err.message, true);
   }
+}
+
+/** Puts a profile's values in the form; an unknown one is left blank. */
+function fillProfileForm(p) {
+  document.getElementById('prof-first').value  = p.firstName || '';
+  document.getElementById('prof-last').value   = p.lastName  || '';
+  document.getElementById('prof-weight').value = p.weight ?? '';
+  document.getElementById('prof-height').value = p.height ?? '';
+  document.getElementById('prof-age').value    = p.age ?? '';
 }
 
 export async function handleUpdateProfile(e) {
@@ -126,7 +131,18 @@ export async function handleUpdateProfile(e) {
     session.currentUser = { ...session.currentUser, ...p };
     localStorage.setItem('fp_user', JSON.stringify(session.currentUser));
     document.getElementById('sb-uname').textContent = [p.firstName, p.lastName].filter(Boolean).join(' ');
-    toast('Profile updated.');
+    // The avatar's initials too: they used to change only on the next reload (found 2026-11-16).
+    document.getElementById('sb-av').textContent = initials(p.firstName, p.lastName);
+    // An emptied field is not cleared: the API keeps the saved value for a blank one.
+    // The form used to stay blank under "Profile updated.", showing a state that wasn't
+    // true until the next reload (found 2026-11-16). It is refilled from what was saved,
+    // and the message says why a field came back.
+    // Kept: a field sent empty for which a value came back.
+    const kept = (!payload.firstName && p.firstName) || (!payload.lastName && p.lastName)
+      || (payload.weight == null && p.weight != null) || (payload.height == null && p.height != null)
+      || (payload.age == null && p.age != null);
+    fillProfileForm(p);
+    toast(kept ? 'Profile updated. A field left empty keeps its saved value.' : 'Profile updated.');
   } catch (err) {
     toast(err.message, true);
   } finally {

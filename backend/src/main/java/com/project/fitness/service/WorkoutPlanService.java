@@ -152,6 +152,12 @@ public class WorkoutPlanService {
         map.put("progressPercent",
                 Math.round((e.getCompletedDays() * 100.0 / e.getPlan().getTotalDays()) * 10.0) / 10.0);
         map.put("isCompleted", !e.getIsActive());
+        // Whether today's plan day is already ticked off. Without it the card, right
+        // after "Mark today complete", showed the next day as "Today" and kept offering a
+        // button the server refuses until tomorrow (found 2026-11-16). When this is true,
+        // todaysWorkout is tomorrow's day.
+        map.put("completedToday", LocalDate.now().equals(e.getLastCompletedDate()));
+        map.put("lastCompletedDate", e.getLastCompletedDate());
 
         if (e.getIsActive() && e.getCurrentDay() <= e.getPlan().getTotalDays()) {
             WorkoutPlanDay today = e.getPlan().getDays().stream()

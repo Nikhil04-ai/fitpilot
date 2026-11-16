@@ -841,6 +841,8 @@ class Suite:
     # would stop the handler from running.
     XSS_A = '"><img src=x data-xss="1" onerror="window.__xss=1"><b a="'
     XSS_B = "'><svg data-xss='2' onload='window.__xss=2'><b a='"
+    # A metric's name is capped at 50 characters (found 2026-11-16), so it gets a shorter one.
+    XSS_KEY = '"><img src=x data-xss=3 onerror=__xss=3>'
 
     def c_free_text_is_text(self):
         """PLAN O-6. The tokens sit in localStorage, which is acceptable only because nothing a
@@ -852,7 +854,7 @@ class Suite:
         token, me = self.token(), self.me()
         own = [
             ('POST', '/api/activities', {'type': 'RUNNING', 'duration': 30, 'notes': A,
-                                         'additionalMetrics': {A: B, 'distance_km': 5}}),
+                                         'additionalMetrics': {self.XSS_KEY: B, 'distance_km': 5}}),
             ('POST', '/api/activities', {'type': 'WEIGHT_TRAINING', 'duration': 45, 'notes': B,
                                          'exercises': [{'name': A, 'sets': 3, 'reps': 5, 'weightKg': 50.0},
                                                        {'name': B, 'sets': 2, 'reps': 8, 'weightKg': 20.0}]}),

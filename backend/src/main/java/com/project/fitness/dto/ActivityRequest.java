@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Data
 @NoArgsConstructor
@@ -42,4 +43,14 @@ public class ActivityRequest {
      * duration changed and that figure was itself calculated (PLAN P4-2).
      */
     private Boolean recalculateCalories;
+
+    /**
+     * Edit only: fields to empty, by name. Allowed: {@code notes}, {@code distanceKm}.
+     * Wins over a value sent for the same field.
+     *
+     * <p>A partial update reads null as "keep", so there was no way to remove a note or a
+     * distance: the edit form sent null for a blank field, said "Workout updated" and kept
+     * both (found 2026-11-16). The same shape as a meal's {@code clear}.
+     */
+    private Set<String> clear;
 }

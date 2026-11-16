@@ -137,7 +137,8 @@ public class PasswordResetService {
             throw new RuntimeException("Your new password must be at least " + minPasswordLength + " characters.");
         }
         // Before the token lookup, like the minimum: a valid link must not be spent
-        // on a password that can't be hashed.
+        // on a password that can't be hashed, or one that is only spaces.
+        PasswordPolicy.requireNotBlank(newPassword);
         PasswordPolicy.requireHashable(newPassword);
 
         Optional<PasswordResetToken> found = tokenRepository.findByTokenHash(TokenHash.of(rawToken));

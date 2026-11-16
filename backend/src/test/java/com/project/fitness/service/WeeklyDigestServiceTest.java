@@ -57,7 +57,10 @@ class WeeklyDigestServiceTest {
 
     @BeforeEach
     void setUp() {
-        user = User.builder().id("user-1").weight(80.0).height(180.0).age(30).currentStreak(4).build();
+        user = User.builder().id("user-1").weight(80.0).height(180.0).age(30).currentStreak(4)
+                // A live 4-day streak: its last workout is today. A streak with no last
+                // workout date reads as 0 (StreakService.current).
+                .lastActivityDate(java.time.LocalDate.now()).build();
         lastMonday = LocalDate.now().minusWeeks(1)
                 .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
 
@@ -69,7 +72,7 @@ class WeeklyDigestServiceTest {
         lenient().when(userRepository.findById("user-1")).thenReturn(Optional.of(user));
         lenient().when(digestRepository.findByUserIdAndWeekStart(anyString(), any()))
                 .thenReturn(Optional.empty());
-        lenient().when(digestRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        lenient().when(digestRepository.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
 
         // Nothing logged anywhere by default; each test adds only what it is about.
         lenient().when(activityRepository.findByUserIdAndStartTimeBetween(anyString(), any(), any()))
@@ -353,7 +356,7 @@ class WeeklyDigestServiceTest {
                 .isExactlyInstanceOf(RuntimeException.class)
                 .hasMessageContaining("nothing to summarise");
 
-        verify(digestRepository, never()).save(any());
+        verify(digestRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -373,7 +376,7 @@ class WeeklyDigestServiceTest {
         // address the notification and the email.
         verify(userRepository, atLeastOnce()).findById("user-1");
         verify(userRepository).findById("user-2");
-        verify(digestRepository, times(1)).save(any());
+        verify(digestRepository, times(1)).saveAndFlush(any());
         // The digest announces itself — that is the whole point of writing one on a
         // schedule (PLAN P2-2).
         verify(notificationService).notify(eq(user), eq(NotificationType.WEEKLY_DIGEST),

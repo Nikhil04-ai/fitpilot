@@ -27,6 +27,7 @@ export function toast(msg, isError) {
   t.querySelector('.tic').textContent = isError ? '!' : '✓';
   t.classList.toggle('err', !!isError);
   t.classList.add('on');
+  setToastCloseReachable(t, true);
   // An error is also announced assertively; a success stays polite so it doesn't
   // interrupt whatever a screen reader is already reading.
   t.setAttribute('aria-live', isError ? 'assertive' : 'polite');
@@ -36,16 +37,48 @@ export function toast(msg, isError) {
 
 export function hideToast() {
   clearTimeout(toastTimer);
-  document.getElementById('toast').classList.remove('on');
+  const t = document.getElementById('toast');
+  t.classList.remove('on');
+  setToastCloseReachable(t, false);
+}
+
+/**
+ * The dismiss button is a tab stop only while a toast is showing. A hidden toast is only
+ * slid off-screen, so its button stayed in the tab order and Tab landed on an invisible
+ * control (found 2026-11-16). Not visibility:hidden on the toast itself: it is a live
+ * region, and text set on a hidden one may not be announced.
+ */
+function setToastCloseReachable(t, reachable) {
+  const close = t.querySelector('.toast-close');
+  if (close) close.tabIndex = reachable ? 0 : -1;
 }
 
 // ── Sidebar (mobile) ──────────────────────────────────────────────────
-/** Visibility of the toggle itself is CSS's job; this only handles the open state. */
+/**
+ * Opens or closes the off-canvas drawer. Visibility of the toggle itself is CSS's job.
+ *
+ * Opening moves focus to the first link and shows a scrim; closing an open drawer puts
+ * focus back on the menu button if it was inside the drawer. Before (found 2026-11-16),
+ * opening left focus on the menu button, and since the drawer comes earlier in the DOM,
+ * Tab went to the page behind and never into the drawer; choosing a link left focus on
+ * that link, now off-screen; and a tap outside went to whatever was behind, Edit and
+ * Delete included. The scrim takes that tap and closes the drawer instead.
+ */
 export function toggleSidebar(force) {
   const sb = document.getElementById('sidebar');
-  const open = force !== undefined ? force : !sb.classList.contains('show');
+  const wasOpen = sb.classList.contains('show');
+  const open = force !== undefined ? force : !wasOpen;
   sb.classList.toggle('show', open);
-  document.getElementById('mobile-menu-btn').setAttribute('aria-expanded', String(open));
+  const btn = document.getElementById('mobile-menu-btn');
+  btn.setAttribute('aria-expanded', String(open));
+  const scrim = document.getElementById('drawer-scrim');
+  if (scrim) scrim.hidden = !open;
+
+  if (open && !wasOpen) {
+    sb.querySelector('.sb-link')?.focus();
+  } else if (!open && wasOpen && sb.contains(document.activeElement)) {
+    btn.focus();
+  }
 }
 
 // ── Modal helpers ─────────────────────────────────────────────────────
@@ -53,8 +86,11 @@ export function toggleSidebar(force) {
 // focus never came back to whatever opened them, and the page behind stayed
 // scrollable.
 
-const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),'
-                + 'textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+// Hidden inputs are excluded: the edit dialogs start with one holding the record's id,
+// and focusing it does nothing, so focus stayed on the Edit button behind the overlay
+// and a screen reader never heard the dialog open (found 2026-11-16).
+const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]):not([type="hidden"]),'
+                + 'select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
 /** Stack, not a single value — a modal can be opened from inside another one. */
 const modalStack = [];
@@ -89,6 +125,15 @@ export function closeModal(id) {
   // Send focus back where it came from, so closing a modal doesn't dump the
   // keyboard user at the top of the document.
   if (entry?.returnFocus?.isConnected) entry.returnFocus.focus();
+}
+
+/**
+ * Closes every open dialog, the top one first. For leaving the screen they belong to:
+ * changing panel (Back used to leave a dialog open over an unrelated panel) and leaving
+ * the app (the Log Workout dialog could stay open over the login screen).
+ */
+export function closeAllModals() {
+  while (modalStack.length) closeModal(modalStack[modalStack.length - 1].id);
 }
 
 function topModal() { return modalStack.length ? modalStack[modalStack.length - 1].id : null; }

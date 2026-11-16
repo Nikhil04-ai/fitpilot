@@ -60,7 +60,7 @@ public class UserService {
         response.setWeight(savedUser.getWeight());
         response.setHeight(savedUser.getHeight());
         response.setAge(savedUser.getAge());
-        response.setCurrentStreak(savedUser.getCurrentStreak());
+        response.setCurrentStreak(StreakService.current(savedUser));
         response.setLongestStreak(savedUser.getLongestStreak());
         response.setCreatedAt(savedUser.getCreatedAt());
         response.setUpdatedAt(savedUser.getUpdatedAt());
@@ -84,6 +84,14 @@ public class UserService {
             throw new RuntimeException("Invalid Credentials");
         }
 
+        // BCrypt only reads the first 72 bytes, so a stored 72-byte password plus any
+        // suffix used to match (found 2026-11-16). Nothing over 72 bytes can be a real
+        // password here: register, change and reset all refuse one. Same answer as a
+        // wrong password, after the same BCrypt work, so timing doesn't tell them apart.
+        if (PasswordPolicy.tooLongToHash(loginRequest.getPassword())) {
+            passwordEncoder.matches("", timingDummyHash());
+            throw new RuntimeException("Invalid Credentials");
+        }
         if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
             throw new RuntimeException("Invalid Credentials");
         }

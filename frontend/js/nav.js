@@ -1,5 +1,5 @@
 import { session } from './state.js';
-import { toggleSidebar } from './ui.js';
+import { closeAllModals, toggleSidebar } from './ui.js';
 import { loadOverview } from './panels/overview.js';
 import { loadActivities } from './panels/activities.js';
 import { loadGoals } from './panels/goals.js';
@@ -93,6 +93,9 @@ export function nav(panel, opts = {}) {
   document.getElementById('panel-' + panel).classList.add('on');
   document.getElementById('topbar-ttl').textContent = panelTitles[panel];
   toggleSidebar(false);
+  // A dialog belongs to the panel it was opened on. Back used to change the panel and
+  // leave the dialog open on top of the new one (found 2026-11-16).
+  closeAllModals();
 
   // Keep the URL in step so refresh, back/forward and bookmarks all work. Guarded
   // against re-entry: writing the hash fires hashchange, which calls nav() again.

@@ -11,9 +11,20 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class RegisterRequest {
+    private String email;
+
+    /**
+     * The address without the spaces around it, and that is what is validated: the
+     * constraints are on this getter, not the field. The service already trimmed, but
+     * only after validation had refused " a@b.com " as "Invalid email" (found 2026-11-16).
+     * Not a trimming setter: Jackson 3 can fill this class through its all-args
+     * constructor, which never calls a setter. Login and forgot-password trim too.
+     */
     @NotBlank(message = "Email is required")
     @Email(message = "Invalid email")
-    private String email;
+    public String getEmail() {
+        return email == null ? null : email.trim();
+    }
 
     @NotBlank(message = "Password is required")
     @Size(min = 8, message = "Password must be at least 8 characters")

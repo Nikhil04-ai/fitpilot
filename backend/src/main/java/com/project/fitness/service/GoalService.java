@@ -64,9 +64,8 @@ public class GoalService {
         if (type == null) {
             throw new RuntimeException("A goal needs a type.");
         }
-        if (targetValue <= 0) {
-            throw new RuntimeException("A goal target must be greater than zero.");
-        }
+        InputChecks.goalTarget(type, targetValue);
+        InputChecks.goalDeadline(deadline);
 
         Goal goal = Goal.builder()
                 .user(user)
@@ -91,15 +90,22 @@ public class GoalService {
         // the whole week, so deleting a workout could make the number go up. A goal
         // created with its deadline already past stays at 0: an expired goal is frozen,
         // and the rebuild leaves it alone too.
-        if (isActivityGoal(saved.getType()) && !isExpired(saved)) {
-            LocalDate start = saved.getPeriodStart();
-            List<Activity> inPeriod = activityRepository.findByUserIdAndStartTimeBetween(user.getId(),
-                    start.atStartOfDay(),
-                    periodEndExclusive(saved.getType(), start).atStartOfDay().minusNanos(1));
-            saved.setCurrentValue(periodTotal(saved, inPeriod));
-            saved.setIsCompleted(isSatisfied(saved));
-        }
+        if (isActivityGoal(saved.getType()) && !isExpired(saved)) countCurrentPeriod(saved, user);
         return goalRepository.save(saved);
+    }
+
+    /**
+     * Sets an active activity goal to the workouts dated in its current period. Used when
+     * the goal starts counting: on creation, and when an edit brings an expired goal back.
+     */
+    private void countCurrentPeriod(Goal goal, User user) {
+        LocalDate start = periodStartFor(goal.getType());
+        goal.setPeriodStart(start);
+        List<Activity> inPeriod = activityRepository.findByUserIdAndStartTimeBetween(user.getId(),
+                start.atStartOfDay(),
+                periodEndExclusive(goal.getType(), start).atStartOfDay().minusNanos(1));
+        goal.setCurrentValue(periodTotal(goal, inPeriod));
+        goal.setIsCompleted(isSatisfied(goal));
     }
 
     /**
@@ -432,11 +438,20 @@ public class GoalService {
         Goal goal = goalRepository.findById(goalId)
                 .orElseThrow(() -> new RuntimeException("Goal not found: " + goalId));
         requireOwner(goal, requestingUserId);
-        if (targetValue != null) {
-            if (targetValue <= 0) throw new RuntimeException("A goal target must be greater than zero.");
-            goal.setTargetValue(targetValue);
-        }
+        // Both checked before either is applied, so a refused edit changes nothing.
+        if (targetValue != null) InputChecks.goalTarget(goal.getType(), targetValue);
+        InputChecks.goalDeadline(deadline);
+        boolean wasExpired = isExpired(goal);
+        if (targetValue != null) goal.setTargetValue(targetValue);
         if (deadline != null) goal.setDeadline(deadline);
+
+        // An expired activity goal is frozen: nothing adds to it and its week doesn't roll
+        // over. Extending its deadline brought it back still frozen, at whatever it held
+        // the week it ended, so the workouts already logged this week were never counted
+        // (found 2026-11-16). It starts counting again from its current period.
+        if (wasExpired && !isExpired(goal) && isActivityGoal(goal.getType())) {
+            countCurrentPeriod(goal, goal.getUser());
+        }
 
         // Moving the target can flip a goal from met to unmet (or the reverse), so the
         // stored verdict is re-derived rather than left at whatever it was.

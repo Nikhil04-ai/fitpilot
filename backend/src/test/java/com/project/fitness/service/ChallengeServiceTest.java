@@ -500,6 +500,31 @@ class ChallengeServiceTest {
         }
 
         @Test
+        @DisplayName("the creator can cancel a running challenge once everyone else has left it")
+        void creatorCancelsWhenLeftAlone() {
+            Challenge challenge = buildChallenge(ChallengeStatus.ACTIVE, opponent);
+            challenge.participantFor("opponent-1").orElseThrow().setStatus(ParticipantStatus.DECLINED);   // left
+            when(challengeRepository.findById("challenge-1")).thenReturn(Optional.of(challenge));
+            saveEchoes();
+
+            challengeService.cancelChallenge("challenge-1", "creator-1");
+
+            assertThat(challenge.getStatus()).isEqualTo(ChallengeStatus.CANCELLED);
+        }
+
+        @Test
+        @DisplayName("but not a running one someone else is still in, and the message says when it can")
+        void creatorCannotCancelARunningChallengeOthersAreIn() {
+            Challenge challenge = buildChallenge(ChallengeStatus.ACTIVE, opponent);
+            when(challengeRepository.findById("challenge-1")).thenReturn(Optional.of(challenge));
+
+            assertThatThrownBy(() -> challengeService.cancelChallenge("challenge-1", "creator-1"))
+                    .isExactlyInstanceOf(RuntimeException.class)
+                    .hasMessage(ChallengeService.CANCEL_RULE);
+            assertThat(challenge.getStatus()).isEqualTo(ChallengeStatus.ACTIVE);
+        }
+
+        @Test
         @DisplayName("nobody else can cancel it")
         void nonCreatorCannotCancel() {
             Challenge challenge = buildChallenge(ChallengeStatus.PENDING, opponent);
@@ -531,7 +556,7 @@ class ChallengeServiceTest {
 
             assertThatThrownBy(() -> challengeService.leaveChallenge("challenge-1", "creator-1"))
                     .isInstanceOf(RuntimeException.class)
-                    .hasMessageContaining("cancel it instead");
+                    .hasMessageContaining("can't leave").hasMessageContaining("once everyone else has left");
         }
 
         @Test

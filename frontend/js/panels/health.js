@@ -1,5 +1,5 @@
 import { session } from '../state.js';
-import { emptyState, escapeHtml, figure, numberOrNull, skeletonFigures, skeletonLines, today, yesterday } from '../util.js';
+import { emptyState, escapeHtml, figure, lastDays, localDay, numberOrNull, skeletonFigures, skeletonLines, today, yesterday } from '../util.js';
 import { closeModal, openModal, toast } from '../ui.js';
 import { api } from '../api.js';
 import { chartColor, chartPlaceholder, chartTheme, renderChart, setChartNote, shortAxisDate, showChartBox, timestampAxisLabels } from '../charts.js';
@@ -44,15 +44,20 @@ async function loadWater() {
       api(`/api/health/water/${session.currentUser.id}/week`)
     ]);
     const pct = Math.min(100, today.progressPercent || 0);
-    const maxMl = Math.max(...week.map(d => d.totalMl || 0), today.goalMl || 1, 1);
-    const day = (d, style) => new Date(d.date).toLocaleDateString('en', { weekday: style });
-    const bars = week.map(d => {
+    // The API lists only days with water. Laid out on the last seven days, so an empty
+    // day is a zero bar in its place: two logged days used to sit side by side as if
+    // consecutive, and one filled the whole chart (found 2026-11-16).
+    const logged = new Map(week.map(d => [String(d.date).slice(0, 10), d.totalMl || 0]));
+    const days = lastDays(7).map(date => ({ date, totalMl: logged.get(date) || 0 }));
+    const maxMl = Math.max(...days.map(d => d.totalMl), today.goalMl || 1, 1);
+    const day = (d, style) => localDay(d.date).toLocaleDateString('en', { weekday: style });
+    const bars = days.map(d => {
       const h = maxMl > 0 ? Math.round(((d.totalMl || 0) / maxMl) * 100) : 0;
       return `<div class="wb" style="height:${h}%" title="${day(d, 'short')}: ${litres(d.totalMl)} L"></div>`;
     }).join('');
-    const labels = week.map(d => `<div class="wl">${day(d, 'narrow')}</div>`).join('');
+    const labels = days.map(d => `<div class="wl">${day(d, 'narrow')}</div>`).join('');
     // The bars are drawn, so the week is also said: a screen reader gets every day.
-    const weekText = 'This week: ' + week.map(d => `${day(d, 'short')} ${litres(d.totalMl)} L`).join(', ');
+    const weekText = 'This week: ' + days.map(d => `${day(d, 'short')} ${litres(d.totalMl)} L`).join(', ');
 
     el.innerHTML = `
       <div class="metric">
@@ -104,7 +109,7 @@ async function loadSleep() {
     const rows = history.slice(-7).map(h => {
       const hrs = h.hoursSlept || 0;
       const pct = Math.min(100, (hrs / 9) * 100);
-      const day = new Date(h.sleepDate).toLocaleDateString('en', { weekday: 'short' });
+      const day = localDay(h.sleepDate).toLocaleDateString('en', { weekday: 'short' });
       return `
         <div class="slpr" role="listitem" aria-label="${day}: ${hrs} hours">
           <div class="slpd" aria-hidden="true">${day}</div>

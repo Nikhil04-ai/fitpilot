@@ -36,6 +36,11 @@ public class WaterIntakeService {
         InputChecks.waterMl(amountMl);
 
         LocalDate logDate = date != null ? date : LocalDate.now();
+        // The same day of slack as sleep, meals and workouts. Water alone took any date:
+        // 2099-12-31 was saved and read "Fully hydrated" (found 2026-11-16).
+        if (logDate.isAfter(LocalDate.now().plusDays(1))) {
+            throw new RuntimeException("Water can't be logged for a day that hasn't happened yet.");
+        }
         WaterLog log = WaterLog.builder()
                 .user(user).amountMl(amountMl).logDate(logDate).build();
         waterLogRepository.save(log);

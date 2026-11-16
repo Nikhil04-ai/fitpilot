@@ -22,8 +22,6 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
-import java.util.TreeSet;
 
 /**
  * Rebuilds every piece of derived state from the activity table.
@@ -72,48 +70,11 @@ public class ActivityRecalculationService {
     /**
      * Current streak = consecutive days up to today (or up to yesterday — a streak is
      * still alive until the day is out). Longest = the longest run anywhere in history.
+     * The maths lives in StreakService, which logging uses too, so the two can't disagree.
      */
     void recalculateStreak(User user, List<Activity> activities) {
-        Set<LocalDate> days = new TreeSet<>();
-        for (Activity a : activities) {
-            if (a.getStartTime() != null) days.add(a.getStartTime().toLocalDate());
-        }
-
-        if (days.isEmpty()) {
-            user.setCurrentStreak(0);
-            user.setLongestStreak(0);
-            user.setLastActivityDate(null);
-            return;
-        }
-
-        List<LocalDate> ordered = new ArrayList<>(days);
-        int longest = 1;
-        int run = 1;
-        for (int i = 1; i < ordered.size(); i++) {
-            if (ordered.get(i - 1).plusDays(1).equals(ordered.get(i))) {
-                run++;
-            } else {
-                run = 1;
-            }
-            longest = Math.max(longest, run);
-        }
-
-        LocalDate today = LocalDate.now();
-        LocalDate last = ordered.get(ordered.size() - 1);
-
-        // A streak only counts as "current" if it reaches today or yesterday.
-        int current = 0;
-        if (last.equals(today) || last.equals(today.minusDays(1))) {
-            current = 1;
-            for (int i = ordered.size() - 1; i > 0; i--) {
-                if (ordered.get(i - 1).plusDays(1).equals(ordered.get(i))) current++;
-                else break;
-            }
-        }
-
-        user.setCurrentStreak(current);
-        user.setLongestStreak(Math.max(longest, current));
-        user.setLastActivityDate(last);
+        StreakService.recompute(user,
+                activities.stream().map(Activity::getStartTime).toList(), LocalDate.now());
     }
 
     /**
@@ -188,7 +149,15 @@ public class ActivityRecalculationService {
         }
 
         for (MuscleRecovery recovery : muscleRecoveryRepository.findByUserId(user.getId())) {
-            recovery.setLastWorkedAt(latest.get(recovery.getMuscleGroup()));
+            LocalDateTime last = latest.get(recovery.getMuscleGroup());
+            // A muscle no remaining workout used loses its row, as a record does. Keeping
+            // it with a null date listed it as "Recovered" with a blank "last worked"
+            // after every workout was deleted (found 2026-11-16).
+            if (last == null) {
+                muscleRecoveryRepository.delete(recovery);
+                continue;
+            }
+            recovery.setLastWorkedAt(last);
             muscleRecoveryRepository.save(recovery);
         }
 

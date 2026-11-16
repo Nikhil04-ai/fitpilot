@@ -361,7 +361,10 @@ p.xnote { max-width: 60ch; margin: 0 0 var(--space-md); }
 /* ═══ GOALS ═══ */
 .gi { padding: var(--space-sm) 0; border-bottom: var(--rule-hair) solid var(--color-rule); }
 .gi:first-of-type { padding-top: 0; }
-.gi.expired { opacity: 0.6; }
+/* An ended goal reads as ended through its muted text and its "Ended" group, not by
+   fading the whole row: at 0.6 opacity its text and its live Edit and Delete buttons fell
+   to 3.35:1 (found 2026-11-16). --color-muted holds 4.5:1 on every paper step. */
+.gi.expired, .gi.expired .gn { color: var(--color-muted); }
 .git { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-sm); margin-bottom: var(--space-xs); }
 .gn { font-size: var(--text-md); font-weight: 500; display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2xs) var(--space-xs); }
 .gn .ai-chip { font-size: var(--text-sm); color: var(--color-muted); font-weight: 400; }
@@ -729,11 +732,21 @@ body.modal-open { overflow: hidden; }
 /* Under 60rem the sidebar is a drawer behind the menu button, so a tablet gets the
    full width for the log. */
 @media (max-width: 960px) {
+  /* Closed, the drawer is moved off-screen and hidden too, so its links leave the tab
+     order and the accessibility tree: they used to be fifteen invisible tab stops (found
+     2026-11-16). The visibility change waits for the slide-out to finish. */
   .sidebar {
     position: fixed; left: 0; top: 0; z-index: var(--z-drawer); transform: translateX(-100%);
-    box-shadow: var(--shadow-float); transition: transform var(--dur-short) var(--ease-out);
+    box-shadow: var(--shadow-float); visibility: hidden;
+    transition: transform var(--dur-short) var(--ease-out), visibility 0s linear var(--dur-short);
   }
-  .sidebar.show { transform: translateX(0); }
+  .sidebar.show { transform: translateX(0); visibility: visible; transition: transform var(--dur-short) var(--ease-out), visibility 0s; }
+  /* Behind the open drawer: takes the tap that would otherwise land on a control on the
+     page, and closes the drawer (ui.js toggleSidebar). */
+  .drawer-scrim {
+    position: fixed; inset: 0; z-index: calc(var(--z-drawer) - 1);
+    background: color-mix(in oklab, var(--color-paper) 60%, transparent);
+  }
   .mobile-menu-btn { display: inline-flex; margin-left: calc(-1 * var(--space-xs)); }
 }
 /* A session restacks by the width of its list, not the screen's, so it holds in any
@@ -771,6 +784,9 @@ body.modal-open { overflow: hidden; }
   .body-figs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ai-teaser { flex-direction: column; align-items: flex-start; gap: var(--space-sm); }
   .toast { left: var(--space-md); right: var(--space-md); bottom: calc(56px + var(--space-lg)); max-width: none; }
+  /* Room under the last control for the + button, which covered a plan's Enroll and the
+     pager's Next at the bottom of a page (found 2026-11-16). */
+  .content { padding-bottom: calc(56px + var(--space-md) + var(--space-xl)); }
 }
 @media (min-width: 761px) {
   .fab { display: none !important; }

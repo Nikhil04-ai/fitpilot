@@ -100,7 +100,8 @@ public class WeeklyDigestService {
         digest.setDataPoints(facts);
         digest.setAiGenerated(aiGenerated);
 
-        return toResponse(digestRepository.save(digest));
+        // Flushed, so a newly created digest has its createdAt in this response, not null.
+        return toResponse(digestRepository.saveAndFlush(digest));
     }
 
     @Transactional(readOnly = true)
@@ -370,7 +371,7 @@ public class WeeklyDigestService {
             goals.add(goal);
         }
         facts.put("goals", goals);
-        facts.put("currentStreak", user.getCurrentStreak());
+        facts.put("currentStreak", StreakService.current(user));
 
         facts.put("hasAnythingLogged",
                 !activities.isEmpty() || !meals.isEmpty() || !sleep.isEmpty() || !pain.isEmpty());

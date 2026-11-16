@@ -170,7 +170,14 @@ export async function handleCreateGoal(e) {
 export function openEditGoal(id, targetValue, deadline) {
   document.getElementById('edit-goal-id').value = id;
   document.getElementById('edit-goal-target').value = targetValue;
-  document.getElementById('edit-goal-deadline').value = deadline || '';
+  const field = document.getElementById('edit-goal-deadline');
+  field.value = deadline || '';
+  // A deadline can be moved but not removed (API.md). The field was labelled optional
+  // and could be emptied, and the save then said "Goal updated" while keeping it (found
+  // 2026-11-16). Once a goal has one, the field is required and says so.
+  field.required = !!deadline;
+  const label = document.querySelector('label[for="edit-goal-deadline"]');
+  if (label) label.textContent = deadline ? 'Deadline (can be moved, not removed)' : 'Deadline (optional)';
   openModal('modal-edit-goal');
 }
 

@@ -1,6 +1,6 @@
 import { session } from './state.js';
 import { API_BASE, BACKEND_URL_UNSET, IS_LOCAL } from './config.js';
-import { showAuthError, switchAuthTab } from './auth.js';
+import { showAuthError, showAuthScreen, switchAuthTab } from './auth.js';
 import { invalidateAllPanels, resetPanelCache } from './nav.js';
 import { stopUnreadPolling } from './panels/notifications.js';
 import { wakeAwareFetch } from './wake.js';
@@ -125,8 +125,7 @@ export function forceSessionExpired(reason) {
   localStorage.removeItem('fp_accessToken');
   localStorage.removeItem('fp_refreshToken');
   localStorage.removeItem('fp_user');
-  document.getElementById('app-shell').classList.remove('show');
-  document.getElementById('auth-screen').style.display = 'flex';
+  showAuthScreen();      // keeps the email: the same person is being asked back in
   switchAuthTab('login');
   showAuthError(reason || 'Your session is no longer valid. Please log in again.');
   // Re-enable toasts after other in-flight calls (from the same failed page

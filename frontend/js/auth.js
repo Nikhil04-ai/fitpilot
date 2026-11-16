@@ -1,7 +1,7 @@
 import { session } from './state.js';
 import { initials } from './util.js';
 import { API_BASE } from './config.js';
-import { toast } from './ui.js';
+import { closeAllModals, toast, toggleSidebar } from './ui.js';
 import { api, unreachableMessage } from './api.js';
 import { wakeAwareFetch } from './wake.js';
 import { nav, panelFromHash, resetPanelCache } from './nav.js';
@@ -258,10 +258,32 @@ export function doLogout() {
   localStorage.removeItem('fp_accessToken');
   localStorage.removeItem('fp_refreshToken');
   localStorage.removeItem('fp_user');
-  document.getElementById('app-shell').classList.remove('show');
-  document.getElementById('auth-screen').style.display = 'flex';
+  showAuthScreen({ forgetEmail: true });
   // Drop the panel hash so the login screen isn't sitting on a stale #recovery URL.
   history.replaceState(null, '', location.pathname + location.search);
+}
+
+/**
+ * Takes the app away and puts the sign-in screen up, for logout and for a session that
+ * has ended. Found by the full-app test run of 2026-11-16, both here:
+ * - The password stayed in the login form (and, after a sign-up, in the register form
+ *   too), so after logging out one click on "Log in" signed the account straight back
+ *   in: a problem on any shared computer. Both password fields are now emptied, and an
+ *   explicit logout clears the email as well. A session that merely expired keeps it,
+ *   since the same person is being asked to sign back in.
+ * - On a phone the + button stayed over the login screen and opened Log Workout, whose
+ *   submit then threw on the missing user. It is hidden, and any open dialog and the
+ *   drawer are closed.
+ */
+export function showAuthScreen({ forgetEmail = false } = {}) {
+  closeAllModals();
+  toggleSidebar(false);
+  document.getElementById('fab-log').style.display = 'none';
+  document.getElementById('login-password').value = '';
+  if (forgetEmail) document.getElementById('login-email').value = '';
+  document.getElementById('form-register')?.reset?.();
+  document.getElementById('app-shell').classList.remove('show');
+  document.getElementById('auth-screen').style.display = 'flex';
 }
 
 export function enterApp() {

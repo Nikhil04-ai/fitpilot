@@ -16,6 +16,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.security.web.firewall.RequestRejectedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -64,6 +65,11 @@ public class SecurityConfig {
                     .requestMatchers("/api/admin/**").hasRole("ADMIN")
                     .requestMatchers("/api/auth/**").permitAll()
                     .requestMatchers("/actuator/health").permitAll()
+                    // The container's own error page. A request rejected before it reached
+                    // the app (Tomcat refuses an encoded '/') is forwarded here, and with
+                    // authentication required the client got a 401 "log in again", which a
+                    // token refresh can't fix (found 2026-11-16).
+                    .requestMatchers("/error").permitAll()
                     .requestMatchers(
                             "/swagger-ui.html",
                             "/swagger-ui/**",
@@ -144,6 +150,19 @@ public class SecurityConfig {
                         accessDeniedException.getMessage() != null
                                 ? accessDeniedException.getMessage()
                                 : "You don't have access to this resource.");
+    }
+
+    /**
+     * 400 — a URL Spring Security's firewall refuses (a ';', a '//', an encoded '%' or '.').
+     * The default handler called sendError(400), which dispatched to /error, which needed
+     * authentication, so a valid token got 401 "Please log in again" (found 2026-11-16).
+     * The frontend refreshes on a 401, which can't help here. Written directly, so there is
+     * no error dispatch and the body has the app's usual shape.
+     */
+    @Bean
+    public RequestRejectedHandler requestRejectedHandler() {
+        return (request, response, ex) ->
+                writeJsonError(response, HttpServletResponse.SC_BAD_REQUEST, "That address isn't valid.");
     }
 
     private static void writeJsonError(HttpServletResponse response, int status, String message)

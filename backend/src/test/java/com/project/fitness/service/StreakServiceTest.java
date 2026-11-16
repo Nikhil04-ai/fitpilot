@@ -6,126 +6,118 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Unit tests for StreakService — Feature 2
- * No Spring context, no DB — pure logic tests.
+ * Unit tests for StreakService — Feature 2. No Spring context, no DB — pure logic tests.
+ *
+ * <p>The streak is derived from the workout dates (recompute) and read as of today
+ * (currentAsOf). The two failures the full-app test run of 2026-11-16 found are pinned
+ * here: backdated workouts not extending a streak, and a streak that never ran out.
  */
 @DisplayName("StreakService Tests")
 class StreakServiceTest {
 
-    private StreakService streakService;
+    private static final LocalDate TODAY = LocalDate.of(2026, 11, 16);
     private User user;
 
     @BeforeEach
     void setUp() {
-        streakService = new StreakService();
-        user = User.builder()
-                .id("user-1")
-                .currentStreak(0)
-                .longestStreak(0)
-                .build();
+        user = User.builder().id("user-1").currentStreak(0).longestStreak(0).build();
     }
 
-    // ── First activity ────────────────────────────────────────────────────────
+    private static LocalDateTime day(int daysAgo) {
+        return TODAY.minusDays(daysAgo).atTime(7, 30);
+    }
+
+    private void recompute(LocalDateTime... startTimes) {
+        StreakService.recompute(user, List.of(startTimes), TODAY);
+    }
 
     @Test
-    @DisplayName("First activity ever: streak should become 1")
-    void firstActivity_setsStreakToOne() {
-        user.setLastActivityDate(null);
+    @DisplayName("No workouts: everything is zero")
+    void noWorkouts() {
+        recompute();
+        assertThat(user.getCurrentStreak()).isZero();
+        assertThat(user.getLongestStreak()).isZero();
+        assertThat(user.getLastActivityDate()).isNull();
+    }
 
-        streakService.updateStreak(user);
-
+    @Test
+    @DisplayName("First workout today: streak 1")
+    void firstWorkout() {
+        recompute(day(0));
         assertThat(user.getCurrentStreak()).isEqualTo(1);
         assertThat(user.getLongestStreak()).isEqualTo(1);
-        assertThat(user.getLastActivityDate()).isEqualTo(LocalDate.now());
+        assertThat(user.getLastActivityDate()).isEqualTo(TODAY);
     }
 
-    // ── Consecutive day ───────────────────────────────────────────────────────
+    @Test
+    @DisplayName("Consecutive days count; two workouts on one day count once")
+    void consecutiveAndSameDay() {
+        recompute(day(2), day(1), day(0), day(0));
+        assertThat(user.getCurrentStreak()).isEqualTo(3);
+        assertThat(user.getLongestStreak()).isEqualTo(3);
+    }
 
     @Test
-    @DisplayName("Activity yesterday + activity today: streak increments")
-    void consecutiveDay_incrementsStreak() {
-        user.setLastActivityDate(LocalDate.now().minusDays(1));
-        user.setCurrentStreak(3);
-        user.setLongestStreak(3);
+    @DisplayName("A streak ending yesterday is still current: the day isn't out")
+    void endingYesterdayIsCurrent() {
+        recompute(day(3), day(2), day(1));
+        assertThat(user.getCurrentStreak()).isEqualTo(3);
+    }
 
-        streakService.updateStreak(user);
-
-        assertThat(user.getCurrentStreak()).isEqualTo(4);
+    @Test
+    @DisplayName("A gap breaks the current run but the longest run is kept")
+    void gapKeepsLongest() {
+        recompute(day(10), day(9), day(8), day(7), day(1), day(0));
+        assertThat(user.getCurrentStreak()).isEqualTo(2);
         assertThat(user.getLongestStreak()).isEqualTo(4);
     }
 
-    // ── Same day logged twice ─────────────────────────────────────────────────
-
     @Test
-    @DisplayName("Two activities on the same day: streak does NOT change")
-    void sameDay_noChange() {
-        user.setLastActivityDate(LocalDate.now());
-        user.setCurrentStreak(5);
-        user.setLongestStreak(10);
-
-        streakService.updateStreak(user);
-
-        assertThat(user.getCurrentStreak()).isEqualTo(5);
-        assertThat(user.getLongestStreak()).isEqualTo(10);
-    }
-
-    // ── Gap > 1 day resets streak ─────────────────────────────────────────────
-
-    @Test
-    @DisplayName("2-day gap resets streak to 1")
-    void twoDayGap_resetsStreak() {
-        user.setLastActivityDate(LocalDate.now().minusDays(2));
-        user.setCurrentStreak(10);
-        user.setLongestStreak(10);
-
-        streakService.updateStreak(user);
-
-        assertThat(user.getCurrentStreak()).isEqualTo(1);
-        assertThat(user.getLongestStreak()).isEqualTo(10); // longest stays
+    @DisplayName("A last workout two or more days ago means no current streak")
+    void lapsedRunIsNotCurrent() {
+        recompute(day(10), day(9), day(8));
+        assertThat(user.getCurrentStreak()).isZero();
+        assertThat(user.getLongestStreak()).isEqualTo(3);
     }
 
     @Test
-    @DisplayName("Week-long gap resets streak to 1")
-    void weekGap_resetsStreak() {
-        user.setLastActivityDate(LocalDate.now().minusDays(7));
-        user.setCurrentStreak(20);
-        user.setLongestStreak(20);
-
-        streakService.updateStreak(user);
-
-        assertThat(user.getCurrentStreak()).isEqualTo(1);
-        assertThat(user.getLongestStreak()).isEqualTo(20);
-    }
-
-    // ── Longest streak logic ──────────────────────────────────────────────────
-
-    @Test
-    @DisplayName("New streak beats previous longest: longestStreak updates")
-    void newBestStreak_updatesLongest() {
-        user.setLastActivityDate(LocalDate.now().minusDays(1));
-        user.setCurrentStreak(7);
-        user.setLongestStreak(7);
-
-        streakService.updateStreak(user);
-
-        assertThat(user.getCurrentStreak()).isEqualTo(8);
-        assertThat(user.getLongestStreak()).isEqualTo(8);
+    @DisplayName("Backdated workouts extend the streak whatever order they were logged in")
+    void backdatedWorkoutsExtendTheStreak() {
+        // Logged newest first: today, then yesterday, then the day before. The old
+        // incremental update ignored the last two and left the streak at 1.
+        recompute(day(0), day(1), day(2));
+        assertThat(user.getCurrentStreak()).isEqualTo(3);
+        assertThat(user.getLongestStreak()).isEqualTo(3);
     }
 
     @Test
-    @DisplayName("Current streak below longest: longestStreak stays unchanged")
-    void currentBelowLongest_longestUnchanged() {
-        user.setLastActivityDate(LocalDate.now().minusDays(1));
-        user.setCurrentStreak(3);
-        user.setLongestStreak(15);
+    @DisplayName("A workout a few hours ahead (allowed) doesn't break today's streak")
+    void slightlyFutureWorkoutDoesNotBreakIt() {
+        recompute(day(1), day(0), TODAY.plusDays(1).atTime(0, 30));
+        assertThat(user.getCurrentStreak()).isEqualTo(2);
+    }
 
-        streakService.updateStreak(user);
+    @Test
+    @DisplayName("Read as of today: a stored streak lapses once the last workout is older than yesterday")
+    void storedStreakLapses() {
+        recompute(day(10), day(9), day(8));
+        user.setCurrentStreak(3);           // as it was stored eight days ago
+        assertThat(StreakService.currentAsOf(user, TODAY)).isZero();
+        assertThat(StreakService.currentAsOf(user, day(7).toLocalDate())).isEqualTo(3);  // the next day: still alive
+    }
 
-        assertThat(user.getCurrentStreak()).isEqualTo(4);
-        assertThat(user.getLongestStreak()).isEqualTo(15);
+    @Test
+    @DisplayName("Read as of today: a streak through yesterday or today is reported as stored")
+    void liveStreakIsReported() {
+        recompute(day(2), day(1));
+        assertThat(StreakService.currentAsOf(user, TODAY)).isEqualTo(2);
+        user.setLastActivityDate(null);
+        assertThat(StreakService.currentAsOf(user, TODAY)).isZero();
     }
 }

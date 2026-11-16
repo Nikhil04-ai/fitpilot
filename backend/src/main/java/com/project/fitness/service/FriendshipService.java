@@ -207,7 +207,7 @@ public class FriendshipService {
         map.put("friendshipId", friendship.getId());
         map.put("userId", other != null ? other.getId() : null);
         map.put("name", displayName(other));
-        map.put("currentStreak", other != null ? other.getCurrentStreak() : null);
+        map.put("currentStreak", other != null ? StreakService.current(other) : null);
         map.put("status", friendship.getStatus().name());
         map.put("isIncoming", friendship.getAddressee() != null
                 && friendship.getAddressee().getId().equals(viewerId));

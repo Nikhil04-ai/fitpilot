@@ -124,7 +124,7 @@ public class StatsService {
         stats.put("totalCaloriesBurned", totalCalories);
         stats.put("totalDurationMinutes", totalMinutes);
         stats.put("longestStreak", user.getLongestStreak());
-        stats.put("currentStreak", user.getCurrentStreak());
+        stats.put("currentStreak", StreakService.current(user));
         stats.put("personalBestsCount", personalBestCount);
 
         return stats;
@@ -157,7 +157,7 @@ public class StatsService {
         stats.put("totalDurationMinutes", totalDuration);
         stats.put("activityCount", activityCount);
         stats.put("mostFrequentActivityType", mostFrequent != null ? mostFrequent.name() : "N/A");
-        stats.put("currentStreak", user.getCurrentStreak());
+        stats.put("currentStreak", StreakService.current(user));
         stats.put("longestStreak", user.getLongestStreak());
         stats.put("fromDate", from.toString());
         stats.put("toDate", to.toString());

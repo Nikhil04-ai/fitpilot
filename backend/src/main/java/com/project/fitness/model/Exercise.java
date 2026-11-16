@@ -72,13 +72,24 @@ public class Exercise {
     }
 
     /**
+     * The load lifted, or null for a bodyweight set. 0 kg is not a load: typed into the
+     * kg box for dips or pull-ups, it used to make records like "Heaviest 0kg x 12" and
+     * "Best volume 0kg" (found 2026-11-16). The 1RM and bodyweight-reps records already
+     * treated 0 as bodyweight; now every record does.
+     */
+    public Double loadKg() {
+        return weightKg != null && weightKg > 0 ? weightKg : null;
+    }
+
+    /**
      * Total load moved: sets x reps x weight.
      *
-     * <p>Null unless all three are present — a bodyweight set has no load to total, and
-     * returning 0 for it would drag a volume record down rather than leave it alone.
+     * <p>Null unless all three are present and there is a load — a bodyweight set has no
+     * load to total, and returning 0 for it would drag a volume record down rather than
+     * leave it alone.
      */
     public Double volume() {
-        if (sets == null || reps == null || weightKg == null) return null;
+        if (sets == null || reps == null || loadKg() == null) return null;
         return sets * reps * weightKg;
     }
 

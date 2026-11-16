@@ -103,6 +103,13 @@ priority order, so priorities aren't re-derived from scratch every session.
 > **Status, 2026-11-16 (O-6):** the risk's premise was re-verified after the redesign and is now
 > guarded by a permanent Selenium check (`PROGRESS.md` Phase 51). Selenium **32 of 32**. O-6 itself
 > remains a decision; the recommendation is to accept it. No code item is open.
+>
+> **Status, 2026-11-17: the multi-agent full-app run (P6).** Eight agents drove every feature
+> through the API and headless Chrome on H2 and reported 42 functional findings and 10 UI ones
+> (52, of which 3 were duplicates). 46 are fixed, each with a test that fails on the code before
+> the fix. Three are left open as feature work: P6-F16, P6-F20 and P6-F35. Backend **648**
+> passing (was 618), frontend **217** (was 197), Selenium **32 of 32**. See `PROGRESS.md`
+> Phase 52.
 
 ## Priority key
 
@@ -581,6 +588,85 @@ has a test that fails on the code before the fix. A struck-through row is fixed.
 
 ---
 
+# P6 — Found by the multi-agent full-app run (2026-11-16)
+
+Eight agents, one per area (auth and profile, workouts, nutrition and goals, health and pain,
+plans and insights, social, security and API contract, UI and accessibility), each drove its
+features over HTTP and in headless Chrome against one shared H2 backend with AI and email off,
+and reported only what it could reproduce twice. IDs keep the run's own numbering (F = functional,
+U = UI). F26/F30/F33, F18/F31 and F21/F28 were the same problem found twice. `PROGRESS.md`
+Phase 52 has the method and how each fix was verified. A struck-through row is fixed.
+
+**Wrong data or numbers**
+
+| | Problem | Severity | Fix |
+|---|---|---|---|
+| ~~**F1, F22**~~ | ~~Changing weight in Profile wrote no weigh-in. The weight-trend chart could never fill from the UI, and a weight goal kept reading an older weigh-in, so Health and the goal disagreed.~~ | High | `ProfileService` records a weigh-in when weight or height actually changes (`BodyMetricsService.recordWeighIn`, shared with `PUT /api/health/metrics`). |
+| ~~**F9, F36**~~ | ~~The current streak never ran out (a 3-day streak was still shown 8 days later), and workouts backdated after today's didn't extend it until an unrelated edit.~~ | Medium | `StreakService.recompute` rebuilds both streaks from the workout dates on every write; every read goes through `StreakService.current()`, which is 0 once the last workout is before yesterday. |
+| ~~**F4**~~ | ~~Moving an expired weekly goal's deadline into the future left its progress at 0, ignoring that week's workouts.~~ | Medium | `GoalService.updateGoal` refills an activity goal's current period when it comes back from expiry. |
+| ~~**F17**~~ | ~~BMI category came from the rounded BMI, and the healthy range used 24.9, so 53.4 kg at 170 cm was "Normal" below the range and 72.1 kg was "Normal" above it.~~ | Low | Category from the exact BMI; the displayed figure never rounds across a cut-off; the range is the exact 18.5 to 25 band. |
+| ~~**F32**~~ | ~~The plateau check printed `NaN%` and `Infinity%` and called 0 kcal against 0 kcal "progressing".~~ | Low | Workouts with no calories are left out of both windows; numbers are formatted with `Locale.ROOT`. |
+| ~~**F37**~~ | ~~The progression hint said "all felt easy" right after a session rated hard, because it used the average.~~ | Low | Every one of the three ratings has to agree. |
+| ~~**F38**~~ | ~~A 0 kg set made "Heaviest 0 kg" and "Best volume 0 kg" records.~~ | Low | 0 kg counts as bodyweight (`Exercise.loadKg()`). |
+| ~~**F42**~~ | ~~With every workout deleted, Recovery still listed muscle groups as recovered with no date.~~ | Cosmetic | A recovery row with no workout left is deleted. |
+| ~~**F23**~~ | ~~Nutrition's "Today" showed a full-maintenance deficit before anything was logged.~~ | Low | With no meals, `netCalories` and `balance` are `null` and the panel says nothing is logged yet. |
+| ~~**F34**~~ | ~~Overview said "this week" for a rolling 7-day total while the digest uses Monday-to-Sunday weeks.~~ | Low | Labelled "last 7 days". |
+
+**Input the server should refuse**
+
+| | Problem | Severity | Fix |
+|---|---|---|---|
+| ~~**F5**~~ | ~~`additionalMetrics` had no size limit: a 10 MB value was stored and sent back on every Activities load.~~ | Medium | At most 20 metrics, names up to 50 characters, each value a number, true/false or text up to 1000 characters, on create and edit; `/natural` drops what doesn't fit. |
+| ~~**F21, F28**~~ | ~~A goal target accepted `NaN`, `Infinity` and absurd values, shown as "NaN%".~~ | Low | Finite, above zero, and below a ceiling per goal type; a body-weight target uses the 20 to 500 kg range. |
+| ~~**F25**~~ | ~~A goal deadline had no range; 1900-01-01 came back as 1899-12-31.~~ | Low | 2000-01-01 to ten years ahead. |
+| ~~**F18, F31**~~ | ~~Water could be logged for any future date (2099 accepted).~~ | Low | More than a day ahead is a `400`, as for sleep, meals and workouts. |
+| ~~**F27**~~ | ~~A meal of all-zero macros and no calories was saved as an empty row.~~ | Low | Macros must be above zero, so such a meal gets the "needs a calorie figure or its macros" `400`. |
+| ~~**F10**~~ | ~~Reset and change password accepted a whitespace-only password that registration refuses.~~ | Low | Refused on both. |
+| ~~**F11**~~ | ~~Login ignored everything after a password's 72nd byte.~~ | Low | A password over 72 bytes fails login as a wrong password would (after a dummy comparison, so timing doesn't tell). |
+| ~~**F13**~~ | ~~Register refused an email with surrounding spaces, though `API.md` says it is trimmed.~~ | Low | Trimmed before validation. |
+| ~~**F14**~~ | ~~Two challenge requests at the same moment made two open challenges between one pair.~~ | Low | `createChallenge` locks the people involved (in id order) before the one-open-per-pair check. |
+| ~~**F29**~~ | ~~A URL with `;`, `//` or an encoded `%` got a `401` "please log in again" with no CORS header, though the token was valid.~~ | Low | `/error` is permitted and the firewall's rejection is a JSON `400`. |
+
+**The UI said one thing and did another**
+
+| | Problem | Severity | Fix |
+|---|---|---|---|
+| ~~**F2**~~ | ~~A network failure or 5xx at page load signed the user out and threw away valid tokens.~~ | Medium | Only an auth failure ends the session at boot; otherwise the app opens with the saved user and the error is shown. |
+| ~~**F3, F19**~~ | ~~Water and sleep day labels were a day early west of UTC, and the water week drew non-adjacent days side by side.~~ | Medium | Date-only values are read as local dates (`localDay`); the water chart always has seven days, empty ones as zero. |
+| ~~**F6**~~ | ~~After "Mark today complete", the plan card showed tomorrow's day as today, with a button that always failed.~~ | Medium | The API returns `completedToday` and `lastCompletedDate`; the card says today is done and disables the button. |
+| ~~**F7**~~ | ~~On Overview, Edit did nothing, and Rate or Delete left the list and figures stale.~~ | Medium | Every panel that draws workout rows registers them for Edit, and a change reloads the panel being shown. |
+| ~~**F8**~~ | ~~The Edit dialog couldn't clear notes or distance, but said "Workout updated".~~ | Medium | `PUT /api/activities/{id}` takes a `clear` list; the dialog sends it for a field that was emptied. |
+| ~~**F12, F39**~~ | ~~Emptying weight or last name said "Profile updated" while the server kept them, and the sidebar initials didn't change after a rename.~~ | Low | The form is refilled from the response, the toast says an empty field keeps its value, and the initials update. |
+| ~~**F15**~~ | ~~A creator left alone in a running challenge couldn't leave or cancel, and the two errors pointed at each other.~~ | Low | The creator can cancel once everyone else has left; the card offers Cancel then. |
+| ~~**F24**~~ | ~~Emptying a goal's deadline said "Goal updated" but kept it.~~ | Low | The field is required once a deadline exists, and its label says it can be moved, not removed. |
+| ~~**F40**~~ | ~~A declined challenge showed the raw enum `DECLINED`.~~ | Cosmetic | "Declined", with a footer saying everyone invited declined. |
+| ~~**F26, F30, F33**~~ | ~~Meal create returned null timestamps and edit the old `updatedAt`; a new digest's `createdAt` was null.~~ | Low | Saved with `saveAndFlush`, so the response carries the stored timestamps. |
+| ~~**F41**~~ | ~~"The notes is too long."~~ | Cosmetic | "The notes field is too long." |
+
+**Accessibility and layout**
+
+| | Problem | Severity | Fix |
+|---|---|---|---|
+| ~~**U1**~~ | ~~Logout left the password in the login form; one click on "Log in" signed the user back in.~~ | Medium | Logout clears both forms (the email too); an expired session keeps the email only. |
+| ~~**U2**~~ | ~~On a phone, the + button stayed on the login screen and opened Log Workout, which then threw.~~ | Medium | Hidden on logout, and any open dialog is closed. |
+| ~~**U3**~~ | ~~Edit Workout, Edit Meal and Edit Goal opened with focus left behind the overlay (a hidden id input took the focus).~~ | Medium | Hidden inputs are skipped. |
+| ~~**U4, U5**~~ | ~~The closed drawer's links were off-screen tab stops; opening it didn't move focus in; a tap outside went to the page behind.~~ | Medium | Closed drawer is `visibility: hidden`; opening focuses the first link; a scrim closes it; focus returns to the menu button. |
+| ~~**U6**~~ | ~~The hidden toast's close button was a tab stop.~~ | Low | A tab stop only while a toast shows. |
+| ~~**U7**~~ | ~~Browser Back changed the panel but left a dialog open over it.~~ | Low | Changing panel closes open dialogs. |
+| ~~**U8**~~ | ~~Expired goals were dimmed with opacity 0.6, to 3.35:1 contrast, including their live buttons.~~ | Low | The muted text colour instead of opacity. |
+| ~~**U9**~~ | ~~The bell's accessible name had no unread count.~~ | Low | "Notifications, N unread". |
+| ~~**U10**~~ | ~~At phone width the + button covered the last control on a scrolled panel.~~ | Cosmetic | Bottom padding under the content. |
+
+**Left open, as feature work rather than bugs:**
+
+| | What | Why not fixed here |
+|---|---|---|
+| **F16** | A notification for a withdrawn friend request or a cancelled challenge invite stays unread, and Open leads to an empty panel. | Needs a rule for retiring notifications when what they point at goes away: delete, mark read, or explain on Open. A design choice. |
+| **F20** | A pain entry can't be linked to a workout from the UI, and a link made through the API is never shown. | A new UI (a workout picker, or "Log pain" on a workout row) and a response field. |
+| **F35** | A plan's day-by-day schedule is never shown, before or after enrolling. | A new view; the API already returns the days. |
+
+---
+
 # Suggested order
 
 **P0 to P4 are all done, and P5-1 to P5-18 are fixed.** What remains, in the order I'd do
@@ -610,6 +696,9 @@ it:
    - **Observations:** ~~O-1~~ changed 2026-10-17. ~~O-2~~ and ~~O-3~~ fixed (2026-11-16).
      ~~O-4~~ handled and ~~O-7~~ fixed (2026-11-16). ~~O-8~~ fixed (2026-11-16).
      ~~O-9~~ and ~~O-5~~ fixed (2026-11-16). O-6 still wants a decision.
+   - **P6 (the full-app run, 2026-11-16):** 46 of the 49 distinct findings fixed. Open, as
+     feature work: F16 (stale notifications), F20 (linking pain to a workout in the UI), F35
+     (showing a plan's schedule).
 
 Done earlier:
 

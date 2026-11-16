@@ -23,6 +23,7 @@ public class ProfileService {
     private final UserService userService;
     private final RefreshTokenService refreshTokenService;
     private final JwtUtils jwtUtils;
+    private final BodyMetricsService bodyMetricsService;
 
     /** Update any combination of profile fields */
     public UserResponse updateProfile(String userId, String firstName, String lastName,
@@ -36,13 +37,23 @@ public class ProfileService {
         InputChecks.heightCm(height);
         InputChecks.age(age);
 
+        boolean bodyChanged = (weight != null && !weight.equals(user.getWeight()))
+                || (height != null && !height.equals(user.getHeight()));
+
         if (firstName != null && !firstName.isBlank()) user.setFirstName(firstName);
         if (lastName  != null && !lastName.isBlank())  user.setLastName(lastName);
         if (weight    != null) user.setWeight(weight);
         if (height    != null) user.setHeight(height);
         if (age       != null) user.setAge(age);
 
-        return userService.mapToResponse(userRepository.save(user));
+        User saved = userRepository.save(user);
+        // The profile is where the app lets a person change their weight, and it wrote
+        // no weigh-in: the weight chart could never fill from the UI, and a weight goal
+        // kept reading the last weigh-in while Health showed the new weight (found
+        // 2026-11-16). A change of weight or height now records one, as PUT
+        // /api/health/metrics does. Saving the same values again, or only a name, doesn't.
+        if (bodyChanged) bodyMetricsService.recordWeighIn(saved);
+        return userService.mapToResponse(saved);
     }
 
     /**
@@ -67,6 +78,7 @@ public class ProfileService {
         if (newPassword == null || newPassword.length() < 8) {
             throw new RuntimeException("New password must be at least 8 characters.");
         }
+        PasswordPolicy.requireNotBlank(newPassword);
         PasswordPolicy.requireHashable(newPassword);
 
         user.setPassword(passwordEncoder.encode(newPassword));
