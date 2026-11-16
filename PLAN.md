@@ -110,6 +110,12 @@ priority order, so priorities aren't re-derived from scratch every session.
 > the fix. Three are left open as feature work: P6-F16, P6-F20 and P6-F35. Backend **648**
 > passing (was 618), frontend **217** (was 197), Selenium **32 of 32**. See `PROGRESS.md`
 > Phase 52.
+>
+> **Status, 2026-11-17 (later): P6 is done, 49 of 49.** The three items left as feature work are
+> built: stale invite notifications are taken back (F16), a pain entry can be linked to a workout
+> from the app and shows it (F20), and every plan shows its day-by-day schedule (F35). Backend
+> **655** passing, frontend **221**, Selenium **32 of 32**. See `PROGRESS.md` Phase 53. What
+> remains is the O-6 decision and deployment.
 
 ## Priority key
 
@@ -657,13 +663,13 @@ Phase 52 has the method and how each fix was verified. A struck-through row is f
 | ~~**U9**~~ | ~~The bell's accessible name had no unread count.~~ | Low | "Notifications, N unread". |
 | ~~**U10**~~ | ~~At phone width the + button covered the last control on a scrolled panel.~~ | Cosmetic | Bottom padding under the content. |
 
-**Left open, as feature work rather than bugs:**
+**Left open at first as feature work, then built the same day (`PROGRESS.md` Phase 53):**
 
-| | What | Why not fixed here |
-|---|---|---|
-| **F16** | A notification for a withdrawn friend request or a cancelled challenge invite stays unread, and Open leads to an empty panel. | Needs a rule for retiring notifications when what they point at goes away: delete, mark read, or explain on Open. A design choice. |
-| **F20** | A pain entry can't be linked to a workout from the UI, and a link made through the API is never shown. | A new UI (a workout picker, or "Log pain" on a workout row) and a response field. |
-| **F35** | A plan's day-by-day schedule is never shown, before or after enrolling. | A new view; the API already returns the days. |
+| | Problem | Severity | Fix |
+|---|---|---|---|
+| ~~**F16**~~ | ~~A notification for a withdrawn friend request or a cancelled challenge invite stayed unread, counted in the badge, and Open led to an empty panel.~~ | Low | An invite's notification is deleted once there's nothing left to answer: a friend request accepted, declined or withdrawn; a challenge invite answered, cancelled, or outlived by its challenge. Other notifications are untouched. |
+| ~~**F20**~~ | ~~A pain entry couldn't be linked to a workout from the app, and a link made through the API was never shown.~~ | Low | Log Pain has a "During a workout" picker of the last ten workouts; the response carries `activity` (`id`, `type`, `startTime`), and the row says "During Running, …". |
+| ~~**F35**~~ | ~~A plan's day-by-day schedule was never shown, before or after enrolling.~~ | Low | Every plan card has a "Schedule" disclosure; the active plan's marks the days done and today (or tomorrow) in words. The enrollment response carries `planId` to pair it with its days. |
 
 ---
 
@@ -696,9 +702,8 @@ it:
    - **Observations:** ~~O-1~~ changed 2026-10-17. ~~O-2~~ and ~~O-3~~ fixed (2026-11-16).
      ~~O-4~~ handled and ~~O-7~~ fixed (2026-11-16). ~~O-8~~ fixed (2026-11-16).
      ~~O-9~~ and ~~O-5~~ fixed (2026-11-16). O-6 still wants a decision.
-   - **P6 (the full-app run, 2026-11-16):** 46 of the 49 distinct findings fixed. Open, as
-     feature work: F16 (stale notifications), F20 (linking pain to a workout in the UI), F35
-     (showing a plan's schedule).
+   - ~~**P6 (the full-app run, 2026-11-16)**~~ **All 49 distinct findings fixed** (2026-11-17,
+     `PROGRESS.md` Phases 52 and 53).
 
 Done earlier:
 
