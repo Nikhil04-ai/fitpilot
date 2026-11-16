@@ -142,6 +142,8 @@ public class WorkoutPlanService {
     private Map<String, Object> buildEnrollmentResponse(UserPlanEnrollment e) {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("enrollmentId", e.getId());
+        // So the client can pair the enrollment with its plan's schedule from GET /api/plans.
+        map.put("planId", e.getPlan().getId());
         map.put("planName", e.getPlan().getName());
         map.put("planDifficulty", e.getPlan().getDifficulty());
         map.put("planGoal", e.getPlan().getGoal());
