@@ -541,7 +541,7 @@ class Suite:
                                  {'bodyPart': 'NECK', 'severity': 2, 'description': f'seed {i}'})
             assert s == 200, (s, b)
         self.nav('pain')
-        self.click('#panel-pain [data-modal="modal-log-pain"]')
+        self.click('#panel-pain [data-action="open-log-pain"]')
         self.visible('#modal-log-pain.show')
         self.type('#pain-description', 'from the modal')
         self.clear_toast()
@@ -728,13 +728,20 @@ class Suite:
         self.toast('left the challenge')
 
     def c_notifications(self):
+        # Three requests left pending: one to open, one to mark read, one for "mark all".
+        # The earlier checks answer or withdraw every request and invite, and since PLAN
+        # P6-F16 that takes their notifications back, so this no longer leans on leftovers.
+        for _ in range(3):
+            _, w_tok, _ = self.api.user('Waiting')
+            s, b = self.api.call('POST', '/api/friends/request', w_tok, {'email': self.email})
+            assert s == 200, (s, b)
         self.nav('overview')
         self.d.refresh()
         self.visible('#app-shell.show')
         self.settled('overview')
         bell = self.css('#bell-count')
         unread = int(bell.text) if bell.is_displayed() and bell.text.isdigit() else 0
-        assert unread > 0, 'friend requests and invites should have left unread notifications'
+        assert unread >= 3, f'the three pending requests should be unread, the badge says {unread}'
         self.click('#bell-btn')
         self.visible('#panel-notifications.on')
         self.settled('notifications')
