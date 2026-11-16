@@ -18,6 +18,47 @@ function words(s) {
 
 /** The plan the user is on, so its card can say so and a switch can be confirmed. */
 let activePlanName = null;
+let activePlanId = null;
+
+/**
+ * A plan's days, behind a disclosure. Before (found 2026-11-16), nothing showed what a
+ * plan involved: a card had its name, goal and length, and switching plans drops the
+ * progress in the current one, so you committed blind. The API always returned the days.
+ *
+ * With `progress` (the active plan), days already done and today's are marked, in text
+ * as well as style.
+ */
+export function scheduleList(days, progress = null) {
+  if (!Array.isArray(days) || !days.length) return '';
+  const sorted = [...days].sort((a, b) => a.dayNumber - b.dayNumber);
+  const items = sorted.map(d => {
+    let state = '', mark = '';
+    if (progress && !progress.isCompleted) {
+      if (d.dayNumber < progress.currentDay) { state = ' done'; mark = 'Done'; }
+      else if (d.dayNumber === progress.currentDay) {
+        state = ' now';
+        mark = progress.completedToday ? 'Tomorrow' : 'Today';
+      }
+    } else if (progress?.isCompleted) {
+      state = ' done'; mark = 'Done';
+    }
+    const what = d.isRestDay
+      ? 'Rest'
+      : `${escapeHtml(words(d.activityType))}${d.durationMinutes ? ` · ${escapeHtml(d.durationMinutes)} min` : ''}`;
+    // A rest day's instructions are usually just "Rest", which would say it twice.
+    const ins = d.instructions && !(d.isRestDay && /^rest\.?$/i.test(d.instructions.trim()))
+      ? `<span class="pd-ins">${escapeHtml(d.instructions)}</span>` : '';
+    return `<li class="pd${state}"${state === ' now' ? ' aria-current="step"' : ''}>
+        <span class="pd-n">Day ${escapeHtml(d.dayNumber)}</span>
+        <span class="pd-what">${what}${mark ? ` <span class="pd-mark">${mark}</span>` : ''}</span>
+        ${ins}
+      </li>`;
+  }).join('');
+  return `<details class="plan-sched">
+      <summary>Schedule, ${sorted.length} ${sorted.length === 1 ? 'day' : 'days'}</summary>
+      <ol class="plan-days">${items}</ol>
+    </details>`;
+}
 
 /**
  * One plan in the list, ruled like a challenge: what it trains for and how hard it is,
@@ -36,6 +77,7 @@ export function planCard(p, isCurrent = false) {
       </div>
       <h4 class="ctitle">${escapeHtml(p.name)}</h4>
       ${p.description ? `<p class="plan-desc">${escapeHtml(p.description)}</p>` : ''}
+      ${scheduleList(p.days)}
       <div class="cf">
         <span class="cdl"><b class="num">${escapeHtml(p.totalDays)}</b> ${p.totalDays === 1 ? 'day' : 'days'}</span>
         ${action}
@@ -64,9 +106,10 @@ function todayBlock(today, day, doneToday) {
 
 /**
  * The plan you are on: where you are in it, as a figure and a bar, beside today's
- * workout and the button that ticks it off.
+ * workout and the button that ticks it off. With its plan's `days`, the whole schedule
+ * sits under the bar, marked with where you are.
  */
-export function activePlanSheet(active) {
+export function activePlanSheet(active, days = null) {
   const pct = Math.max(0, Math.min(100, Math.round(active.progressPercent || 0)));
   const done = active.completedDays ?? 0;
   const body = active.isCompleted
@@ -93,6 +136,7 @@ export function activePlanSheet(active) {
         <div class="pname">${escapeHtml(active.planName)}</div>
         <div class="git"><span class="gn">${escapeHtml(done)} of ${escapeHtml(active.totalDays)} days done</span><span class="gp">${pct}%</span></div>
         <div class="gb2" role="progressbar" aria-label="Plan progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><div class="gf${pct >= 100 ? ' done' : ''}" style="width:${pct}%"></div></div>
+        ${scheduleList(days, active)}
       </div>
       <div class="plan-do">${body}</div>
     </div>`;
@@ -102,28 +146,41 @@ export async function loadWorkoutPlans() {
   const activeEl = document.getElementById('active-plan-card');
   const listEl = document.getElementById('plans-list');
   listEl.innerHTML = skeletonCards(3);
+  const scheduleWasOpen = !!activeEl.querySelector('.plan-sched[open]');
 
+  let active = null;
   try {
-    const active = await api(`/api/plans/active/${session.currentUser.id}`);
+    active = await api(`/api/plans/active/${session.currentUser.id}`);
     if (active && active.planName) {
       activePlanName = active.planName;
+      activePlanId = active.planId ?? null;
       activeEl.innerHTML = activePlanSheet(active);
       activeEl.hidden = false;
     } else {
-      activePlanName = null;
+      active = null;
+      activePlanName = activePlanId = null;
       activeEl.innerHTML = '';
       activeEl.hidden = true;
     }
   } catch (err) {
-    activePlanName = null;
+    active = null;
+    activePlanName = activePlanId = null;
     activeEl.innerHTML = '';
     activeEl.hidden = true;
   }
 
   try {
     const plans = await api('/api/plans');
+    // Matched by id; the name is only a fallback for an older backend without planId.
+    const isActive = p => (activePlanId ? p.id === activePlanId : p.name === activePlanName);
+    const mine = active ? plans.find(isActive) : null;
+    if (mine) {
+      // Marking a day complete reloads the panel; a schedule left open stays open.
+      activeEl.innerHTML = activePlanSheet(active, mine.days);
+      if (scheduleWasOpen) activeEl.querySelector('.plan-sched')?.setAttribute('open', '');
+    }
     listEl.innerHTML = plans.length
-      ? plans.map(p => planCard(p, p.name === activePlanName)).join('')
+      ? plans.map(p => planCard(p, !!active && isActive(p))).join('')
       : emptyState('', 'No plans available yet.');
   } catch (err) {
     listEl.innerHTML = `<div class="error-state">Couldn't load plans: ${escapeHtml(err.message)}</div>`;
