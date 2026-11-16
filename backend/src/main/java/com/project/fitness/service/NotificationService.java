@@ -84,6 +84,21 @@ public class NotificationService {
         }
     }
 
+    /**
+     * Takes back a notification that asked the user to act on something that can no
+     * longer be acted on: a friend request that was answered or withdrawn, a challenge
+     * invite that was answered, cancelled or outlived its challenge.
+     *
+     * <p>Deleted rather than marked read. Left in place, a withdrawn request still counted
+     * in the bell's badge, and Open led to a panel with nothing to answer (found
+     * 2026-11-16, PLAN P6-F16). Marking it read would quiet the badge but keep a
+     * "Friend request from …" that points at nothing.
+     */
+    @Transactional
+    public void retire(String userId, String dedupeKey) {
+        notificationRepository.deleteByUserIdAndDedupeKey(userId, dedupeKey);
+    }
+
     // ── Reading ──────────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
