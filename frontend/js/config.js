@@ -5,7 +5,7 @@
 // When running locally (localhost/127.0.0.1) this points at your local backend.
 // When deployed (e.g. on GitHub Pages), it points at your deployed Render backend —
 // replace the placeholder below with your actual Render URL once you have one.
-const DEPLOYED_BACKEND_URL = 'https://REPLACE-WITH-YOUR-RENDER-URL.onrender.com';
+const DEPLOYED_BACKEND_URL = 'https://fitpilot-backend-tzaw.onrender.com';
 const PLACEHOLDER_BACKEND_URL = 'https://REPLACE-WITH-YOUR-RENDER-URL.onrender.com';
 
 export const IS_LOCAL = location.hostname === 'localhost'
